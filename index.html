@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestionnaire de tâches</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Mes tâches</h1>
+      <p class="subtitle">Organisez vos tâches par catégorie</p>
+    </header>
+
+    <section class="progress-section">
+      <div class="progress-header">
+        <span id="progress-label">0 / 0 tâches terminées</span>
+        <span id="progress-percent">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </section>
+
+    <form id="task-form" class="task-form">
+      <input type="text" id="task-input" placeholder="Nouvelle tâche..." required autocomplete="off">
+      <select id="category-select">
+        <option value="Travail">Travail</option>
+        <option value="Personnel">Personnel</option>
+        <option value="Courses">Courses</option>
+        <option value="Santé">Santé</option>
+        <option value="Autre">Autre</option>
+      </select>
+      <button type="submit">Ajouter</button>
+    </form>
+
+    <div class="filters">
+      <button class="filter-btn active" data-filter="all">Toutes</button>
+      <button class="filter-btn" data-filter="active">En cours</button>
+      <button class="filter-btn" data-filter="completed">Terminées</button>
+      <select id="category-filter">
+        <option value="all">Toutes les catégories</option>
+        <option value="Travail">Travail</option>
+        <option value="Personnel">Personnel</option>
+        <option value="Courses">Courses</option>
+        <option value="Santé">Santé</option>
+        <option value="Autre">Autre</option>
+      </select>
+    </div>
+
+    <ul id="task-list" class="task-list"></ul>
+
+    <p id="empty-state" class="empty-state">Aucune tâche pour le moment. Ajoutez-en une ci-dessus !</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
