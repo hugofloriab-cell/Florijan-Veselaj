@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14110f">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panneau gérant · Avis privés</title>
+
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body class="admin">
+
+<!-- ===================== CONNEXION ===================== -->
+<section class="login" id="login">
+  <form class="login__card" id="loginForm">
+    <div class="login__mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M6 11V8a6 6 0 0 1 12 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg>
+    </div>
+    <h1>Panneau gérant</h1>
+    <p>Accès réservé. Les avis affichés ici ne sont publiés nulle part.</p>
+
+    <label class="field">
+      <span class="field__label">Mot de passe</span>
+      <input type="password" id="password" autocomplete="current-password" required>
+    </label>
+    <p class="field__error" id="loginError" role="alert"></p>
+    <button class="btn btn--primary btn--block" type="submit">Entrer</button>
+    <a class="login__back" href="index.html">← Retour au menu</a>
+  </form>
+</section>
+
+<!-- ===================== TABLEAU DE BORD ===================== -->
+<div id="dashboard" hidden>
+  <header class="admin-top">
+    <div>
+      <h1>Avis privés</h1>
+      <small id="adminSubtitle">Retours reçus en interne</small>
+    </div>
+    <div class="admin-top__actions">
+      <button class="btn btn--ghost btn--sm" id="exportBtn" type="button">Exporter</button>
+      <button class="btn btn--ghost btn--sm" id="logoutBtn" type="button">Quitter</button>
+    </div>
+  </header>
+
+  <section class="stats" id="stats"></section>
+
+  <section class="bars" id="bars" aria-label="Répartition des notes"></section>
+
+  <nav class="filters" id="filters">
+    <button class="chip is-on" data-filter="prive" type="button">Privés</button>
+    <button class="chip" data-filter="non-lus" type="button">Non lus</button>
+    <button class="chip" data-filter="public" type="button">Redirigés</button>
+    <button class="chip" data-filter="tous" type="button">Tous</button>
+  </nav>
+
+  <section class="list" id="list"></section>
+
+  <footer class="admin-foot">
+    <button class="btn btn--quiet btn--block" id="clearBtn" type="button">
+      Supprimer définitivement tous les avis
+    </button>
+    <p class="legal">
+      Les avis sont stockés dans ce navigateur (IndexedDB). Exportez-les
+      régulièrement&nbsp;: vider les données du navigateur les efface.
+    </p>
+  </footer>
+</div>
+
+<!-- Visionneuse photo -->
+<div class="lightbox" id="lightbox" hidden>
+  <button class="lightbox__close" id="lightboxClose" type="button" aria-label="Fermer">✕</button>
+  <img id="lightboxImg" alt="Photo jointe à l'avis">
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>
