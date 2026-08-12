@@ -213,7 +213,9 @@ Autres points :
   téléphone (RGPD) — le champ contact est facultatif et vide par défaut.
 * `admin.html` porte un `noindex`, mais placez-le derrière une
   authentification serveur (`.htpasswd` par exemple) si c'est possible chez
-  votre hébergeur.
+  votre hébergeur. **GitHub Pages ne le permet pas** : l'adresse du panneau y
+  est publique et le mot de passe reste la seule barrière. Changez-le avant
+  la mise en ligne.
 
 ---
 
@@ -221,6 +223,8 @@ Autres points :
 
 ```
 index.html               écran client (menu + avis)
+.github/workflows/       déploiement automatique sur GitHub Pages
+.nojekyll                sert les fichiers tels quels, sans traitement Jekyll
 admin.html               panneau gérant, protégé par mot de passe
 manifest.webmanifest     installation sur l'écran d'accueil (PWA)
 sw.js                    cache hors ligne + notifications
@@ -240,16 +244,39 @@ assets/
 
 ---
 
-## Mise en place au restaurant
+## Mise en ligne avec GitHub Pages
 
-1. Déposez le dossier sur un hébergement **HTTPS** (Netlify, Vercel, GitHub
-   Pages, o2switch, OVH…). HTTPS est indispensable pour les notifications et
-   l'accès à l'appareil photo.
-2. Remplacez les pages de menu et complétez `config.js`.
-3. Changez le mot de passe du panneau gérant.
-4. Générez un QR code pointant vers l'URL et posez-le sur les tables.
-5. Sur votre téléphone, ouvrez `/admin.html` et ajoutez-le à l'écran
+Le dépôt contient déjà tout le nécessaire : `.github/workflows/pages.yml`
+publie le site à chaque `push` sur `main`, sans étape de build. Une seule
+manipulation reste à faire, une fois :
+
+1. **Activer Pages** — dans le dépôt : `Settings` → `Pages` → *Build and
+   deployment* → **Source : GitHub Actions**. (Pas « Deploy from a branch ».)
+2. **Lancer le premier déploiement** — poussez sur `main`, ou allez dans
+   l'onglet `Actions` → *Déployer sur GitHub Pages* → `Run workflow`.
+3. L'adresse s'affiche à la fin du job, et ensuite dans `Settings` → `Pages` :
+   `https://<votre-compte>.github.io/<nom-du-dépôt>/`
+
+Tous les chemins de l'application sont relatifs : le site fonctionne
+directement dans un sous-dossier, sans réglage supplémentaire. HTTPS est
+fourni par GitHub, donc les notifications et l'appareil photo fonctionnent.
+
+### Puis, avant d'ouvrir aux clients
+
+1. Remplacez les pages de menu et complétez `config.js` (nom, liens d'avis).
+2. **Changez le mot de passe du panneau gérant** — sur GitHub Pages,
+   `admin.html` est accessible à qui connaît l'adresse.
+3. Générez un QR code pointant vers l'URL (n'importe quel générateur gratuit
+   fait l'affaire) et posez-le sur les tables.
+4. Sur votre téléphone, ouvrez `/admin.html` et ajoutez-le à l'écran
    d'accueil : vous avez les retours privés à portée de main.
+
+### Autres hébergeurs
+
+Le site étant statique et sans build, il se dépose tel quel sur Netlify,
+Vercel, o2switch, OVH… Sur un hébergeur classique, profitez-en pour protéger
+`admin.html` par un `.htpasswd`. Exigence commune à tous : **HTTPS**, sans
+quoi ni les notifications ni l'appareil photo ne sont autorisés.
 
 ---
 
