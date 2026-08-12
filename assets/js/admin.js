@@ -64,11 +64,17 @@
     );
   }
 
+  let loggingIn = false;
+
   async function login(e) {
     e.preventDefault();
+    if (loggingIn) return;
+    loggingIn = true;
     const input = document.getElementById("password");
     const err = document.getElementById("loginError");
     const hash = await sha256(input.value);
+
+    loggingIn = false;
 
     if (hash !== cfg.admin.passwordSha256) {
       err.textContent = "Mot de passe incorrect.";
@@ -230,7 +236,11 @@
 
   /* ------------------------------------------------------ liaisons */
   function bind() {
-    document.getElementById("loginForm").addEventListener("submit", login);
+    const form = document.getElementById("loginForm");
+    // Comme pour le formulaire d'avis : certains contextes embarqués
+    // n'émettent jamais l'événement `submit`.
+    form.addEventListener("submit", login);
+    form.querySelector('button[type="submit"]').addEventListener("click", login);
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
       sessionStorage.removeItem(SESSION_KEY);

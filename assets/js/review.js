@@ -156,7 +156,8 @@ window.ReviewFlow = (function () {
     }
 
     window.Reminder.complete();
-    state.submitting = false;
+    // `submitting` reste vrai jusqu'au prochain `reset()` : un second
+    // événement tardif ne peut pas enregistrer l'avis en double.
     el.submit.classList.remove("is-loading");
     el.submit.disabled = false;
 
@@ -269,7 +270,11 @@ window.ReviewFlow = (function () {
       el.gallery.addEventListener("change", (e) => handleFile(e.target.files[0]));
       document.getElementById("photoRemove").addEventListener("click", clearPhoto);
 
+      // Le clic double l'événement `submit` : certains contextes restreints
+      // (application embarquée dans une iframe, webview) ne l'émettent jamais.
+      // Le drapeau `submitting` empêche le double envoi quand les deux passent.
       el.form.addEventListener("submit", submit);
+      el.submit.addEventListener("click", submit);
       el.copyBtn.addEventListener("click", copyComment);
 
       buildPublicLinks();
