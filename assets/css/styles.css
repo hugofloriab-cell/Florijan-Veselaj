@@ -171,6 +171,11 @@ svg {
   min-height: 0;
   position: relative;
   display: grid;
+  /* Sans `minmax(0, 1fr)`, la piste implicite se dimensionne sur le contenu :
+     sur un écran haut, le livret déborderait en largeur au lieu d'être
+     ramené par son `max-width`. */
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   place-items: center;
   padding: 14px 12px 4px;
   touch-action: pan-y;
@@ -180,8 +185,9 @@ svg {
 }
 .fb.is-zoomed .fb-stage { touch-action: none; }
 
-/* Hauteur d'abord, largeur déduite du ratio : le livret tient toujours
-   entièrement dans la zone visible, quel que soit l'écran. */
+/* Les dimensions exactes sont posées en pixels par le script, qui connaît
+   les proportions réelles des pages (voir `_fit()`). Les valeurs ci-dessous
+   ne servent qu'avant le premier calcul. */
 .fb-book {
   position: relative;
   height: 100%;

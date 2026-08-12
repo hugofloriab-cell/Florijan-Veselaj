@@ -42,6 +42,7 @@
       this.pages = []; // URLs des pages
       this.index = 0; // page de gauche (double page) ou page courante
       this.spread = false;
+      this.pageRatio = 1.414; // hauteur / largeur d'une page (A4 par défaut)
       this.turning = null; // { dir, progress, committed }
       this.zoom = 1;
       this.pan = { x: 0, y: 0 };
@@ -129,10 +130,12 @@
         return;
       }
 
+      this.pageRatio = await this._measurePage(this.pages[0]);
       this._computeSpread();
       this.el.range.max = String(this.pages.length - 1);
       this.el.loader.hidden = true;
       this.root.classList.add("is-ready");
+      this._fit();
       this._render();
       this._preload(0);
       if (this.opts.onReady) this.opts.onReady(this.pages.length);
@@ -197,6 +200,45 @@
     }
 
     /* --------------------------------------------------------- rendu */
+
+    /** Proportions réelles de la première page (A4 en cas d'échec). */
+    _measurePage(src) {
+      return new Promise((resolve) => {
+        if (!src) return resolve(1.414);
+        const img = new Image();
+        const done = (r) => resolve(r);
+        img.onload = () =>
+          done(img.naturalWidth ? img.naturalHeight / img.naturalWidth : 1.414);
+        img.onerror = () => done(1.414);
+        img.src = src;
+        // Un SVG sans dimensions intrinsèques ne déclenchera peut-être rien.
+        setTimeout(() => done(1.414), 2500);
+      });
+    }
+
+    /**
+     * Pose la taille du livret en pixels. Le CSS seul n'y suffit pas : avec
+     * `aspect-ratio`, une hauteur définie et un `max-width`, le navigateur
+     * rogne la largeur sans recalculer la hauteur — le livret finissait
+     * déformé, voire plus large que l'écran sur les téléphones hauts.
+     */
+    _fit() {
+      const stage = this.el.stage;
+      const cs = getComputedStyle(stage);
+      const availW =
+        stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const availH =
+        stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      if (availW <= 0 || availH <= 0) return;
+
+      // En double page, le livret est deux fois plus large qu'une page.
+      const bookRatio = this.spread ? this.pageRatio / 2 : this.pageRatio;
+      const width = Math.min(availW, availH / bookRatio);
+
+      this.el.book.style.width = Math.round(width) + "px";
+      this.el.book.style.height = Math.round(width * bookRatio) + "px";
+    }
+
     _computeSpread() {
       const wide = window.innerWidth >= this.opts.spreadMinWidth;
       if (wide === this.spread) return false;
@@ -502,7 +544,9 @@
       });
 
       window.addEventListener("resize", () => {
-        if (this._computeSpread()) this._render();
+        const changed = this._computeSpread();
+        this._fit();
+        if (changed) this._render();
       });
     }
 
