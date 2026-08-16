@@ -122,7 +122,7 @@ prix_crédit  = coût_morceau × marge_cible (≥ 3×, avant commission store de
 
 Trois prototypes jetables, à faire tourner sur **téléphone physique**, pas sur simulateur :
 
-1. **Lecture 4 stems synchronisés** avec `AVAudioEngine` : un `AVAudioPlayerNode` par piste sur une horloge commune, mute/gain temps réel, mesure de la dérive après 3 minutes de lecture et de l'empreinte mémoire. Vérifier au passage le rendu manuel (offline) pour l'export. *Si ce spike échoue, toute l'UX de l'éditeur doit être repensée — d'où sa place en Phase 1.*
+1. **Lecture 4 stems synchronisés** avec `AVAudioEngine` — 🔨 **harnais écrit, mesure à faire** : [`ios/StemPlayerSpike`](../ios/StemPlayerSpike). Un `AVAudioPlayerNode` par piste sur une horloge commune, mute/solo/gain manipulés *pendant* la lecture, seek, dérive, empreinte mémoire (flux disque vs décodé), et rendu manuel hors-ligne pour valider l'export local. Les seuils de décision sont pré-enregistrés dans l'[ADR 002](adr/002-lecture-multipiste.md) et appliqués automatiquement par le harnais. *À lancer sur iPhone physique : au simulateur, la mesure de dérive n'a aucune valeur.*
 2. **Chaîne job complète** : Edge Function → Replicate → webhook → Supabase Realtime → UI. Mesurer la latence bout-en-bout et vérifier le comportement quand l'app est en arrière-plan.
 3. **Régénération de section** : générer un morceau, en régénérer 8 mesures avec la même seed, recoller avec crossfade, et **écouter**. Juger de la qualité de la couture avant de construire l'éditeur autour.
 
