@@ -420,7 +420,42 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 15. Suppression de compte (exigence App Store / RGPD)
+-- 15. create_project : projet et document de paroles créés ensemble
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  v_project_id uuid;
+  v_owner      uuid;
+  v_title      text;
+  v_docs       integer;
+begin
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222"}';
+  select public.create_project('  ', 'lo-fi nocturne') into v_project_id;
+  reset role;
+
+  select user_id, title into v_owner, v_title
+    from public.projects where id = v_project_id;
+
+  if v_owner <> '22222222-2222-2222-2222-222222222222' then
+    raise exception 'ECHEC : projet attribué au mauvais utilisateur';
+  end if;
+  if v_title <> 'Sans titre' then
+    raise exception 'ECHEC : titre vide non remplacé par un défaut (%)', v_title;
+  end if;
+
+  select count(*) into v_docs
+    from public.lyrics_documents where project_id = v_project_id;
+  if v_docs <> 1 then
+    raise exception 'ECHEC : % document(s) de paroles créé(s) au lieu d''un', v_docs;
+  end if;
+
+  raise notice 'OK  create_project : projet + document de paroles, atomiques';
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 16. Suppression de compte (exigence App Store / RGPD)
 -- ---------------------------------------------------------------------------
 
 do $$

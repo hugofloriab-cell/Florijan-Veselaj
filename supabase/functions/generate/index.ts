@@ -14,33 +14,13 @@ import {
 } from "../_shared/http.ts";
 import { requireUserId, serviceClient, userClient } from "../_shared/supabase.ts";
 import { CREDIT_COST, getEngine } from "../_shared/engine/index.ts";
+import { flattenLyrics, type LyricsSection } from "../_shared/lyrics.ts";
 
 interface GenerateBody {
   projectId: string;
   /** Remplace le prompt de style enregistré sur le projet, pour ce rendu. */
   stylePrompt?: string;
   durationMs?: number;
-}
-
-interface LyricsLine {
-  text: string;
-}
-interface LyricsSection {
-  type: string;
-  index?: number;
-  lines: LyricsLine[];
-}
-
-/** Aplatit le document structuré en texte à marqueurs pour le moteur audio. */
-function flattenLyrics(content: LyricsSection[]): string {
-  return content
-    .map((section) => {
-      const heading = section.index
-        ? `[${section.type} ${section.index}]`
-        : `[${section.type}]`;
-      return [heading, ...section.lines.map((l) => l.text)].join("\n");
-    })
-    .join("\n\n");
 }
 
 Deno.serve(handler(async (req) => {

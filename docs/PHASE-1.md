@@ -63,22 +63,27 @@ Points non négociables :
 
 ## Lot 3 — Contrat d'API (2 jours)
 
-Huit Edge Functions, typées de bout en bout et figées avant tout code mobile :
+Le contrat est figé avant tout code mobile :
 
-| Fonction | Rôle |
-|---|---|
-| `POST /lyrics/assist` | Proxy Claude en streaming → co-écriture et structuration des paroles |
-| `POST /projects` | Création d'un projet + document de paroles initial |
-| `POST /generate` | Débit crédits + création job + appel moteur musical |
-| `POST /versions/:id/regenerate-section` | Régénération d'un segment (même seed, prompt modifié) |
-| `POST /versions/:id/restyle` | Changement de genre, paroles et structure conservées |
-| `POST /versions/:id/export` | Mixdown MP3 ou zip de stems WAV |
-| `POST /webhooks/:provider` | Callback fournisseur — **signature HMAC vérifiée** |
-| `POST /webhooks/revenuecat` | Achat/renouvellement → crédit du ledger |
+| Point d'entrée | Rôle | État |
+|---|---|---|
+| `POST /lyrics-assist` | Proxy Claude — co-écriture en streaming, puis structuration en `LyricsDocument` typé | ✅ livré |
+| `POST /generate` | Débit crédits + création job + appel moteur musical | ✅ livré |
+| `POST /restyle` | Changement de genre : mêmes paroles, même seed, nouvelle version enfant | ✅ livré |
+| `POST /export` | URLs signées vers le master ou les pistes séparées (tier payant) | ✅ livré |
+| `POST /webhooks-provider` | Callback fournisseur — **signature HMAC vérifiée**, idempotent | ✅ livré |
+| `POST /webhooks-revenuecat` | Achat / renouvellement → crédit du ledger, idempotent | ✅ livré |
+| `create_project()` | Projet + document de paroles, dans une transaction | ✅ livré (RPC) |
+| `POST /regenerate-section` | Régénération d'un segment (même seed, prompt modifié) | ⏸ **bloqué sur le Lot 1** |
+
+Deux écarts assumés par rapport au découpage initial :
+
+- **`create_project` est une fonction Postgres, pas une Edge Function.** Ce sont deux `INSERT` qui doivent être atomiques et rien d'autre : une Edge Function n'ajouterait qu'un démarrage à froid. L'app iOS l'appelle directement en RPC, sous RLS.
+- **`export` ne produit ni zip ni mixdown côté serveur.** Le mixdown est rendu sur l'appareil (ADR 000) ; assembler ici un fichier que le téléphone sait produire coûterait du CPU, de la bande passante et du stockage pour rien. La fonction vend l'accès, pas le calcul.
+
+Et un report explicite : **`regenerate-section` attend le choix du moteur.** Ce qui distingue cette fonction de `restyle` — insérer un segment re-généré dans un master existant, recollé au passage à la mesure — dépend entièrement des capacités du moteur retenu (conditionnement sur une section, continuation, inpainting). L'écrire maintenant produirait un endpoint indiscernable de `restyle`, donc trompeur. Il est traité après le Lot 1, avec le reste de l'éditeur en Phase 3.
 
 Règle absolue : **aucune clé d'API tierce n'existe côté mobile.** Un binaire mobile est décompilable ; toute clé qui y figure est publique.
-
-**Livré à ce stade :** `lyrics/assist`, `generate` et `webhooks/:provider` — la chaîne asynchrone complète, du débit de crédits jusqu'à la recopie de l'audio dans le Storage et l'enchaînement automatique de la séparation en pistes. Le fournisseur est isolé derrière une interface `MusicEngine` : le choix du moteur (Lot 1) ne remet en cause qu'une seule classe.
 
 ---
 

@@ -37,6 +37,14 @@ function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 /**
+ * Comparaison de deux chaînes à temps constant. Utilisée par les fournisseurs
+ * qui authentifient par secret partagé plutôt que par HMAC (RevenueCat).
+ */
+export function constantTimeEquals(a: string, b: string): boolean {
+  return timingSafeEqual(utf8Bytes(a), utf8Bytes(b));
+}
+
+/**
  * @param secret Secret du fournisseur, avec ou sans le préfixe `whsec_`.
  * @throws HttpError 401 si la signature, l'horodatage ou les en-têtes sont invalides.
  */
