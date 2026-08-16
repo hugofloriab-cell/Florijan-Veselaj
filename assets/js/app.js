@@ -76,6 +76,7 @@
 
     const list = document.getElementById("infoList");
     const rows = [];
+    if (r.hours) rows.push(["Service", r.hours, null]);
     if (r.address) rows.push(["Adresse", r.address, "https://maps.google.com/?q=" + encodeURIComponent(r.address)]);
     if (r.phone) rows.push(["Téléphone", r.phone, "tel:" + r.phone.replace(/\s/g, "")]);
     if (r.wifi) rows.push(["Wi-Fi", `${r.wifi.ssid} — mot de passe : ${r.wifi.password}`, null]);

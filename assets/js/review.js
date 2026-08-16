@@ -98,10 +98,15 @@ window.ReviewFlow = (function () {
     if (n === 0) {
       el.routeHint.hidden = true;
     } else if (n >= cfg().threshold) {
+      // La liste suit les plateformes réellement configurées.
+      const noms = cfg().publicLinks.map((l) => l.label);
+      const liste =
+        noms.length > 1 ? noms.slice(0, -1).join(", ") + " ou " + noms[noms.length - 1] : noms[0];
       el.routeHint.hidden = false;
       el.routeHint.className = "route-hint route-hint--public";
-      el.routeHint.textContent =
-        "Merci ! Nous vous proposerons de partager cet avis sur Google, Tripadvisor ou Booking.";
+      el.routeHint.textContent = liste
+        ? `Merci ! Nous vous proposerons de partager cet avis sur ${liste}.`
+        : "Merci ! Nous vous proposerons de partager cet avis publiquement.";
     } else {
       el.routeHint.hidden = false;
       el.routeHint.className = "route-hint route-hint--private";

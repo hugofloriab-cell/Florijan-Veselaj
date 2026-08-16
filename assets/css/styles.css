@@ -1,20 +1,21 @@
 /* ==================================================================
-   Le Jardin d'Olivier — feuille de style principale
-   Mobile-first. Palette chaude, typographie éditoriale.
+   Restaurant Les Tilleuls — feuille de style principale
+   Mobile-first. Palette tirée du logo : feuillage de tilleul, écorce,
+   papier crème. Typographie éditoriale.
    ================================================================== */
 
 :root {
-  --ink:        #14110f;
-  --ink-soft:   #1e1a16;
-  --ink-line:   #2c2621;
-  --paper:      #faf6ef;
-  --paper-2:    #f1eae0;
-  --text:       #241f1a;
-  --text-soft:  #6b6157;
-  --gold:       #c8a44c;
-  --gold-soft:  #e2c982;
-  --green:      #3f7d5c;
-  --red:        #b4553f;
+  --ink:        #171b13;   /* sous-bois, presque noir */
+  --ink-soft:   #202618;
+  --ink-line:   #303724;
+  --paper:      #fbfaf6;
+  --paper-2:    #eef0e6;
+  --text:       #23281e;
+  --text-soft:  #6f7566;
+  --gold:       #89ab38;   /* vert tilleul du logo : couleur d'accent */
+  --gold-soft:  #bcd67e;
+  --green:      #3d6b33;   /* avis public — vert plus profond que l'accent */
+  --red:        #b4553f;   /* avis privé */
   --white-70:   rgba(255, 255, 255, .7);
 
   --radius:     18px;
@@ -78,7 +79,7 @@ svg {
   justify-content: space-between;
   gap: 12px;
   padding: calc(var(--safe-top) + 10px) 14px 10px;
-  background: linear-gradient(180deg, #191512, rgba(20, 17, 15, .92));
+  background: linear-gradient(180deg, #1c2117, rgba(23, 27, 19, .92));
   border-bottom: 1px solid var(--ink-line);
   position: relative;
   z-index: 5;
@@ -143,9 +144,9 @@ svg {
 }
 .icon-btn:active { transform: scale(.92); }
 .icon-btn--accent {
-  border-color: rgba(200, 164, 76, .55);
+  border-color: rgba(137, 171, 56, .55);
   color: var(--gold-soft);
-  background: rgba(200, 164, 76, .1);
+  background: rgba(137, 171, 56, .1);
 }
 
 /* ============================ FLIPBOOK =========================== */
@@ -181,7 +182,7 @@ svg {
   touch-action: pan-y;
   overflow: hidden;
   background:
-    radial-gradient(120% 80% at 50% 0%, #221d18 0%, var(--ink) 62%);
+    radial-gradient(120% 80% at 50% 0%, #232a1c 0%, var(--ink) 62%);
 }
 .fb.is-zoomed .fb-stage { touch-action: none; }
 
@@ -324,7 +325,7 @@ svg {
 }
 .fb-loader__ring {
   width: 34px; height: 34px;
-  border: 2px solid rgba(200, 164, 76, .22);
+  border: 2px solid rgba(137, 171, 56, .22);
   border-top-color: var(--gold);
   border-radius: 50%;
   animation: spin .85s linear infinite;
@@ -342,7 +343,7 @@ svg {
   align-items: center;
   gap: 12px;
   padding: 8px 16px calc(var(--safe-bottom) + 12px);
-  background: linear-gradient(180deg, rgba(20, 17, 15, 0), var(--ink) 42%);
+  background: linear-gradient(180deg, rgba(23, 27, 19, 0), var(--ink) 42%);
 }
 
 .fb-btn {
@@ -422,7 +423,7 @@ svg {
   border-radius: 999px;
   /* Fond sombre opaque : le bandeau passe aussi bien sur la page blanche
      du menu que sur le fond de l'écran. */
-  background: rgba(20, 17, 15, .86);
+  background: rgba(23, 27, 19, .86);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(250, 246, 239, .16);
   color: var(--paper-2);
@@ -452,8 +453,8 @@ svg {
   gap: 12px;
   padding: 10px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(200, 164, 76, .3);
-  background: rgba(30, 26, 22, .92);
+  border: 1px solid rgba(137, 171, 56, .3);
+  background: rgba(29, 34, 23, .92);
   backdrop-filter: blur(14px);
   box-shadow: var(--shadow-md);
   color: var(--paper);
@@ -500,7 +501,7 @@ svg {
   position: fixed;
   inset: 0;
   z-index: 40;
-  background: rgba(10, 8, 7, .68);
+  background: rgba(9, 11, 7, .68);
   backdrop-filter: blur(3px);
   opacity: 0;
   transition: opacity .3s;
@@ -541,8 +542,8 @@ svg {
   margin: 4px auto 12px;
   padding: 12px;
   border-radius: 50%;
-  background: rgba(200, 164, 76, .14);
-  color: #9a7c2c;
+  background: rgba(137, 171, 56, .14);
+  color: #5d7a22;
 }
 
 .modal h2, .sheet h2 {
@@ -597,10 +598,10 @@ svg {
 .delay:active { transform: scale(.95); }
 .delay.is-on {
   border-color: var(--gold);
-  background: rgba(200, 164, 76, .13);
-  box-shadow: 0 0 0 3px rgba(200, 164, 76, .13);
+  background: rgba(137, 171, 56, .13);
+  box-shadow: 0 0 0 3px rgba(137, 171, 56, .13);
 }
-.delay.is-on small { color: #8a6f22; }
+.delay.is-on small { color: #5d7a22; }
 
 .modal__actions { display: flex; flex-direction: column; gap: 8px; }
 
@@ -720,7 +721,7 @@ svg {
   line-height: 1.5;
   border-left: 3px solid;
 }
-.route-hint--public  { background: rgba(63, 125, 92, .1);  border-color: var(--green); color: #2f5f45; }
+.route-hint--public  { background: rgba(61, 107, 51, .1);  border-color: var(--green); color: #2e5527; }
 .route-hint--private { background: rgba(180, 85, 63, .09); border-color: var(--red);   color: #8d4231; }
 
 /* ============================ CHAMPS ============================ */
@@ -752,7 +753,7 @@ svg {
 .field input[type="text"]:focus {
   outline: none;
   border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(200, 164, 76, .16);
+  box-shadow: 0 0 0 3px rgba(137, 171, 56, .16);
 }
 
 .field__error { margin: 6px 0 0; font-size: .78rem; color: var(--red); }
@@ -834,9 +835,9 @@ svg {
   border-radius: 50%;
   animation: pop .45s cubic-bezier(.34, 1.56, .64, 1) both;
 }
-.result--happy .result__icon { background: rgba(200, 164, 76, .16); color: var(--gold); }
+.result--happy .result__icon { background: rgba(137, 171, 56, .16); color: var(--gold); }
 .result--happy .result__icon svg { fill: currentColor; stroke: none; }
-.result--care .result__icon  { background: rgba(63, 125, 92, .12); color: var(--green); }
+.result--care .result__icon  { background: rgba(61, 107, 51, .12); color: var(--green); }
 
 @keyframes pop {
   from { opacity: 0; transform: scale(.5); }
@@ -901,8 +902,8 @@ svg {
   max-width: min(90vw, 420px);
   padding: 13px 18px;
   border-radius: 14px;
-  background: rgba(28, 24, 20, .96);
-  border: 1px solid rgba(200, 164, 76, .28);
+  background: rgba(26, 31, 21, .96);
+  border: 1px solid rgba(137, 171, 56, .28);
   color: var(--paper);
   font-size: .84rem;
   line-height: 1.45;

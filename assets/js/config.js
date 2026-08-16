@@ -8,15 +8,16 @@ window.APP_CONFIG = {
 
   /* --- Identité du restaurant ------------------------------------ */
   restaurant: {
-    name: "Le Jardin d'Olivier",
-    tagline: "Cuisine de saison · Maison depuis 1998",
-    // Initiales affichées dans le monogramme (2 lettres conseillées)
-    monogram: "JO",
-    // Laisser vide pour utiliser le monogramme, ou mettre "assets/img/logo.png"
-    logoUrl: "",
-    address: "12 rue des Oliviers, 75011 Paris",
-    phone: "+33 1 23 45 67 89",
-    wifi: { ssid: "Jardin-Invites", password: "bienvenue" } // mettre à null pour masquer
+    name: "Restaurant Les Tilleuls",
+    tagline: "Carte d'été · Cuisine de saison",
+    // Initiales de secours, si le logo ne se charge pas
+    monogram: "LT",
+    logoUrl: "assets/img/logo-tilleuls.png",
+    // À compléter : l'adresse et le téléphone n'étaient pas sur la carte
+    address: "",
+    phone: "",
+    hours: "Du lundi au dimanche · 19 h – 21 h",
+    wifi: null // ex. { ssid: "...", password: "..." }
   },
 
   /* --- Source du menu (flipbook) ---------------------------------
@@ -27,12 +28,17 @@ window.APP_CONFIG = {
     type: "images",
     pdfUrl: "assets/menu/menu.pdf",
     images: [
-      "assets/menu/page-1.svg",
-      "assets/menu/page-2.svg",
-      "assets/menu/page-3.svg",
-      "assets/menu/page-4.svg",
-      "assets/menu/page-5.svg",
-      "assets/menu/page-6.svg"
+      "assets/menu/tilleuls-1.svg",
+      "assets/menu/tilleuls-2.svg",
+      "assets/menu/tilleuls-3.svg",
+      "assets/menu/tilleuls-4.svg",
+      "assets/menu/tilleuls-5.svg",
+      "assets/menu/tilleuls-6.svg",
+      "assets/menu/tilleuls-7.svg",
+      "assets/menu/tilleuls-8.svg",
+      "assets/menu/tilleuls-9.svg",
+      "assets/menu/tilleuls-10.svg",
+      "assets/menu/tilleuls-11.svg"
     ],
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
@@ -66,23 +72,11 @@ window.APP_CONFIG = {
         id: "google",
         label: "Google",
         hint: "Le plus visible pour nous",
-        url: "https://search.google.com/local/writereview?placeid=VOTRE_PLACE_ID",
+        // Lien extrait du QR code « Restaurant Les Tilleuls » de la carte papier
+        url: "https://g.page/r/CTIvdw1e5rcAEAE/review",
         color: "#4285F4"
-      },
-      {
-        id: "tripadvisor",
-        label: "Tripadvisor",
-        hint: "Pour les voyageurs",
-        url: "https://www.tripadvisor.fr/UserReviewEdit-gVOTRE_ID",
-        color: "#00AA6C"
-      },
-      {
-        id: "booking",
-        label: "Booking",
-        hint: "Si vous séjournez chez nous",
-        url: "https://www.booking.com/reviewit.fr.html?pagename=VOTRE_HOTEL",
-        color: "#003580"
       }
+      // Pour ajouter Tripadvisor ou Booking, copier ce bloc et remplacer l'URL.
     ],
     // Compression des photos jointes (limite le poids en base locale)
     photo: { maxSize: 1400, quality: 0.72 }

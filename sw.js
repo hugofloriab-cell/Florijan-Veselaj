@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v1";
+const CACHE = "resto-menu-v2";
 
 const PRECACHE = [
   "./",
@@ -23,12 +23,18 @@ const PRECACHE = [
   "./assets/img/favicon.svg",
   "./assets/img/icon-192.png",
   "./assets/img/icon-512.png",
-  "./assets/menu/page-1.svg",
-  "./assets/menu/page-2.svg",
-  "./assets/menu/page-3.svg",
-  "./assets/menu/page-4.svg",
-  "./assets/menu/page-5.svg",
-  "./assets/menu/page-6.svg"
+  "./assets/img/logo-tilleuls.png",
+  "./assets/menu/tilleuls-1.svg",
+  "./assets/menu/tilleuls-2.svg",
+  "./assets/menu/tilleuls-3.svg",
+  "./assets/menu/tilleuls-4.svg",
+  "./assets/menu/tilleuls-5.svg",
+  "./assets/menu/tilleuls-6.svg",
+  "./assets/menu/tilleuls-7.svg",
+  "./assets/menu/tilleuls-8.svg",
+  "./assets/menu/tilleuls-9.svg",
+  "./assets/menu/tilleuls-10.svg",
+  "./assets/menu/tilleuls-11.svg"
 ];
 
 self.addEventListener("install", (event) => {
