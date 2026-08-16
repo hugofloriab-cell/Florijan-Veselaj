@@ -78,7 +78,7 @@ svg {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: calc(var(--safe-top) + 10px) 14px 10px;
+  padding: calc(var(--safe-top) + 7px) 12px 7px;
   background: linear-gradient(180deg, #1c2117, rgba(23, 27, 19, .92));
   border-bottom: 1px solid var(--ink-line);
   position: relative;
@@ -94,7 +94,7 @@ svg {
 
 .brand__mark {
   flex: none;
-  width: 40px; height: 40px;
+  width: 34px; height: 34px;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -112,7 +112,7 @@ svg {
 .brand__text { display: flex; flex-direction: column; min-width: 0; }
 .brand__text strong {
   font-family: var(--font-title);
-  font-size: 1.22rem;
+  font-size: 1.1rem;
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: .01em;
@@ -121,7 +121,7 @@ svg {
   text-overflow: ellipsis;
 }
 .brand__text small {
-  font-size: .705rem;
+  font-size: .66rem;
   color: var(--gold);
   letter-spacing: .09em;
   text-transform: uppercase;
@@ -130,11 +130,14 @@ svg {
   text-overflow: ellipsis;
 }
 
-.topbar__actions { display: flex; gap: 8px; flex: none; }
+.topbar__actions { display: flex; gap: 7px; flex: none; }
+
+/* En plein écran, la barre du navigateur disparaît : on récupère la place. */
+body.is-fullscreen .topbar { padding-top: 7px; }
 
 .icon-btn {
-  width: 40px; height: 40px;
-  padding: 9px;
+  width: 36px; height: 36px;
+  padding: 8px;
   border-radius: 50%;
   border: 1px solid var(--ink-line);
   background: rgba(255, 255, 255, .04);

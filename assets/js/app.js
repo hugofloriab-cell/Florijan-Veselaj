@@ -107,6 +107,54 @@
     await flipbook.load();
   }
 
+  /* ====================== Plein écran =========================== */
+  const FS_ENTRER = "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5";
+  const FS_SORTIR = "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5";
+
+  function initFullscreen() {
+    const btn = document.getElementById("fsBtn");
+    const el = document.documentElement;
+    const demander = el.requestFullscreen || el.webkitRequestFullscreen;
+    // Safari iOS n'expose rien sur documentElement : inutile d'afficher un
+    // bouton qui ne ferait rien. Là-bas, c'est « Ajouter à l'écran d'accueil ».
+    if (!demander) return;
+
+    const actif = () => Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    const entrer = () =>
+      Promise.resolve(demander.call(el, { navigationUI: "hide" })).catch(() => {});
+    const sortir = () =>
+      Promise.resolve((document.exitFullscreen || document.webkitExitFullscreen).call(document))
+        .catch(() => {});
+
+    const sync = () => {
+      const on = actif();
+      document.body.classList.toggle("is-fullscreen", on);
+      btn.querySelector("path").setAttribute("d", on ? FS_SORTIR : FS_ENTRER);
+      btn.setAttribute("aria-label", on ? "Quitter le plein écran" : "Plein écran");
+    };
+
+    btn.hidden = false;
+    btn.addEventListener("click", () => (actif() ? sortir() : entrer()));
+    document.addEventListener("fullscreenchange", sync);
+    document.addEventListener("webkitfullscreenchange", sync);
+    sync();
+
+    // Le plein écran exige un geste utilisateur : on saisit le premier
+    // contact avec la carte, une fois la pop-up d'accueil écartée.
+    if (cfg.ui && cfg.ui.autoFullscreen) {
+      document.getElementById("flipbook").addEventListener(
+        "pointerup",
+        () => {
+          if (actif() || openSheets.length) return;
+          entrer().then(() => {
+            if (actif()) UI.toast("Plein écran. Touchez ⤢ en haut pour en sortir.", 3500);
+          });
+        },
+        { once: true }
+      );
+    }
+  }
+
   let hintTimer = null;
   function hideHint() {
     const hint = document.getElementById("swipeHint");
@@ -163,16 +211,23 @@
 
     // La permission est demandée au moment du choix : le geste utilisateur
     // est encore « frais », ce que les navigateurs exigent.
-    const perm = await Reminder.requestPermission();
-    Reminder.schedule(chosenDelay);
+    await Reminder.requestPermission();
+
+    // Le rappel est armé tout de suite ; on n'attend pas la notification
+    // pour rendre la main, sinon la fenêtre resterait figée le temps que
+    // le Service Worker réponde (ou pas).
+    const enCours = Reminder.schedule(chosenDelay);
     btn.classList.remove("is-loading");
     UI.closeSheet("reminderModal");
 
+    // Message honnête : sans serveur, le rappel n'est émis que si la page
+    // vit encore. Et on n'annonce une notification que si elle a pu partir.
+    const { notifiable } = await enCours;
     UI.toast(
-      perm === "granted"
-        ? `C'est noté, nous vous notifierons dans ${chosenDelay} minutes.`
-        : `C'est noté ! Le minuteur s'affiche en bas de l'écran.`,
-      4000
+      notifiable
+        ? `C'est noté. Gardez cette page ouverte : nous vous prévenons dans ${chosenDelay} minutes.`
+        : `C'est noté ! Le minuteur reste affiché en bas de l'écran.`,
+      5000
     );
   }
 
@@ -258,6 +313,7 @@
     bindGlobal();
     buildDelays();
     ReviewFlow.init();
+    initFullscreen();
     registerSw();
 
     Reminder.init({

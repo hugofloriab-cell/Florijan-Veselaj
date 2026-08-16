@@ -118,6 +118,19 @@ reminder: {
 
 ## Comment ça marche
 
+### L'affichage plein écran
+
+Un site ne peut pas masquer la barre d'adresse du navigateur : c'est une
+protection, un site ne doit pas pouvoir se faire passer pour un autre. Ce que
+l'application fait à la place :
+
+* elle **passe en plein écran au premier geste sur la carte** (réglable par
+  `ui.autoFullscreen`), ce qui masque effectivement les barres sur Android ;
+* un bouton ⤢ dans l'en-tête permet d'entrer et de sortir à tout moment ;
+* sur iPhone, Safari n'autorise pas le plein écran : le bouton est alors
+  masqué plutôt que d'être inerte. La seule voie y est « Ajouter à l'écran
+  d'accueil », qui ouvre l'application sans aucune barre.
+
 ### Le livret (`assets/js/flipbook.js`)
 
 Composant autonome, sans dépendance. La page qui tourne est un élément 3D
@@ -142,13 +155,38 @@ transition sans raccord.
   au rechargement de la page et à la mise en veille** — au retour sur
   l'onglet, l'échéance est revérifiée plutôt que de faire confiance au seul
   `setTimeout`, que les navigateurs brident en arrière-plan ;
-* une **notification Web** est envoyée si le client l'a autorisée (via le
-  Service Worker, pour qu'un clic rouvre l'application sur le formulaire) ;
+* une **notification Web** est envoyée si le client l'a autorisée. Elle passe
+  obligatoirement par le Service Worker : Chrome Android refuse le
+  constructeur `new Notification()` et lève une exception ;
 * un **minuteur visuel** reste affiché en bas de l'écran dans tous les cas :
   même sans autorisation de notification, le rappel fonctionne.
 
 L'autorisation est demandée au moment où le client choisit un délai, jamais
 au chargement — c'est ce que réclament les navigateurs, et c'est plus poli.
+
+### Ce que le rappel ne peut pas faire (à lire)
+
+**Si le client ferme l'onglet, aucune notification ne partira.** Un site
+statique n'a aucun moyen d'exécuter du code à une heure donnée : le rappel
+repose sur la page, et quand la page meurt, le minuteur meurt avec elle.
+Android est le plus strict — il gèle puis supprime les onglets en arrière-plan
+au bout de quelques minutes.
+
+Trois conséquences pratiques :
+
+1. dès que le client choisit un délai, une **notification de confirmation**
+   est postée immédiatement (« Rappel prévu vers 21 h 15 »). C'est la seule
+   entrée dont on soit certain dans le volet de notifications ; elle porte le
+   même `tag`, donc le vrai rappel la remplacera s'il peut partir ;
+2. l'application demande explicitement de **garder la page ouverte** ;
+3. le **minuteur visuel** reste la voie fiable : il retrouve son échéance au
+   retour sur la page, même après un rechargement.
+
+Pour un rappel qui fonctionne onglet fermé, il faut la **Web Push API**, donc
+un serveur qui garde les abonnements et déclenche l'envoi à l'heure dite
+(clés VAPID + une tâche planifiée). C'est un vrai composant serveur, pas une
+option à cocher : le `sync.endpoint` de `config.js` est le point de départ
+naturel si vous voulez aller jusque-là.
 
 ### Le routage des avis (`assets/js/review.js`)
 

@@ -57,7 +57,19 @@ window.APP_CONFIG = {
     // Afficher la pop-up dès l'ouverture de l'application
     askOnOpen: true,
     // Ne plus reproposer la pop-up pendant X heures après un choix
-    snoozeHours: 4
+    snoozeHours: 4,
+    // Poster une notification de confirmation dès le choix du délai.
+    // C'est la seule entrée garantie dans le volet de notifications :
+    // une fois l'onglet fermé, plus rien ne peut être émis sans serveur.
+    confirmNotification: true
+  },
+
+  /* --- Affichage --------------------------------------------------- */
+  ui: {
+    // Passe en plein écran au premier geste sur la carte, pour masquer la
+    // barre d'adresse du navigateur. Sans effet sur iPhone : Safari
+    // n'autorise pas le plein écran (le bouton y est alors masqué).
+    autoFullscreen: true
   },
 
   /* --- Avis --------------------------------------------------------

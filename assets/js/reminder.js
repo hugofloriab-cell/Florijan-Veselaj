@@ -38,37 +38,70 @@ window.Reminder = (function () {
     timer = tick = null;
   }
 
-  async function notify(state) {
-    if (!("Notification" in window) || Notification.permission !== "granted") return false;
+  /**
+   * Service Worker actif, ou null.
+   * `getRegistration()` peut répondre avant la fin de l'activation ; `ready`
+   * attend l'activation, mais ne se résout jamais si l'enregistrement a
+   * échoué — d'où la course avec un délai.
+   */
+  async function swPret(delai) {
+    if (!("serviceWorker" in navigator)) return null;
+    try {
+      return await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((r) => setTimeout(() => r(null), delai || 3000))
+      ]);
+    } catch (_) {
+      return null;
+    }
+  }
 
-    const name = (window.APP_CONFIG && APP_CONFIG.restaurant.name) || "Votre restaurant";
-    const payload = {
-      body: "Avez-vous une minute pour nous dire comment s'est passé votre repas ?",
-      icon: "assets/img/icon-192.png",
-      badge: "assets/img/icon-192.png",
-      tag: "avis-rappel",
-      renotify: true,
-      requireInteraction: true,
-      data: { url: location.pathname + "?avis=1" },
-      vibrate: [90, 60, 90]
-    };
+  function contenu(titre, corps) {
+    return [
+      titre,
+      {
+        body: corps,
+        icon: "assets/img/icon-192.png",
+        badge: "assets/img/icon-192.png",
+        tag: "avis-rappel", // même tag : la 2e notification remplace la 1re
+        renotify: true,
+        requireInteraction: true,
+        data: { url: location.pathname + "?avis=1" },
+        vibrate: [90, 60, 90]
+      }
+    ];
+  }
+
+  async function envoyer(titre, corps) {
+    if (!("Notification" in window) || Notification.permission !== "granted") return false;
+    const [t, payload] = contenu(titre, corps);
+
+    // 1,5 s suffit : le Service Worker est enregistré au chargement de la
+    // page, donc déjà actif quand le client choisit son délai.
+    const reg = await swPret(1500);
+    if (reg && reg.showNotification) {
+      // Chrome Android n'accepte QUE cette voie : le constructeur Notification
+      // y lève une exception (« Illegal constructor »).
+      try {
+        await reg.showNotification(t, payload);
+        return true;
+      } catch (err) {
+        console.warn("[Rappel] showNotification a échoué :", err);
+      }
+    }
 
     try {
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) {
-          // Passe par le Service Worker : la notification reste visible même
-          // si l'onglet est fermé, et le clic rouvre l'application.
-          await reg.showNotification(name, payload);
-          return true;
-        }
-      }
-      new Notification(name, payload);
+      new Notification(t, payload);
       return true;
     } catch (err) {
       console.warn("[Rappel] notification impossible :", err);
       return false;
     }
+  }
+
+  function notify() {
+    const nom = (window.APP_CONFIG && APP_CONFIG.restaurant.name) || "Votre restaurant";
+    return envoyer(nom, "Avez-vous une minute pour nous dire comment s'est passé votre repas ?");
   }
 
   function fire() {
@@ -79,7 +112,7 @@ window.Reminder = (function () {
     state.firedAt = Date.now();
     write(state);
 
-    if (document.visibilityState !== "visible") notify(state);
+    if (document.visibilityState !== "visible") notify();
     if (onFire) onFire(state);
     if (onTick) onTick(null);
   }
@@ -130,8 +163,13 @@ window.Reminder = (function () {
       }
     },
 
-    /** Programme le rappel dans `minutes` minutes. */
-    schedule(minutes) {
+    /**
+     * Programme le rappel dans `minutes` minutes.
+     * Résout avec `{ state, notifiable }` : `notifiable` dit si une
+     * notification a réellement pu être postée, pour que l'interface
+     * n'annonce pas ce qui n'arrivera pas.
+     */
+    async schedule(minutes) {
       const state = {
         delay: minutes,
         createdAt: Date.now(),
@@ -140,7 +178,32 @@ window.Reminder = (function () {
       };
       write(state);
       arm();
-      return state;
+
+      // Notification de confirmation, postée tout de suite.
+      // C'est la seule présence dans le volet de notifications dont on soit
+      // sûr : une fois l'onglet fermé, plus aucun script ne tourne et le
+      // rappel différé ne peut plus être émis sans serveur (voir README).
+      // Même `tag` : la notification de rappel viendra la remplacer.
+      const cfg = window.APP_CONFIG && APP_CONFIG.reminder;
+      let notifiable = false;
+      if (!cfg || cfg.confirmNotification !== false) {
+        const heure = new Date(state.dueAt).toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+        const nom = (window.APP_CONFIG && APP_CONFIG.restaurant.name) || "Votre restaurant";
+        notifiable = await envoyer(nom, `Rappel prévu vers ${heure}. Touchez pour laisser votre avis.`);
+      } else {
+        const d = await this.diagnostic();
+        notifiable = d.permission === "granted";
+      }
+      return { state, notifiable };
+    },
+
+    /** État réel des notifications, pour informer le client sans mentir. */
+    async diagnostic() {
+      const permission = "Notification" in window ? Notification.permission : "unsupported";
+      return { permission, serviceWorker: Boolean(await swPret(1500)) };
     },
 
     cancel() {
