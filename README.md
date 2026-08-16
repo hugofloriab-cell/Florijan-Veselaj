@@ -33,6 +33,17 @@ production : les notifications l'exigent).
 
 ---
 
+## Deux façons de configurer
+
+**Depuis le panneau gérant** (`admin.html` → onglet *Réglages*) : carte,
+identité, liens d'avis, délais de rappel et mot de passe se modifient sans
+toucher au code. Voir « Modifier le contenu sans code » plus bas.
+
+**Dans le fichier `config.js`** : ce sont les valeurs d'usine, celles qui
+s'appliquent quand rien n'a été publié depuis le panneau.
+
+---
+
 ## Tout se configure dans un seul fichier
 
 `assets/js/config.js` regroupe l'intégralité des réglages : nom du
@@ -222,6 +233,48 @@ n'est jamais bloquant : l'avis reste dans le navigateur.
 
 ---
 
+## Modifier le contenu sans code
+
+Le panneau gérant contient un éditeur (onglet **Réglages**) qui permet de
+changer la carte, l'identité, les liens d'avis, les délais et le mot de passe.
+
+### Comment ça marche
+
+Le site est **statique** : le navigateur du gérant ne peut rien écrire sur
+l'hébergement. L'éditeur produit donc un fichier, `contenu.json`, que le
+gérant dépose dans `assets/`. Trois couches se superposent :
+
+| Couche | Fichier | Vue par |
+|---|---|---|
+| Valeurs d'usine | `assets/js/config.js` | tout le monde |
+| Version publiée | `assets/contenu.json` | tout le monde |
+| Aperçu local | `localStorage` | le gérant seul, sur son appareil |
+
+### Le geste, du début à la fin
+
+1. **Réglages** → déposez un PDF ou des images. Un PDF est découpé page par
+   page dans le navigateur ; les images sont redimensionnées à 1400 px.
+   Réordonnez ou supprimez des pages avec les flèches et la croix.
+2. **Prévisualiser sur cet appareil** — la carte s'ouvre avec vos
+   modifications, mais seulement chez vous. Un bandeau doré le rappelle en
+   haut de l'application, avec un bouton pour revenir en arrière.
+3. **Télécharger contenu.json**, puis déposer ce fichier dans le dossier
+   `assets/` de votre site. Sur GitHub : `assets/` → *Add file* → *Upload
+   files*. Les clients voient le changement au rechargement suivant.
+
+Le poids du fichier est affiché en permanence. Tant que la carte reste celle
+déjà en ligne, il ne pèse que quelques kilo-octets : ce ne sont que des
+chemins. Dès que vous importez une nouvelle carte, les images voyagent dans
+le fichier — comptez environ 150 Ko par page.
+
+### Ce que l'éditeur ne fait pas
+
+Il ne publie pas à votre place : le dépôt du fichier reste manuel. C'est le
+prix d'un site sans serveur — en échange, il n'y a ni base de données, ni
+abonnement, ni panne possible côté serveur.
+
+---
+
 ## Sécurité — à lire avant la mise en production
 
 Le mot de passe du panneau gérant est vérifié **dans le navigateur** (SHA-256
@@ -269,7 +322,9 @@ sw.js                    cache hors ligne + notifications
 assets/
   css/styles.css         thème principal (mobile-first)
   css/admin.css          panneau gérant
-  js/config.js           ← tous les réglages
+  contenu.json           contenu publié depuis le panneau gérant
+  js/config.js           ← valeurs d'usine
+  js/contenu.js          superposition config.js / contenu.json / aperçu
   js/flipbook.js         livret 3D
   js/reminder.js         rappel différé + notifications
   js/review.js           formulaire et routage des avis

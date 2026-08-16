@@ -49,6 +49,12 @@
     </div>
   </header>
 
+  <nav class="tabs" id="tabs">
+    <button class="tab is-on" data-tab="avis" type="button">Avis</button>
+    <button class="tab" data-tab="reglages" type="button">Réglages</button>
+  </nav>
+
+  <div id="tabAvis">
   <section class="stats" id="stats"></section>
 
   <section class="bars" id="bars" aria-label="Répartition des notes"></section>
@@ -71,6 +77,106 @@
       régulièrement&nbsp;: vider les données du navigateur les efface.
     </p>
   </footer>
+  </div>
+
+  <!-- ===================== RÉGLAGES ===================== -->
+  <div id="tabReglages" hidden>
+    <section class="edit">
+
+      <p class="edit__intro">
+        Modifiez ce que vous voulez, prévisualisez sur cet appareil, puis
+        téléchargez le fichier <code>contenu.json</code> et déposez-le chez
+        votre hébergeur, dans le dossier <code>assets/</code>. C'est ce dépôt
+        qui rend les changements visibles par les clients.
+      </p>
+
+      <details class="bloc" open>
+        <summary>La carte</summary>
+        <div class="bloc__corps">
+          <label class="depot" id="menuDrop">
+            <input type="file" id="menuFiles" accept="image/*,application/pdf" multiple hidden>
+            <strong>Choisir un PDF ou des images</strong>
+            <small>Le PDF est découpé en pages automatiquement. Les images sont
+              redimensionnées. L'ordre suit celui de vos fichiers.</small>
+          </label>
+          <p class="edit__etat" id="menuEtat"></p>
+          <div class="pages" id="menuPages"></div>
+        </div>
+      </details>
+
+      <details class="bloc">
+        <summary>Identité</summary>
+        <div class="bloc__corps">
+          <label class="field"><span class="field__label">Nom du restaurant</span>
+            <input type="text" id="fName"></label>
+          <label class="field"><span class="field__label">Accroche</span>
+            <input type="text" id="fTagline"></label>
+          <label class="field"><span class="field__label">Horaires</span>
+            <input type="text" id="fHours" placeholder="Du lundi au dimanche · 19 h – 21 h"></label>
+          <label class="field"><span class="field__label">Adresse</span>
+            <input type="text" id="fAddress"></label>
+          <label class="field"><span class="field__label">Téléphone</span>
+            <input type="text" id="fPhone"></label>
+          <div class="field">
+            <span class="field__label">Logo</span>
+            <div class="logo-ligne">
+              <span class="logo-apercu" id="logoApercu"></span>
+              <label class="btn btn--ghost btn--sm">
+                <input type="file" id="fLogo" accept="image/*" hidden>Changer</label>
+              <button class="link" id="logoReset" type="button">Retirer</button>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <details class="bloc">
+        <summary>Liens d'avis</summary>
+        <div class="bloc__corps">
+          <label class="field"><span class="field__label">Rediriger à partir de</span>
+            <select id="fSeuil">
+              <option value="3">3 étoiles</option>
+              <option value="4">4 étoiles</option>
+              <option value="5">5 étoiles</option>
+            </select></label>
+          <div id="liens"></div>
+          <button class="btn btn--ghost btn--sm" id="lienAdd" type="button">+ Ajouter une plateforme</button>
+        </div>
+      </details>
+
+      <details class="bloc">
+        <summary>Rappel</summary>
+        <div class="bloc__corps">
+          <label class="field"><span class="field__label">Délais proposés (en minutes, séparés par des virgules)</span>
+            <input type="text" id="fDelais" inputmode="numeric"></label>
+          <label class="field"><span class="field__label">Délai pré-sélectionné</span>
+            <input type="text" id="fDelaiDefaut" inputmode="numeric"></label>
+        </div>
+      </details>
+
+      <details class="bloc">
+        <summary>Mot de passe</summary>
+        <div class="bloc__corps">
+          <label class="field"><span class="field__label">Nouveau mot de passe</span>
+            <input type="text" id="fMdp" autocomplete="new-password" placeholder="Laisser vide pour ne pas changer"></label>
+          <p class="edit__note">Il prend effet dès l'aperçu sur cet appareil, et pour
+            tout le monde une fois <code>contenu.json</code> déposé.</p>
+        </div>
+      </details>
+
+      <div class="edit__actions">
+        <button class="btn btn--primary btn--block" id="apercuBtn" type="button">
+          Prévisualiser sur cet appareil
+        </button>
+        <button class="btn btn--ghost btn--block" id="publierBtn" type="button">
+          Télécharger contenu.json
+        </button>
+        <button class="btn btn--quiet btn--block" id="apercuStop" type="button" hidden>
+          Annuler l'aperçu et revenir à la version publiée
+        </button>
+        <p class="edit__note" id="poids"></p>
+      </div>
+    </section>
+  </div>
 </div>
 
 <!-- Visionneuse photo -->
@@ -82,6 +188,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="assets/js/config.js"></script>
+<script src="assets/js/contenu.js"></script>
 <script src="assets/js/db.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>

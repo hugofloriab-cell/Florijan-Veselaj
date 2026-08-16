@@ -952,3 +952,31 @@ body.has-countdown .toast { bottom: calc(var(--safe-bottom) + 142px); }
 @media print {
   .topbar, .fb-bar, .countdown, .hint, .modal, .sheet, .overlay, .toast { display: none !important; }
 }
+
+/* ==================== BANDEAU D'APERÇU GÉRANT =================== */
+.preview-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(var(--safe-top) + 7px) 12px 7px;
+  background: var(--gold);
+  color: #16200c;
+  font-size: .76rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.preview-bar + .topbar { padding-top: 7px; }
+.preview-bar button {
+  flex: none;
+  margin-left: auto;
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 11px;
+  background: rgba(0, 0, 0, .22);
+  color: #16200c;
+  font-family: inherit;
+  font-size: .74rem;
+  font-weight: 600;
+  cursor: pointer;
+}

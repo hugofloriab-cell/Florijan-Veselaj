@@ -308,7 +308,25 @@
     });
   }
 
+  /** Bandeau d'avertissement quand un aperçu local masque la version publiée. */
+  function bandeauApercu() {
+    const bar = document.createElement("div");
+    bar.className = "preview-bar";
+    bar.innerHTML =
+      '<span>Aperçu local — les clients voient encore la version publiée.</span>' +
+      '<button type="button">Revenir</button>';
+    bar.querySelector("button").addEventListener("click", () => {
+      Contenu.supprimerLocal();
+      location.reload();
+    });
+    document.body.insertBefore(bar, document.body.firstChild);
+  }
+
   async function start() {
+    // Surcouches (carte, liens, identité) avant tout affichage.
+    const etat = await Contenu.appliquer();
+    if (etat.local) bandeauApercu();
+
     applyBranding();
     bindGlobal();
     buildDelays();

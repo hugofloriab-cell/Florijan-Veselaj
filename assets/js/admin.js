@@ -195,6 +195,345 @@
       .join("");
   }
 
+
+  /* ==================================================================
+   * ÉDITEUR DE CONTENU
+   * ------------------------------------------------------------------
+   * Le site est statique : rien ne peut être écrit sur l'hébergement
+   * depuis ici. L'éditeur produit `contenu.json`, que le gérant dépose
+   * dans `assets/`. En attendant, l'aperçu local permet de tout voir.
+   * ================================================================== */
+
+  const PDFJS = {
+    lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+    worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+  };
+
+  let brouillon = null; // configuration en cours d'édition
+
+  function copie(o) {
+    return JSON.parse(JSON.stringify(o));
+  }
+
+  function initBrouillon() {
+    const c = window.APP_CONFIG;
+    brouillon = {
+      restaurant: copie(c.restaurant),
+      menu: { type: "images", images: (c.menu.images || []).slice() },
+      review: { threshold: c.review.threshold, publicLinks: copie(c.review.publicLinks) },
+      reminder: { delays: c.reminder.delays.slice(), defaultDelay: c.reminder.defaultDelay },
+      admin: { passwordSha256: c.admin.passwordSha256 }
+    };
+  }
+
+  /* --------------------------------------------------- images */
+  function compresser(fichier, maxLarg, qualite) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(fichier);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, maxLarg / img.width);
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(img.width * k);
+        cv.height = Math.round(img.height * k);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        resolve(cv.toDataURL("image/jpeg", qualite));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image illisible : " + fichier.name));
+      };
+      img.src = url;
+    });
+  }
+
+  function chargerScript(src) {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => reject(new Error("PDF.js n'a pas pu être chargé (connexion ?)"));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function pdfEnImages(fichier, avance) {
+    if (!window.pdfjsLib) await chargerScript(PDFJS.lib);
+    if (!window.pdfjsLib) throw new Error("PDF.js introuvable");
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS.worker;
+
+    const buf = await fichier.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+    const out = [];
+    for (let i = 1; i <= doc.numPages; i++) {
+      avance(`Découpage du PDF… page ${i} sur ${doc.numPages}`);
+      const page = await doc.getPage(i);
+      const base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: 1400 / base.width });
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(vp.width);
+      cv.height = Math.round(vp.height);
+      await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
+      out.push(cv.toDataURL("image/jpeg", 0.72));
+      cv.width = cv.height = 0;
+    }
+    return out;
+  }
+
+  async function ajouterFichiers(liste) {
+    const etat = document.getElementById("menuEtat");
+    const fichiers = Array.from(liste);
+    if (!fichiers.length) return;
+
+    const images = [];
+    try {
+      for (const f of fichiers) {
+        if (f.type === "application/pdf") {
+          const pages = await pdfEnImages(f, (m) => (etat.textContent = m));
+          images.push.apply(images, pages);
+        } else if (f.type.startsWith("image/")) {
+          etat.textContent = `Traitement de ${f.name}…`;
+          images.push(await compresser(f, 1400, 0.78));
+        }
+      }
+    } catch (err) {
+      etat.textContent = "⚠ " + err.message;
+      return;
+    }
+
+    if (!images.length) {
+      etat.textContent = "Aucune image ni PDF reconnu dans votre sélection.";
+      return;
+    }
+    brouillon.menu.images = images;
+    etat.textContent = `${images.length} page${images.length > 1 ? "s" : ""} prête${images.length > 1 ? "s" : ""}.`;
+    rendreMenu();
+    majPoids();
+  }
+
+  function rendreMenu() {
+    const box = document.getElementById("menuPages");
+    const imgs = brouillon.menu.images;
+    box.innerHTML = imgs
+      .map(
+        (src, i) => `
+      <figure class="page-vignette">
+        <img src="${src}" alt="Page ${i + 1}">
+        <span class="page-vignette__num">${i + 1}</span>
+        <span class="page-vignette__outils">
+          <button type="button" data-move="-1" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
+          <button type="button" data-move="1" data-i="${i}" ${i === imgs.length - 1 ? "disabled" : ""} aria-label="Descendre">↓</button>
+          <button type="button" data-del="${i}" aria-label="Supprimer">✕</button>
+        </span>
+      </figure>`
+      )
+      .join("");
+  }
+
+  /* ---------------------------------------------------- liens */
+  function rendreLiens() {
+    const box = document.getElementById("liens");
+    box.innerHTML = brouillon.review.publicLinks
+      .map(
+        (l, i) => `
+      <div class="lien" data-i="${i}">
+        <div class="lien__haut">
+          <input type="text" data-champ="label" value="${(l.label || "").replace(/"/g, "&quot;")}" placeholder="Nom (Google, Tripadvisor…)">
+          <button class="lien__sup" type="button" data-sup="${i}">Retirer</button>
+        </div>
+        <input type="text" data-champ="url" value="${(l.url || "").replace(/"/g, "&quot;")}" placeholder="https://…">
+        <input type="text" data-champ="hint" value="${(l.hint || "").replace(/"/g, "&quot;")}" placeholder="Petite phrase sous le nom (facultatif)">
+      </div>`
+      )
+      .join("");
+  }
+
+  /* ------------------------------------------------ formulaire */
+  function remplirFormulaire() {
+    const r = brouillon.restaurant;
+    document.getElementById("fName").value = r.name || "";
+    document.getElementById("fTagline").value = r.tagline || "";
+    document.getElementById("fHours").value = r.hours || "";
+    document.getElementById("fAddress").value = r.address || "";
+    document.getElementById("fPhone").value = r.phone || "";
+    document.getElementById("logoApercu").style.backgroundImage =
+      r.logoUrl ? `url("${r.logoUrl}")` : "none";
+    document.getElementById("fSeuil").value = String(brouillon.review.threshold);
+    document.getElementById("fDelais").value = brouillon.reminder.delays.join(", ");
+    document.getElementById("fDelaiDefaut").value = String(brouillon.reminder.defaultDelay);
+    rendreLiens();
+    rendreMenu();
+    majPoids();
+    document.getElementById("apercuStop").hidden = !window.Contenu.local();
+  }
+
+  function lireFormulaire() {
+    const r = brouillon.restaurant;
+    r.name = document.getElementById("fName").value.trim();
+    r.tagline = document.getElementById("fTagline").value.trim();
+    r.hours = document.getElementById("fHours").value.trim();
+    r.address = document.getElementById("fAddress").value.trim();
+    r.phone = document.getElementById("fPhone").value.trim();
+
+    brouillon.review.threshold = Number(document.getElementById("fSeuil").value);
+
+    document.querySelectorAll("#liens .lien").forEach((n) => {
+      const l = brouillon.review.publicLinks[Number(n.dataset.i)];
+      n.querySelectorAll("[data-champ]").forEach((inp) => {
+        l[inp.dataset.champ] = inp.value.trim();
+      });
+    });
+    brouillon.review.publicLinks = brouillon.review.publicLinks.filter((l) => l.label && l.url);
+
+    const delais = document.getElementById("fDelais").value
+      .split(",")
+      .map((x) => parseInt(x, 10))
+      .filter((x) => x > 0);
+    if (delais.length) brouillon.reminder.delays = delais;
+    const parDefaut = parseInt(document.getElementById("fDelaiDefaut").value, 10);
+    brouillon.reminder.defaultDelay = brouillon.reminder.delays.includes(parDefaut)
+      ? parDefaut
+      : brouillon.reminder.delays[0];
+  }
+
+  async function appliquerMotDePasse() {
+    const champ = document.getElementById("fMdp");
+    const mdp = champ.value.trim();
+    if (!mdp) return false;
+    brouillon.admin.passwordSha256 = await sha256(mdp);
+    champ.value = "";
+    return true;
+  }
+
+  function majPoids() {
+    const octets = new Blob([window.Contenu.fichier(brouillon)]).size;
+    const mo = octets / 1048576;
+    const taille = mo >= 1 ? `${mo.toFixed(2)} Mo` : `${Math.max(1, Math.round(octets / 1024))} Ko`;
+    const el = document.getElementById("poids");
+
+    // Une carte laissée sur les fichiers d'origine ne pèse rien dans le JSON :
+    // ce sont de simples chemins. Le poids ne monte qu'après un import.
+    const importee = (brouillon.menu.images[0] || "").startsWith("data:");
+    el.textContent = `Fichier à déposer : ${taille}` +
+      (importee ? "" : " (la carte reste celle déjà en ligne).");
+    if (mo > 4) {
+      el.textContent +=
+        " C'est lourd pour un téléphone en 4G — réduisez le nombre de pages ou repartez d'un PDF plus léger.";
+    }
+  }
+
+  /* ------------------------------------------------- actions */
+  function telecharger(nom, contenu, type) {
+    const blob = new Blob([contenu], { type: type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nom;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+
+  function bindEditeur() {
+    document.getElementById("tabs").addEventListener("click", (e) => {
+      const t = e.target.closest(".tab");
+      if (!t) return;
+      document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-on", x === t));
+      document.getElementById("tabAvis").hidden = t.dataset.tab !== "avis";
+      document.getElementById("tabReglages").hidden = t.dataset.tab !== "reglages";
+      if (t.dataset.tab === "reglages" && !brouillon) {
+        initBrouillon();
+        remplirFormulaire();
+      }
+    });
+
+    // carte
+    const drop = document.getElementById("menuDrop");
+    document.getElementById("menuFiles").addEventListener("change", (e) => {
+      ajouterFichiers(e.target.files);
+      e.target.value = "";
+    });
+    ["dragover", "dragleave", "drop"].forEach((ev) =>
+      drop.addEventListener(ev, (e) => {
+        e.preventDefault();
+        drop.classList.toggle("is-over", ev === "dragover");
+        if (ev === "drop") ajouterFichiers(e.dataTransfer.files);
+      })
+    );
+
+    document.getElementById("menuPages").addEventListener("click", (e) => {
+      const b = e.target.closest("button");
+      if (!b) return;
+      const imgs = brouillon.menu.images;
+      if (b.dataset.del !== undefined) {
+        imgs.splice(Number(b.dataset.del), 1);
+      } else if (b.dataset.move) {
+        const i = Number(b.dataset.i);
+        const j = i + Number(b.dataset.move);
+        if (j < 0 || j >= imgs.length) return;
+        [imgs[i], imgs[j]] = [imgs[j], imgs[i]];
+      }
+      rendreMenu();
+      majPoids();
+    });
+
+    // logo
+    document.getElementById("fLogo").addEventListener("change", async (e) => {
+      if (!e.target.files[0]) return;
+      brouillon.restaurant.logoUrl = await compresser(e.target.files[0], 256, 0.9);
+      document.getElementById("logoApercu").style.backgroundImage =
+        `url("${brouillon.restaurant.logoUrl}")`;
+      majPoids();
+    });
+    document.getElementById("logoReset").addEventListener("click", () => {
+      brouillon.restaurant.logoUrl = "";
+      document.getElementById("logoApercu").style.backgroundImage = "none";
+    });
+
+    // liens
+    document.getElementById("lienAdd").addEventListener("click", () => {
+      lireFormulaire();
+      brouillon.review.publicLinks.push({ id: "p" + Date.now(), label: "", url: "", hint: "", color: "#4285F4" });
+      rendreLiens();
+    });
+    document.getElementById("liens").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-sup]");
+      if (!b) return;
+      const i = Number(b.dataset.sup);
+      lireFormulaire();
+      brouillon.review.publicLinks.splice(i, 1);
+      rendreLiens();
+    });
+
+    // aperçu / publication
+    document.getElementById("apercuBtn").addEventListener("click", async () => {
+      lireFormulaire();
+      const change = await appliquerMotDePasse();
+      window.Contenu.enregistrerLocal(brouillon);
+      document.getElementById("apercuStop").hidden = false;
+      toast(
+        change
+          ? "Aperçu actif sur cet appareil. Nouveau mot de passe pris en compte."
+          : "Aperçu actif sur cet appareil. Ouvrez la carte pour le voir."
+      );
+      majPoids();
+    });
+
+    document.getElementById("apercuStop").addEventListener("click", () => {
+      window.Contenu.supprimerLocal();
+      document.getElementById("apercuStop").hidden = true;
+      toast("Aperçu annulé. Rechargez la carte pour revoir la version publiée.");
+    });
+
+    document.getElementById("publierBtn").addEventListener("click", async () => {
+      lireFormulaire();
+      await appliquerMotDePasse();
+      telecharger("contenu.json", window.Contenu.fichier(brouillon), "application/json");
+      majPoids();
+      toast("Déposez ce fichier dans le dossier assets/ de votre site.");
+    });
+  }
+
   /* ------------------------------------------------------- export */
   function download(name, content, type) {
     const blob = new Blob([content], { type });
@@ -301,6 +640,12 @@
   }
 
   bind();
-  if (sessionValid()) showDashboard();
-  else document.getElementById("password").focus();
+  bindEditeur();
+
+  // Les surcouches (carte, liens, mot de passe) avant toute vérification :
+  // un mot de passe changé depuis `contenu.json` doit être celui qui compte.
+  window.Contenu.appliquer().then(() => {
+    if (sessionValid()) showDashboard();
+    else document.getElementById("password").focus();
+  });
 })();

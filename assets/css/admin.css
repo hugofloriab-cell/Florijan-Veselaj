@@ -334,3 +334,180 @@ body.admin {
   }
   .list { display: grid; grid-template-columns: 1fr 1fr; align-items: start; }
 }
+
+/* ========================== ONGLETS ============================= */
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 14px 16px 0;
+}
+.tab {
+  flex: 1;
+  padding: 11px 12px;
+  border: 1px solid var(--ink-line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: .84rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.tab.is-on {
+  background: rgba(137, 171, 56, .14);
+  border-color: rgba(137, 171, 56, .5);
+  color: var(--gold-soft);
+  font-weight: 600;
+}
+
+/* ========================== ÉDITEUR ============================= */
+.edit { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+
+.edit__intro {
+  margin: 0 0 4px;
+  font-size: .82rem;
+  line-height: 1.6;
+  color: var(--text-soft);
+  border-left: 2px solid var(--gold);
+  padding-left: 12px;
+}
+.edit code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .92em;
+  color: var(--gold-soft);
+}
+
+.bloc {
+  border: 1px solid var(--ink-line);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, .035);
+  overflow: hidden;
+}
+.bloc > summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  font-size: .92rem;
+  font-weight: 600;
+  list-style: none;
+  color: var(--paper);
+}
+.bloc > summary::-webkit-details-marker { display: none; }
+.bloc > summary::before { content: "▸ "; color: var(--gold); }
+.bloc[open] > summary::before { content: "▾ "; }
+.bloc__corps { padding: 0 16px 16px; }
+
+.edit .field { margin-bottom: 14px; }
+.edit .field__label { color: var(--paper-2); }
+.edit input[type="text"],
+.edit select {
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-line);
+  background: rgba(0, 0, 0, .25);
+  color: var(--paper);
+  font-family: inherit;
+  font-size: 1rem;
+}
+.edit input[type="text"]:focus,
+.edit select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(137, 171, 56, .16);
+}
+
+/* --- dépôt de fichiers --- */
+.depot {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  text-align: center;
+  padding: 20px 14px;
+  border: 1.5px dashed rgba(137, 171, 56, .45);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.depot:hover, .depot.is-over { background: rgba(137, 171, 56, .08); border-color: var(--gold); }
+.depot strong { font-size: .9rem; color: var(--gold-soft); }
+.depot small { font-size: .74rem; color: var(--text-soft); line-height: 1.5; }
+
+.edit__etat { margin: 10px 0 0; font-size: .78rem; color: var(--text-soft); }
+.edit__note { margin: 8px 0 0; font-size: .75rem; line-height: 1.55; color: var(--text-soft); }
+
+/* --- pages de la carte --- */
+.pages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.page-vignette {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--ink-line);
+  background: #fff;
+  aspect-ratio: 1 / 1.414;
+}
+.page-vignette img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.page-vignette__num {
+  position: absolute;
+  top: 4px; left: 4px;
+  background: rgba(0, 0, 0, .6);
+  color: #fff;
+  font-size: .64rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+.page-vignette__outils {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  background: rgba(0, 0, 0, .62);
+}
+.page-vignette__outils button {
+  flex: 1;
+  border: 0;
+  background: none;
+  color: #fff;
+  font-size: .8rem;
+  padding: 5px 0;
+  cursor: pointer;
+}
+.page-vignette__outils button:disabled { opacity: .3; }
+
+/* --- liens d'avis --- */
+.lien {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: 1px solid var(--ink-line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, .18);
+}
+.lien__haut { display: flex; gap: 8px; align-items: center; }
+.lien__haut input { flex: 1; }
+.lien__sup {
+  flex: none;
+  border: 0;
+  background: rgba(180, 85, 63, .2);
+  color: #e39d86;
+  border-radius: 8px;
+  padding: 8px 11px;
+  cursor: pointer;
+  font-size: .78rem;
+}
+
+.logo-ligne { display: flex; align-items: center; gap: 12px; }
+.logo-apercu {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .06) center/cover no-repeat;
+  border: 1px solid var(--ink-line);
+  flex: none;
+}
+
+.edit__actions { display: flex; flex-direction: column; gap: 9px; margin-top: 6px; }

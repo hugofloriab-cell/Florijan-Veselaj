@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v2";
+const CACHE = "resto-menu-v3";
 
 const PRECACHE = [
   "./",
@@ -14,6 +14,8 @@ const PRECACHE = [
   "./assets/css/styles.css",
   "./assets/css/admin.css",
   "./assets/js/config.js",
+  "./assets/js/contenu.js",
+  "./assets/contenu.json",
   "./assets/js/db.js",
   "./assets/js/flipbook.js",
   "./assets/js/reminder.js",
@@ -73,6 +75,21 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // Le contenu éditable doit toujours venir du réseau quand il est joignable :
+  // sinon une carte mise à jour resterait invisible derrière le cache.
+  if (url.pathname.endsWith("/assets/contenu.json")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }
