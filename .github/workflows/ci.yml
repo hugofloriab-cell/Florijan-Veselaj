@@ -37,3 +37,22 @@ jobs:
         env:
           PGURL: postgres://postgres:postgres@localhost:5432/postgres
         run: ./supabase/tests/run.sh
+
+  functions:
+    name: Edge Functions
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Typecheck
+        working-directory: supabase/functions
+        run: deno task check
+
+      - name: Lint
+        working-directory: supabase/functions
+        run: deno task lint

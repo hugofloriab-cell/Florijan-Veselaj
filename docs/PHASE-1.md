@@ -78,6 +78,8 @@ Huit Edge Functions, typées de bout en bout et figées avant tout code mobile :
 
 Règle absolue : **aucune clé d'API tierce n'existe côté mobile.** Un binaire mobile est décompilable ; toute clé qui y figure est publique.
 
+**Livré à ce stade :** `lyrics/assist`, `generate` et `webhooks/:provider` — la chaîne asynchrone complète, du débit de crédits jusqu'à la recopie de l'audio dans le Storage et l'enchaînement automatique de la séparation en pistes. Le fournisseur est isolé derrière une interface `MusicEngine` : le choix du moteur (Lot 1) ne remet en cause qu'une seule classe.
+
 ---
 
 ## Lot 4 — Socle projet & CI (2 jours)

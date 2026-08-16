@@ -35,7 +35,7 @@ L'utilisateur peut toujours revenir en arrière — c'est ce qui supprime la peu
 | Mobile | **Swift / SwiftUI — iOS d'abord** | Décision actée ([ADR 000](./adr/000-stack-mobile.md)) : l'audio multipiste est le produit, et `AVAudioEngine` n'a pas d'équivalent cross-platform. Android = portage ultérieur, hors périmètre v1 |
 | Audio device | **AVAudioEngine**, un `AVAudioPlayerNode` par stem | Synchronisation à l'échantillon près sur horloge commune, gain/mute temps réel, et mixdown offline **sur l'appareil** pour l'export — donc à coût cloud nul |
 | Backend | **Supabase** (Postgres + Auth + Storage + Edge Functions + Realtime) | Le modèle projet/version/stem/section est **relationnel** ; Firestore (NoSQL) serait un contresens ici. RLS = isolation multi-tenant gratuite |
-| Assistant paroles | **Claude API** (`claude-sonnet-5`) | Co-écriture, structuration, comptage de syllabes, adaptation à la métrique. Appelée **uniquement** côté serveur |
+| Assistant paroles | **Claude API** (`claude-opus-5`) | Co-écriture, structuration, comptage de syllabes, adaptation à la métrique. Appelée **uniquement** côté serveur. Le levier coût/latence est le paramètre `effort` (réglé par route), pas un modèle plus faible |
 | Génération musicale | **À trancher en Phase 1** (cf. § Risque n°1) | Détermine la légalité commerciale du produit entier |
 | Séparation de pistes | **Demucs / htdemucs** via Replicate ou fal.ai | Licence MIT, standard de facto, ~10-20 s par morceau |
 | Voix utilisateur | Pipeline DSP custom (alignement + time-stretch + pitch correction) sur worker GPU | Aucune API clé-en-main ne fait ça correctement (cf. Phase 4) |

@@ -1,0 +1,15 @@
+{
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "lineWidth": 90,
+    "singleQuote": false
+  },
+  "tasks": {
+    "check": "deno check generate/index.ts lyrics-assist/index.ts webhooks-provider/index.ts",
+    "lint": "deno lint"
+  }
+}
