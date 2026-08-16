@@ -1,0 +1,19 @@
+{
+  "name": "Restaurant Les Tilleuls — Menu & Avis",
+  "short_name": "Les Tilleuls",
+  "description": "Consultez le menu du restaurant et partagez votre avis.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#171b13",
+  "theme_color": "#171b13",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    { "src": "assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
