@@ -56,3 +56,21 @@ jobs:
       - name: Lint
         working-directory: supabase/functions
         run: deno task lint
+
+  ios-spike:
+    name: Spike audio (compilation)
+    runs-on: macos-latest
+    # Filtré par chemin : les minutes macOS sont facturées 10× sur un dépôt
+    # privé, ce job ne doit tourner que quand le paquet Swift change.
+    if: contains(github.event.head_commit.modified, 'ios/') || github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Compilation seule, pas `swift test` : le harnais joue réellement de
+      # l'audio et mesure une dérive d'horloge. Un runner sans sortie audio
+      # produirait soit un échec, soit — pire — un chiffre qui ne veut rien
+      # dire. La mesure se fait sur iPhone physique, à la main.
+      - name: Build
+        working-directory: ios/StemPlayerSpike
+        run: swift build --build-tests
