@@ -84,15 +84,17 @@ Règle absolue : **aucune clé d'API tierce n'existe côté mobile.** Un binaire
 
 ```
 melodix/
-├── apps/mobile/          Expo (dev client) — TypeScript
+├── ios/                  App Swift / SwiftUI + AVAudioEngine
+│   └── Melodix/Generated/  Structs Codable générées depuis le schéma Postgres
 ├── supabase/
-│   ├── migrations/
-│   └── functions/        Edge Functions Deno
-├── packages/shared/      Types + schémas Zod partagés mobile ⇄ backend
+│   ├── migrations/       Schéma versionné
+│   └── functions/        Edge Functions Deno / TypeScript
 └── docs/                 ROADMAP, PHASE-1, ADRs
 ```
 
-CI GitHub Actions : typecheck, lint, tests, vérification que les migrations s'appliquent sur une base vierge. Environnements `dev` / `prod` séparés dès le premier jour.
+CI GitHub Actions : lint et tests des Edge Functions, application des migrations sur une base vierge, build iOS, et **test de contrat** — la CI échoue si le schéma Postgres et les structs `Codable` Swift divergent. Avec deux langages de part et d'autre du réseau (cf. ADR 000), c'est ce test qui remplace le typage partagé et empêche la dérive silencieuse.
+
+**Budget serré (< 50 €/mois) — conséquences assumées :** un seul projet Supabase au départ, avec un schéma `staging` séparé plutôt qu'un second projet payant ; tiers gratuit Supabase tant que le stockage le permet ; fournisseurs GPU en pay-per-use strict, sans instance maintenue chaude. Le mixdown d'export tournant sur l'appareil (ADR 000), le coût cloud se limite à la génération et à la séparation de pistes.
 
 ---
 
@@ -113,7 +115,7 @@ prix_crédit  = coût_morceau × marge_cible (≥ 3×, avant commission store de
 
 Trois prototypes jetables, à faire tourner sur **téléphone physique**, pas sur simulateur :
 
-1. **Lecture 4 stems synchronisés** avec `react-native-audio-api` : mute/gain temps réel, mesure de la dérive de synchro et de la consommation mémoire. *Si ce spike échoue, toute l'UX de l'éditeur doit être repensée — d'où sa place en Phase 1.*
+1. **Lecture 4 stems synchronisés** avec `AVAudioEngine` : un `AVAudioPlayerNode` par piste sur une horloge commune, mute/gain temps réel, mesure de la dérive après 3 minutes de lecture et de l'empreinte mémoire. Vérifier au passage le rendu manuel (offline) pour l'export. *Si ce spike échoue, toute l'UX de l'éditeur doit être repensée — d'où sa place en Phase 1.*
 2. **Chaîne job complète** : Edge Function → Replicate → webhook → Supabase Realtime → UI. Mesurer la latence bout-en-bout et vérifier le comportement quand l'app est en arrière-plan.
 3. **Régénération de section** : générer un morceau, en régénérer 8 mesures avec la même seed, recoller avec crossfade, et **écouter**. Juger de la qualité de la couture avant de construire l'éditeur autour.
 

@@ -32,8 +32,8 @@ L'utilisateur peut toujours revenir en arrière — c'est ce qui supprime la peu
 
 | Couche | Choix | Justification |
 |---|---|---|
-| Mobile | React Native + **Expo (dev client)** | TypeScript partagé avec les Edge Functions ; EAS Build/Submit évite la dépendance à un Mac |
-| Audio device | **react-native-audio-api** (Software Mansion) | Port de la Web Audio API : lecture multi-stems synchronisée, gain par piste, waveform. `expo-audio` ne sait pas synchroniser 4 pistes à l'échantillon près |
+| Mobile | **Swift / SwiftUI — iOS d'abord** | Décision actée ([ADR 000](./adr/000-stack-mobile.md)) : l'audio multipiste est le produit, et `AVAudioEngine` n'a pas d'équivalent cross-platform. Android = portage ultérieur, hors périmètre v1 |
+| Audio device | **AVAudioEngine**, un `AVAudioPlayerNode` par stem | Synchronisation à l'échantillon près sur horloge commune, gain/mute temps réel, et mixdown offline **sur l'appareil** pour l'export — donc à coût cloud nul |
 | Backend | **Supabase** (Postgres + Auth + Storage + Edge Functions + Realtime) | Le modèle projet/version/stem/section est **relationnel** ; Firestore (NoSQL) serait un contresens ici. RLS = isolation multi-tenant gratuite |
 | Assistant paroles | **Claude API** (`claude-sonnet-5`) | Co-écriture, structuration, comptage de syllabes, adaptation à la métrique. Appelée **uniquement** côté serveur |
 | Génération musicale | **À trancher en Phase 1** (cf. § Risque n°1) | Détermine la légalité commerciale du produit entier |
@@ -96,7 +96,7 @@ C'est ici que se gagne ou se perd la différenciation. Toute la phase est consac
 
 ### Phase 4 — Voix, export & monétisation · ~3-4 semaines
 - **Enregistrement voix utilisateur** : capture → analyse tempo/tonalité de l'instrumental → alignement → time-stretch → correction de pitch sur la gamme du morceau → (option) conversion de timbre. Worker GPU dédié, pas d'API clé-en-main.
-- Export : mixdown MP3 (partage) et stems WAV (zip, réservé au tier payant).
+- Export : mixdown MP3 (partage) rendu **sur l'appareil** via le rendu manuel d'`AVAudioEngine` — zéro coût cloud —, et stems WAV en zip (réservé au tier payant).
 - RevenueCat : abonnement mensuel/annuel donnant un pool de crédits + packs de crédits à l'unité.
 - **Ledger de crédits** : débit transactionnel côté serveur au moment de la création du job, jamais côté client. Remboursement automatique si le job échoue.
 - Paywall, écran de gestion d'abonnement, restauration d'achats.
@@ -107,7 +107,7 @@ C'est ici que se gagne ou se perd la différenciation. Toute la phase est consac
 - Rate limiting, quotas anti-abus, modération des prompts (l'App Store la réclamera).
 - Observabilité : Sentry mobile, logs structurés, alerte sur taux d'échec des jobs.
 - Conformité stores : CGU, politique de confidentialité, **clarification écrite des droits d'usage de la musique générée**, mentions IA, suppression de compte (obligatoire Apple).
-- Beta TestFlight (20-30 personnes) → itération → soumission App Store + Play Store.
+- Beta TestFlight → itération → soumission App Store. *(Android hors périmètre v1, cf. ADR 000.)*
 
 ---
 
