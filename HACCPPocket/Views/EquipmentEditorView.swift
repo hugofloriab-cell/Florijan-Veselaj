@@ -165,7 +165,7 @@ struct EquipmentEditorView: View {
     }
 
     private static func format(_ value: Double) -> String {
-        value.formatted(.number.precision(.fractionLength(1)))
+        value.formatted(.number.precision(.fractionLength(1)).locale(AppFormatters.locale))
     }
 }
 

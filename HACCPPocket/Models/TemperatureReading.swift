@@ -118,7 +118,7 @@ extension TemperatureReading {
 
     /// Ex. « 3,5 °C »
     var formattedValue: String {
-        "\(value.formatted(.number.precision(.fractionLength(1)))) °C"
+        AppFormatters.temperature(value)
     }
 
     /// Écart signé par rapport à la plage (0 si conforme). Utile pour la

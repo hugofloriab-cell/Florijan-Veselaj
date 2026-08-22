@@ -17,11 +17,17 @@ struct RootView: View {
     private enum Tab: String, CaseIterable {
         case today
         case temperatures
+        case products
+        case cleaning
+        case settings
 
         var title: String {
             switch self {
             case .today:        "Aujourd'hui"
             case .temperatures: "Températures"
+            case .products:     "Produits"
+            case .cleaning:     "Nettoyage"
+            case .settings:     "Réglages"
             }
         }
 
@@ -29,6 +35,9 @@ struct RootView: View {
             switch self {
             case .today:        "checklist"
             case .temperatures: "thermometer.medium"
+            case .products:     "shippingbox"
+            case .cleaning:     "sparkles"
+            case .settings:     "gearshape"
             }
         }
     }
@@ -42,6 +51,18 @@ struct RootView: View {
             TemperatureListView()
                 .tabItem { Label(Tab.temperatures.title, systemImage: Tab.temperatures.systemImage) }
                 .tag(Tab.temperatures.rawValue)
+
+            ProductListView()
+                .tabItem { Label(Tab.products.title, systemImage: Tab.products.systemImage) }
+                .tag(Tab.products.rawValue)
+
+            CleaningPlanView()
+                .tabItem { Label(Tab.cleaning.title, systemImage: Tab.cleaning.systemImage) }
+                .tag(Tab.cleaning.rawValue)
+
+            SettingsView()
+                .tabItem { Label(Tab.settings.title, systemImage: Tab.settings.systemImage) }
+                .tag(Tab.settings.rawValue)
         }
         .tint(.teal)
     }

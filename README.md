@@ -36,5 +36,5 @@ HACCPPocket/
 - [x] Step A — Modèles de données SwiftData
 - [x] Step B — ViewModels, services de notification et OCR
 - [x] Step C1 — Navigation, tableau de bord, registre des températures
-- [ ] Step C2 — Produits, nettoyage, réception, réglages
+- [x] Step C2 — Produits, nettoyage, réception, réglages
 - [ ] Step D — Paywall RevenueCat

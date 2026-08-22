@@ -84,7 +84,7 @@ final class DeliveryCheckViewModel {
             self.batchNumber = check.batchNumber
             self.category = GoodsCategory.allCases.first { $0.temperatureLimit == check.temperatureLimit } ?? .chilled
             self.temperatureText = check.temperature.map {
-                $0.formatted(.number.precision(.fractionLength(1)))
+                $0.formatted(.number.precision(.fractionLength(1)).locale(AppFormatters.locale))
             } ?? ""
             self.receivedAt = check.receivedAt
             self.packagingIntact = check.packagingIntact

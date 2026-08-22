@@ -138,9 +138,7 @@ extension Equipment {
 
     /// Ex. « 0,0 °C à 4,0 °C »
     var formattedRange: String {
-        let lower = acceptedRange.lowerBound.formatted(.number.precision(.fractionLength(1)))
-        let upper = acceptedRange.upperBound.formatted(.number.precision(.fractionLength(1)))
-        return "\(lower) °C à \(upper) °C"
+        AppFormatters.range(acceptedRange)
     }
 
     var latestReading: TemperatureReading? {

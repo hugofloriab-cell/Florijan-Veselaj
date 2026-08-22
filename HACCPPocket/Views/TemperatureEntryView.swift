@@ -128,10 +128,10 @@ struct TemperatureEntryView: View {
         if let isCompliant = viewModel.isCompliant {
             HStack(spacing: 10) {
                 Image(systemName: isCompliant ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(isCompliant ? .green : .red)
+                    .foregroundStyle(isCompliant ? Color.green : Color.red)
                 Text(isCompliant ? "Relevé conforme" : "Relevé hors plage")
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isCompliant ? .green : .red)
+                    .foregroundStyle(isCompliant ? Color.green : Color.red)
                 Spacer()
                 if let deviation = viewModel.deviation, deviation != 0 {
                     Text(AppFormatters.deviation(deviation))

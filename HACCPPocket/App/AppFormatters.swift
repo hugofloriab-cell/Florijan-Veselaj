@@ -10,11 +10,17 @@ import Foundation
 
 enum AppFormatters {
 
+    /// L'application est rédigée en français et vise la restauration française.
+    /// On fixe donc la locale des formats plutôt que de suivre celle de
+    /// l'appareil : un iPhone réglé en anglais afficherait sinon « 22 Aug 2026 »
+    /// au milieu d'une interface française.
+    static let locale = Locale(identifier: "fr_FR")
+
     // MARK: - Températures
 
     /// Ex. « 3,5 °C »
     static func temperature(_ value: Double) -> String {
-        "\(value.formatted(.number.precision(.fractionLength(1)))) °C"
+        "\(value.formatted(.number.precision(.fractionLength(1)).locale(locale))) °C"
     }
 
     /// Ex. « 0,0 °C à 4,0 °C »
@@ -25,19 +31,19 @@ enum AppFormatters {
     /// Écart signé par rapport à une plage. Ex. « +3,5 °C »
     static func deviation(_ value: Double) -> String {
         let sign = value > 0 ? "+" : ""
-        return "\(sign)\(value.formatted(.number.precision(.fractionLength(1)))) °C"
+        return "\(sign)\(value.formatted(.number.precision(.fractionLength(1)).locale(locale))) °C"
     }
 
     // MARK: - Dates
 
     /// Ex. « 22/08/2026 »
     static func shortDate(_ date: Date) -> String {
-        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year())
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year().locale(locale))
     }
 
     /// Ex. « 08:30 »
     static func time(_ date: Date) -> String {
-        date.formatted(.dateTime.hour().minute())
+        date.formatted(.dateTime.hour().minute().locale(locale))
     }
 
     /// Ex. « 22/08/2026 à 08:30 »
@@ -47,12 +53,12 @@ enum AppFormatters {
 
     /// Ex. « samedi 22 août »
     static func longDay(_ date: Date) -> String {
-        date.formatted(.dateTime.weekday(.wide).day().month(.wide))
+        date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(locale))
     }
 
     /// Ex. « août 2026 » — titre des exports mensuels.
     static func monthTitle(_ date: Date) -> String {
-        date.formatted(.dateTime.month(.wide).year())
+        date.formatted(.dateTime.month(.wide).year().locale(locale))
     }
 
     /// « Aujourd'hui », « Hier », sinon la date courte.

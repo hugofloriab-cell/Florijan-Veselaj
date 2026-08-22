@@ -37,6 +37,7 @@ struct DashboardView: View {
                 pendingReadingsSection
                 expiringProductsSection
                 cleaningSection
+                registersSection
             }
             .navigationTitle("Aujourd'hui")
             .navigationBarTitleDisplayMode(.large)
@@ -88,9 +89,9 @@ struct DashboardView: View {
                         .frame(width: 22)
                     Text("Conformité sur 30 jours")
                     Spacer()
-                    Text(rate.formatted(.percent.precision(.fractionLength(0))))
+                    Text(rate.formatted(.percent.precision(.fractionLength(0)).locale(AppFormatters.locale)))
                         .monospacedDigit()
-                        .foregroundStyle(rate >= 0.95 ? .green : .orange)
+                        .foregroundStyle(rate >= 0.95 ? Color.green : Color.orange)
                 }
             }
         } header: {
@@ -183,6 +184,18 @@ struct DashboardView: View {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - Autres registres
+
+    private var registersSection: some View {
+        Section("Registres") {
+            NavigationLink {
+                DeliveryListView()
+            } label: {
+                Label("Contrôles à réception", systemImage: "shippingbox")
             }
         }
     }

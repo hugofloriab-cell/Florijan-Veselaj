@@ -130,10 +130,10 @@ struct ProgressRow: View {
                 Text("\(completed) / \(total)")
                     .monospacedDigit()
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isComplete ? .green : .orange)
+                    .foregroundStyle(isComplete ? Color.green : Color.orange)
             }
             ProgressView(value: progress)
-                .tint(isComplete ? .green : .orange)
+                .tint(isComplete ? Color.green : Color.orange)
         }
         .padding(.vertical, 4)
     }

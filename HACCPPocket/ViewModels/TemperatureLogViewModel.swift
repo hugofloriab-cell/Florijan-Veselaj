@@ -50,7 +50,7 @@ final class TemperatureLogViewModel {
         self.modelContext = context
 
         if let reading {
-            self.valueText = reading.value.formatted(.number.precision(.fractionLength(1)))
+            self.valueText = reading.value.formatted(.number.precision(.fractionLength(1)).locale(AppFormatters.locale))
             self.moment = reading.moment
             self.recordedAt = reading.recordedAt
             self.operatorName = reading.operatorName

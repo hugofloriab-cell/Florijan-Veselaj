@@ -140,7 +140,7 @@ extension DeliveryCheck {
 
     var formattedTemperature: String {
         guard let temperature else { return "—" }
-        return "\(temperature.formatted(.number.precision(.fractionLength(1)))) °C"
+        return AppFormatters.temperature(temperature)
     }
 
     /// Un contrôle non conforme sans motif renseigné est un dossier incomplet.
