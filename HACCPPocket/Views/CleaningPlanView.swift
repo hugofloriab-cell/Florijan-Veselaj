@@ -19,6 +19,9 @@ struct CleaningPlanView: View {
     @State private var viewModel: CleaningPlanViewModel?
     @State private var expandedTask: CleaningTask?
     @State private var showsPaywall = false
+    @State private var editedTask: CleaningTask?
+    @State private var isCreatingTask = false
+    @State private var taskPendingDeletion: CleaningTask?
 
     var body: some View {
         NavigationStack {
@@ -30,6 +33,41 @@ struct CleaningPlanView: View {
                 }
             }
             .navigationTitle("Nettoyage")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        if subscription.canWrite {
+                            isCreatingTask = true
+                        } else {
+                            showsPaywall = true
+                        }
+                    } label: {
+                        Label("Nouvelle opération", systemImage: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $isCreatingTask) {
+                CleaningTaskEditorView(task: nil, sortIndex: tasks.count)
+            }
+            .sheet(item: $editedTask) { task in
+                CleaningTaskEditorView(task: task)
+            }
+            .confirmationDialog(
+                "Supprimer cette opération ?",
+                isPresented: Binding(
+                    get: { taskPendingDeletion != nil },
+                    set: { if !$0 { taskPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Supprimer", role: .destructive) {
+                    if let task = taskPendingDeletion { viewModel?.delete(task) }
+                    taskPendingDeletion = nil
+                }
+                Button("Annuler", role: .cancel) { taskPendingDeletion = nil }
+            } message: {
+                Text("Son historique d'exécution sera perdu. Pour la retirer du plan en conservant les preuves, archivez-la plutôt.")
+            }
             .sheet(item: $expandedTask) { task in
                 CleaningTaskDetailView(task: task)
             }
@@ -62,6 +100,27 @@ struct CleaningPlanView: View {
                 Section(section.frequency.label) {
                     ForEach(section.tasks) { task in
                         row(for: task, viewModel: viewModel)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    taskPendingDeletion = task
+                                } label: {
+                                    Label("Supprimer", systemImage: "trash")
+                                }
+
+                                Button {
+                                    viewModel.archive(task)
+                                } label: {
+                                    Label("Archiver", systemImage: "archivebox")
+                                }
+                                .tint(.orange)
+
+                                Button {
+                                    editedTask = task
+                                } label: {
+                                    Label("Modifier", systemImage: "pencil")
+                                }
+                                .tint(.gray)
+                            }
                     }
                 }
             }
@@ -94,6 +153,7 @@ struct CleaningPlanView: View {
                     .foregroundStyle(isDone ? Color.green : Color.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(isDone ? "Annuler le pointage de \(task.title)" : "Pointer \(task.title)")
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
@@ -120,6 +180,7 @@ struct CleaningPlanView: View {
                     .foregroundStyle(.secondary)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Détail de \(task.title)")
         }
         .padding(.vertical, 4)
     }

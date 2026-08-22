@@ -132,6 +132,14 @@ final class CleaningPlanViewModel {
         _ = persist()
     }
 
+    /// Suppression définitive, y compris l'historique d'exécution : à réserver
+    /// à une ligne créée par erreur. Pour retirer une opération du plan sans
+    /// perdre ses preuves, utiliser `archive(_:)`.
+    func delete(_ task: CleaningTask) {
+        modelContext.delete(task)
+        _ = persist()
+    }
+
     @discardableResult
     private func persist() -> Bool {
         do {

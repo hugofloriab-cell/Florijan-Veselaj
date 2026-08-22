@@ -20,6 +20,7 @@ struct ProductListView: View {
     @State private var editedProduct: TrackedProduct?
     @State private var isCreating = false
     @State private var showsPaywall = false
+    @State private var productPendingDeletion: TrackedProduct?
 
     /// Produit en cours de mise au rebut : l'alerte demande le motif.
     @State private var discardTarget: TrackedProduct?
@@ -57,6 +58,22 @@ struct ProductListView: View {
             }
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
+            }
+            .confirmationDialog(
+                "Supprimer ce produit ?",
+                isPresented: Binding(
+                    get: { productPendingDeletion != nil },
+                    set: { if !$0 { productPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Supprimer", role: .destructive) {
+                    if let product = productPendingDeletion { viewModel?.delete(product) }
+                    productPendingDeletion = nil
+                }
+                Button("Annuler", role: .cancel) { productPendingDeletion = nil }
+            } message: {
+                Text("À réserver à une saisie erronée : un produit réellement utilisé doit rester dans le registre.")
             }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
@@ -130,6 +147,13 @@ struct ProductListView: View {
                             Label("Rouvrir", systemImage: "arrow.uturn.backward")
                         }
                         .tint(.blue)
+                    }
+                }
+                .swipeActions(edge: .leading) {
+                    Button(role: .destructive) {
+                        productPendingDeletion = product
+                    } label: {
+                        Label("Supprimer", systemImage: "trash")
                     }
                 }
             }

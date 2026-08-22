@@ -29,10 +29,13 @@ struct TemperatureListView: View {
         NavigationStack {
             List {
                 ForEach(visibleEquipments) { equipment in
-                    NavigationLink {
-                        EquipmentDetailView(equipment: equipment)
-                    } label: {
-                        row(for: equipment)
+                    VStack(alignment: .leading, spacing: 8) {
+                        NavigationLink {
+                            EquipmentDetailView(equipment: equipment)
+                        } label: {
+                            row(for: equipment)
+                        }
+                        momentButtons(for: equipment)
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button {
@@ -134,22 +137,42 @@ struct TemperatureListView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 6) {
-                ForEach(ReadingMoment.dailyRoutine, id: \.self) { moment in
-                    let done = equipment.hasReading(on: .now, moment: moment)
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// Les pastilles Matin et Soir lancent directement la saisie du relevé
+    /// correspondant : c'est le geste le plus fréquent de la journée.
+    private func momentButtons(for equipment: Equipment) -> some View {
+        HStack(spacing: 8) {
+            ForEach(ReadingMoment.dailyRoutine, id: \.self) { moment in
+                let done = equipment.hasReading(on: .now, moment: moment)
+
+                Button {
+                    guard subscription.canWrite else { showsPaywall = true; return }
+                    entryTarget = PendingReading(equipment: equipment, moment: moment)
+                } label: {
                     StatusBadge(
                         text: moment.label,
-                        color: done ? .green : .secondary,
+                        color: done ? .green : .teal,
                         systemImage: done ? "checkmark" : moment.systemImage
                     )
                 }
-
-                if !equipment.isActive {
-                    StatusBadge(text: "Archivé", color: .orange, systemImage: "archivebox")
-                }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(
+                    done
+                        ? "\(moment.label) déjà relevé pour \(equipment.name), modifier"
+                        : "Relever \(moment.label) pour \(equipment.name)"
+                )
             }
+
+            if !equipment.isActive {
+                StatusBadge(text: "Archivé", color: .orange, systemImage: "archivebox")
+            }
+
+            Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Actions

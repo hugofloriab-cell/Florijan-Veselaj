@@ -205,22 +205,30 @@ enum PDFReportService {
             // ---- Page 1 : en-tête ----
             startPage()
 
-            text("Registre sanitaire mensuel", font: Fonts.title, spacingAfter: 2)
-            text(report.title, font: Fonts.subtitle, color: .darkGray, spacingAfter: 12)
+            // Le logo occupe le coin supérieur droit ; l'en-tête textuel se
+            // rétrécit d'autant pour ne pas passer dessous.
+            let logoHeight = drawLogo(report.establishment?.logoData)
+            let headerWidth = logoHeight > 0 ? Layout.contentWidth - 140 : Layout.contentWidth
+
+            text("Registre sanitaire mensuel", font: Fonts.title, width: headerWidth, spacingAfter: 2)
+            text(report.title, font: Fonts.subtitle, color: .darkGray, width: headerWidth, spacingAfter: 12)
 
             if let establishment = report.establishment {
-                text(establishment.displayName, font: Fonts.section, spacingAfter: 2)
+                text(establishment.displayName, font: Fonts.section, width: headerWidth, spacingAfter: 2)
                 if !establishment.address.isEmpty {
-                    text(establishment.address, font: Fonts.body, color: .darkGray, spacingAfter: 2)
+                    text(establishment.address, font: Fonts.body, color: .darkGray, width: headerWidth, spacingAfter: 2)
                 }
                 var identity: [String] = []
                 if !establishment.siret.isEmpty { identity.append("SIRET \(establishment.siret)") }
                 if !establishment.approvalNumber.isEmpty { identity.append("Agrément \(establishment.approvalNumber)") }
                 if !establishment.managerName.isEmpty { identity.append("Responsable PMS : \(establishment.managerName)") }
                 if !identity.isEmpty {
-                    text(identity.joined(separator: " · "), font: Fonts.caption, color: .darkGray, spacingAfter: 4)
+                    text(identity.joined(separator: " · "), font: Fonts.caption, color: .darkGray, width: headerWidth, spacingAfter: 4)
                 }
             }
+
+            // Ne jamais démarrer le corps du document au-dessus du logo.
+            y = max(y, Layout.margin + logoHeight + 8)
 
             // ---- Synthèse ----
             sectionTitle("Synthèse de la période")
@@ -385,6 +393,25 @@ enum PDFReportService {
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             context: nil
         )
+    }
+
+    /// Dessine le logo en haut à droite et renvoie la hauteur occupée
+    /// (0 s'il n'y a pas de logo).
+    @discardableResult
+    private static func drawLogo(_ data: Data?) -> CGFloat {
+        guard let data, let image = UIImage(data: data) else { return 0 }
+
+        let maxSize = CGSize(width: 130, height: 60)
+        let ratio = min(maxSize.width / image.size.width, maxSize.height / image.size.height)
+        let size = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
+
+        image.draw(in: CGRect(
+            x: Layout.page.width - Layout.margin - size.width,
+            y: Layout.margin,
+            width: size.width,
+            height: size.height
+        ))
+        return size.height
     }
 
     private static func drawFooter(page: Int, in context: CGContext) {

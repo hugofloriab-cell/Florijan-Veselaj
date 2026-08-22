@@ -22,6 +22,8 @@ struct DashboardView: View {
     /// Relevé que l'utilisateur vient de sélectionner : ouvre la feuille de saisie.
     @State private var entryTarget: PendingReading?
     @State private var showsPaywall = false
+    @State private var editedProduct: TrackedProduct?
+    @State private var cleaningViewModel: CleaningPlanViewModel?
 
     private var dashboard: DashboardViewModel {
         DashboardViewModel(
@@ -50,6 +52,14 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.large)
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
+            }
+            .sheet(item: $editedProduct) { product in
+                ProductFormView(product: product, context: modelContext)
+            }
+            .task {
+                if cleaningViewModel == nil {
+                    cleaningViewModel = CleaningPlanViewModel(context: modelContext)
+                }
             }
             .sheet(item: $entryTarget) { target in
                 TemperatureEntryView(
@@ -183,23 +193,44 @@ struct DashboardView: View {
         if !urgent.isEmpty {
             Section("Produits à traiter") {
                 ForEach(urgent) { product in
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(product.name)
-                            Text(product.storage.label)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    Button {
+                        if subscription.canWrite {
+                            editedProduct = product
+                        } else {
+                            showsPaywall = true
                         }
-                        Spacer()
-                        StatusBadge(
-                            text: product.remainingLabel(),
-                            color: product.urgency().color,
-                            systemImage: product.urgency().systemImage
-                        )
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(product.name)
+                                    .foregroundStyle(.primary)
+                                Text(product.storage.label)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            StatusBadge(
+                                text: product.remainingLabel(),
+                                color: product.urgency().color,
+                                systemImage: product.urgency().systemImage
+                            )
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
             }
         }
+    }
+
+    /// Pointe une opération depuis l'accueil, sans passer par l'onglet Nettoyage.
+    private func completeCleaning(_ task: CleaningTask) {
+        guard subscription.canWrite else {
+            showsPaywall = true
+            return
+        }
+        cleaningViewModel?.complete(task)
     }
 
     // MARK: - Autres registres
@@ -227,23 +258,30 @@ struct DashboardView: View {
         if !dashboard.dueCleaningTasks.isEmpty {
             Section("Nettoyage à réaliser") {
                 ForEach(dashboard.dueCleaningTasks.prefix(5).map { $0 }) { task in
-                    HStack {
-                        Image(systemName: task.frequency.systemImage)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 26)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(task.title)
-                            if !task.zone.isEmpty {
-                                Text(task.zone)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    Button {
+                        completeCleaning(task)
+                    } label: {
+                        HStack {
+                            Image(systemName: "circle")
+                                .font(.title3)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 26)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(task.title)
+                                    .foregroundStyle(.primary)
+                                if !task.zone.isEmpty {
+                                    Text(task.zone)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if task.isOverdue() {
+                                StatusBadge(text: "En retard", color: .orange)
                             }
                         }
-                        Spacer()
-                        if task.isOverdue() {
-                            StatusBadge(text: "En retard", color: .orange)
-                        }
                     }
+                    .accessibilityLabel("Pointer \(task.title)")
                 }
             }
         }

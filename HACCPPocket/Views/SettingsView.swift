@@ -9,6 +9,11 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import PhotosUI
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct SettingsView: View {
 
@@ -20,6 +25,7 @@ struct SettingsView: View {
     @Query private var establishments: [Establishment]
 
     @State private var showsPaywall = false
+    @State private var logoItem: PhotosPickerItem?
 
     private var establishment: Establishment? { establishments.first }
 
@@ -88,9 +94,9 @@ struct SettingsView: View {
             Form {
                 subscriptionSection
                 establishmentSection
+                logoSection
                 operatorSection
                 remindersSection
-                registersSection
                 aboutSection
             }
             .navigationTitle("Réglages")
@@ -134,6 +140,65 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Logo
+
+    @ViewBuilder
+    private var logoSection: some View {
+        if let establishment {
+            Section {
+                if let data = establishment.logoData, let image = logoImage(from: data) {
+                    HStack {
+                        Spacer()
+                        image
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxHeight: 80)
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                PhotosPicker(selection: $logoItem, matching: .images) {
+                    Label(
+                        establishment.logoData == nil ? "Choisir un logo" : "Remplacer le logo",
+                        systemImage: "photo"
+                    )
+                }
+
+                if establishment.logoData != nil {
+                    Button("Retirer le logo", role: .destructive) {
+                        establishment.logoData = nil
+                        establishment.touch()
+                        try? modelContext.save()
+                    }
+                }
+            } header: {
+                Text("Logo")
+            } footer: {
+                Text("Le logo apparaît en en-tête du registre mensuel exporté en PDF.")
+            }
+            .onChange(of: logoItem) { _, newItem in
+                Task { await loadLogo(newItem, into: establishment) }
+            }
+        }
+    }
+
+    private func logoImage(from data: Data) -> Image? {
+        #if canImport(UIKit)
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #else
+        return nil
+        #endif
+    }
+
+    private func loadLogo(_ item: PhotosPickerItem?, into establishment: Establishment) async {
+        guard let item, let data = try? await item.loadTransferable(type: Data.self) else { return }
+        establishment.logoData = data
+        establishment.touch()
+        try? modelContext.save()
     }
 
     // MARK: - Opérateur
@@ -213,24 +278,6 @@ struct SettingsView: View {
             get: { preferences.time(hour: preferences.eveningHour, minute: preferences.eveningMinute) },
             set: { preferences.setEvening(from: $0) }
         )
-    }
-
-    // MARK: - Autres registres
-
-    private var registersSection: some View {
-        Section("Registres") {
-            NavigationLink {
-                DeliveryListView()
-            } label: {
-                Label("Contrôles à réception", systemImage: "shippingbox")
-            }
-
-            NavigationLink {
-                ReportView()
-            } label: {
-                Label("Registre mensuel (PDF)", systemImage: "doc.text")
-            }
-        }
     }
 
     // MARK: - À propos

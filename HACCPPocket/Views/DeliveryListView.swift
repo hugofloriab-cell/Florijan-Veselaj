@@ -19,6 +19,7 @@ struct DeliveryListView: View {
     @State private var editedDelivery: DeliveryCheck?
     @State private var isCreating = false
     @State private var showsPaywall = false
+    @State private var deliveryPendingDeletion: DeliveryCheck?
 
     var body: some View {
         List {
@@ -29,6 +30,13 @@ struct DeliveryListView: View {
                     row(for: delivery)
                 }
                 .buttonStyle(.plain)
+                .swipeActions(edge: .trailing) {
+                    Button(role: .destructive) {
+                        deliveryPendingDeletion = delivery
+                    } label: {
+                        Label("Supprimer", systemImage: "trash")
+                    }
+                }
             }
         }
         .navigationTitle("Réception")
@@ -63,6 +71,25 @@ struct DeliveryListView: View {
         }
         .sheet(isPresented: $showsPaywall) {
             PaywallView()
+        }
+        .confirmationDialog(
+            "Supprimer ce contrôle ?",
+            isPresented: Binding(
+                get: { deliveryPendingDeletion != nil },
+                set: { if !$0 { deliveryPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Supprimer", role: .destructive) {
+                if let delivery = deliveryPendingDeletion {
+                    modelContext.delete(delivery)
+                    try? modelContext.save()
+                }
+                deliveryPendingDeletion = nil
+            }
+            Button("Annuler", role: .cancel) { deliveryPendingDeletion = nil }
+        } message: {
+            Text("À réserver à une saisie erronée : un contrôle réel doit rester dans le registre.")
         }
         .sheet(item: $editedDelivery) { delivery in
             DeliveryFormView(check: delivery, context: modelContext)
