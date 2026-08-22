@@ -37,4 +37,5 @@ HACCPPocket/
 - [x] Step B — ViewModels, services de notification et OCR
 - [x] Step C1 — Navigation, tableau de bord, registre des températures
 - [x] Step C2 — Produits, nettoyage, réception, réglages
+- [x] Step C3 — Export PDF du registre mensuel
 - [ ] Step D — Paywall RevenueCat

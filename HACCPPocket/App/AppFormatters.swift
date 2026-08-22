@@ -56,6 +56,13 @@ enum AppFormatters {
         date.formatted(.dateTime.weekday(.wide).day().month(.wide).locale(locale))
     }
 
+    /// Met une majuscule à la première lettre seulement. `capitalized`
+    /// capitaliserait chaque mot et donnerait « Samedi 22 Août ».
+    static func sentenceCased(_ text: String) -> String {
+        guard let first = text.first else { return text }
+        return String(first).uppercased(with: locale) + text.dropFirst()
+    }
+
     /// Ex. « août 2026 » — titre des exports mensuels.
     static func monthTitle(_ date: Date) -> String {
         date.formatted(.dateTime.month(.wide).year().locale(locale))

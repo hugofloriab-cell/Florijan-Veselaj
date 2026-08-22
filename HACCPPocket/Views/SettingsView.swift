@@ -168,6 +168,12 @@ struct SettingsView: View {
             } label: {
                 Label("Contrôles à réception", systemImage: "shippingbox")
             }
+
+            NavigationLink {
+                ReportView()
+            } label: {
+                Label("Registre mensuel (PDF)", systemImage: "doc.text")
+            }
         }
     }
 

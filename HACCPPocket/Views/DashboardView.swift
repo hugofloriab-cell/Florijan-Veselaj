@@ -95,7 +95,7 @@ struct DashboardView: View {
                 }
             }
         } header: {
-            Text(AppFormatters.longDay(.now).capitalized)
+            Text(AppFormatters.sentenceCased(AppFormatters.longDay(.now)))
         }
     }
 
@@ -196,6 +196,12 @@ struct DashboardView: View {
                 DeliveryListView()
             } label: {
                 Label("Contrôles à réception", systemImage: "shippingbox")
+            }
+
+            NavigationLink {
+                ReportView()
+            } label: {
+                Label("Registre mensuel (PDF)", systemImage: "doc.text")
             }
         }
     }
