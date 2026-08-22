@@ -2,8 +2,9 @@
 //  HACCPPocketApp.swift
 //  HACCPPocket
 //
-//  Point d'entrée de l'application. Le conteneur SwiftData est construit une
-//  seule fois ici puis injecté dans l'environnement de toutes les vues.
+//  Point d'entrée. Construit le conteneur SwiftData, injecte les réglages et le
+//  service de notifications dans l'environnement, puis reprogramme les rappels
+//  quotidiens à chaque lancement.
 //
 
 import SwiftUI
@@ -16,17 +17,30 @@ struct HACCPPocketApp: App {
     /// franchement que travailler sur une base corrompue.
     private let container: ModelContainer
 
+    @State private var preferences: UserPreferences
+    @State private var notificationService: NotificationService
+
     init() {
         do {
             container = try AppSchema.makeContainer()
         } catch {
             fatalError("Échec de l'initialisation du stockage local : \(error)")
         }
+
+        _preferences = State(initialValue: UserPreferences.shared)
+        _notificationService = State(initialValue: NotificationService.shared)
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environment(preferences)
+                .environment(notificationService)
+                .task {
+                    // Les rappels sont reprogrammés à chaque lancement : ils
+                    // suivent ainsi les réglages sans code de synchronisation.
+                    await notificationService.applySchedule(from: preferences)
+                }
         }
         .modelContainer(container)
         #if os(macOS)

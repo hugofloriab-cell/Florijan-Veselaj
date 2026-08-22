@@ -24,14 +24,16 @@ aucun serveur, aucun compte.
 
 ```
 HACCPPocket/
-├── App/        Point d'entrée, schéma SwiftData, amorçage
-├── Models/     Entités @Model
-└── Views/      Écrans SwiftUI
+├── App/         Point d'entrée, schéma SwiftData, amorçage, réglages, formatage
+├── Models/      Entités @Model
+├── Services/    Notifications locales, OCR Vision
+├── ViewModels/  Logique métier et état des formulaires
+└── Views/       Écrans SwiftUI
 ```
 
 ## Avancement
 
 - [x] Step A — Modèles de données SwiftData
-- [ ] Step B — ViewModels / logique métier
+- [x] Step B — ViewModels, services de notification et OCR
 - [ ] Step C — Vues SwiftUI
 - [ ] Step D — Paywall RevenueCat
