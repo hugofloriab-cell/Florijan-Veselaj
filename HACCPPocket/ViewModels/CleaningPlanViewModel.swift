@@ -29,9 +29,9 @@ final class CleaningPlanViewModel {
 
     private(set) var errorMessage: String?
 
-    init(context: ModelContext, preferences: UserPreferences = .shared) {
+    init(context: ModelContext, preferences: UserPreferences? = nil) {
         self.modelContext = context
-        self.operatorName = preferences.operatorName
+        self.operatorName = (preferences ?? UserPreferences.shared).operatorName
     }
 
     // MARK: - Présentation

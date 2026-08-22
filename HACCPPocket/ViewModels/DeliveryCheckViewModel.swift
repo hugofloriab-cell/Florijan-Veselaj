@@ -71,8 +71,10 @@ final class DeliveryCheckViewModel {
     init(
         check: DeliveryCheck? = nil,
         context: ModelContext,
-        preferences: UserPreferences = .shared
+        preferences: UserPreferences? = nil
     ) {
+        let prefs = preferences ?? UserPreferences.shared
+
         self.modelContext = context
         self.existingCheck = check
 
@@ -103,7 +105,7 @@ final class DeliveryCheckViewModel {
             self.labellingCompliant = true
             self.decision = .accepted
             self.reason = ""
-            self.operatorName = preferences.operatorName
+            self.operatorName = prefs.operatorName
             self.notes = ""
             self.photoData = nil
         }

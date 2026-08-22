@@ -50,8 +50,10 @@ final class ProductFormViewModel {
     init(
         product: TrackedProduct? = nil,
         context: ModelContext,
-        preferences: UserPreferences = .shared
+        preferences: UserPreferences? = nil
     ) {
+        let prefs = preferences ?? UserPreferences.shared
+
         self.modelContext = context
         self.existingProduct = product
 
@@ -72,7 +74,7 @@ final class ProductFormViewModel {
                 [.day],
                 from: Calendar.current.startOfDay(for: product.openedAt),
                 to: Calendar.current.startOfDay(for: product.secondaryLimitDate)
-            ).day ?? preferences.defaultShelfLifeDays
+            ).day ?? prefs.defaultShelfLifeDays
             self.shelfLifeDays = max(0, days)
 
             self.overridesSecondaryLimit = false
@@ -84,7 +86,7 @@ final class ProductFormViewModel {
             self.supplier = ""
             self.storage = .positiveCold
             self.openedAt = .now
-            self.shelfLifeDays = preferences.defaultShelfLifeDays
+            self.shelfLifeDays = prefs.defaultShelfLifeDays
             self.notes = ""
             self.labelPhotoData = nil
             self.hasSupplierExpiry = false
@@ -92,7 +94,7 @@ final class ProductFormViewModel {
             self.overridesSecondaryLimit = false
             self.customSecondaryLimitDate = TrackedProduct.defaultLimitDate(
                 openedAt: .now,
-                days: preferences.defaultShelfLifeDays
+                days: prefs.defaultShelfLifeDays
             )
         }
     }

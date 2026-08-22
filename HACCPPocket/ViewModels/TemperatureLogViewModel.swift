@@ -41,8 +41,10 @@ final class TemperatureLogViewModel {
         reading: TemperatureReading? = nil,
         moment: ReadingMoment? = nil,
         context: ModelContext,
-        preferences: UserPreferences = .shared
+        preferences: UserPreferences? = nil
     ) {
+        let prefs = preferences ?? UserPreferences.shared
+
         self.equipment = equipment
         self.existingReading = reading
         self.modelContext = context
@@ -58,7 +60,7 @@ final class TemperatureLogViewModel {
             self.valueText = ""
             self.moment = moment ?? .suggested()
             self.recordedAt = .now
-            self.operatorName = preferences.operatorName
+            self.operatorName = prefs.operatorName
             self.comment = ""
             self.correctiveAction = ""
         }
