@@ -33,7 +33,7 @@ struct HACCPPocketApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
                 .environment(preferences)
                 .environment(notificationService)
                 .task {
