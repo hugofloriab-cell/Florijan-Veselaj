@@ -15,10 +15,61 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(UserPreferences.self) private var preferences
     @Environment(NotificationService.self) private var notificationService
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query private var establishments: [Establishment]
 
+    @State private var showsPaywall = false
+
     private var establishment: Establishment? { establishments.first }
+
+    // MARK: - Abonnement
+
+    private var subscriptionSection: some View {
+        Section {
+            Button {
+                showsPaywall = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: subscription.isSubscribed ? "checkmark.seal.fill" : "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(subscription.isSubscribed ? Color.green : Color.teal)
+                        .frame(width: 26)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(subscription.statusTitle)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(subscription.statusMessage)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+            }
+
+            if !subscription.isSubscribed {
+                Button("Restaurer mes achats") {
+                    Task { await subscription.restorePurchases() }
+                }
+                .disabled(subscription.isPurchasing)
+            }
+        } header: {
+            Text("Abonnement")
+        } footer: {
+            if subscription.isSubscribed {
+                Text("Gérez ou résiliez votre abonnement dans Réglages ▸ votre nom ▸ Abonnements.")
+            } else {
+                Text("Pendant l'essai, l'application est complète. Ensuite, la consultation et l'export restent accessibles.")
+            }
+        }
+    }
 
     /// Toute modification d'un réglage de rappel change cette signature, ce qui
     /// relance la reprogrammation via `.task(id:)`.
@@ -35,6 +86,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                subscriptionSection
                 establishmentSection
                 operatorSection
                 remindersSection
@@ -42,8 +94,12 @@ struct SettingsView: View {
                 aboutSection
             }
             .navigationTitle("Réglages")
+            .sheet(isPresented: $showsPaywall) {
+                PaywallView()
+            }
             .task {
                 await notificationService.refreshAuthorizationStatus()
+                await subscription.refreshEntitlements()
                 if establishment == nil {
                     modelContext.insert(Establishment())
                     try? modelContext.save()
@@ -201,5 +257,6 @@ struct SettingsView: View {
     SettingsView()
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
+        .environment(SubscriptionManager.shared)
         .environment(NotificationService.shared)
 }

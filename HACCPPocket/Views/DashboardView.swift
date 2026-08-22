@@ -13,6 +13,7 @@ import SwiftData
 struct DashboardView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
     @Query private var products: [TrackedProduct]
@@ -20,6 +21,7 @@ struct DashboardView: View {
 
     /// Relevé que l'utilisateur vient de sélectionner : ouvre la feuille de saisie.
     @State private var entryTarget: PendingReading?
+    @State private var showsPaywall = false
 
     private var dashboard: DashboardViewModel {
         DashboardViewModel(
@@ -32,6 +34,11 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             List {
+                if !subscription.isSubscribed {
+                    Section {
+                        SubscriptionBanner { showsPaywall = true }
+                    }
+                }
                 summarySection
                 alertsSection
                 pendingReadingsSection
@@ -41,6 +48,9 @@ struct DashboardView: View {
             }
             .navigationTitle("Aujourd'hui")
             .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showsPaywall) {
+                PaywallView()
+            }
             .sheet(item: $entryTarget) { target in
                 TemperatureEntryView(
                     equipment: target.equipment,
@@ -132,7 +142,11 @@ struct DashboardView: View {
             Section("Relevés à saisir") {
                 ForEach(dashboard.pendingReadings) { pending in
                     Button {
-                        entryTarget = pending
+                        if subscription.canWrite {
+                            entryTarget = pending
+                        } else {
+                            showsPaywall = true
+                        }
                     } label: {
                         HStack {
                             Image(systemName: pending.equipment.type.systemImage)
@@ -240,4 +254,5 @@ struct DashboardView: View {
     DashboardView()
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
+        .environment(SubscriptionManager.shared)
 }

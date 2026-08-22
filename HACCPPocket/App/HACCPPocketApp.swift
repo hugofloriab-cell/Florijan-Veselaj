@@ -19,6 +19,7 @@ struct HACCPPocketApp: App {
 
     @State private var preferences: UserPreferences
     @State private var notificationService: NotificationService
+    @State private var subscription: SubscriptionManager
 
     init() {
         do {
@@ -29,6 +30,7 @@ struct HACCPPocketApp: App {
 
         _preferences = State(initialValue: UserPreferences.shared)
         _notificationService = State(initialValue: NotificationService.shared)
+        _subscription = State(initialValue: SubscriptionManager.shared)
     }
 
     var body: some Scene {
@@ -37,10 +39,14 @@ struct HACCPPocketApp: App {
                 .environment(\.locale, AppFormatters.locale)
                 .environment(preferences)
                 .environment(notificationService)
+                .environment(subscription)
                 .task {
                     // Les rappels sont reprogrammés à chaque lancement : ils
                     // suivent ainsi les réglages sans code de synchronisation.
                     await notificationService.applySchedule(from: preferences)
+                }
+                .task {
+                    await subscription.configure()
                 }
         }
         .modelContainer(container)

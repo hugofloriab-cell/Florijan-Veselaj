@@ -12,12 +12,14 @@ import SwiftData
 struct ProductListView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \TrackedProduct.secondaryLimitDate) private var products: [TrackedProduct]
 
     @State private var viewModel: ProductTrackingViewModel?
     @State private var editedProduct: TrackedProduct?
     @State private var isCreating = false
+    @State private var showsPaywall = false
 
     /// Produit en cours de mise au rebut : l'alerte demande le motif.
     @State private var discardTarget: TrackedProduct?
@@ -40,7 +42,11 @@ struct ProductListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        isCreating = true
+                        if subscription.canWrite {
+                            isCreating = true
+                        } else {
+                            showsPaywall = true
+                        }
                     } label: {
                         Label("Nouveau produit", systemImage: "plus")
                     }
@@ -48,6 +54,9 @@ struct ProductListView: View {
             }
             .sheet(isPresented: $isCreating) {
                 ProductFormView(context: modelContext)
+            }
+            .sheet(isPresented: $showsPaywall) {
+                PaywallView()
             }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
@@ -92,7 +101,14 @@ struct ProductListView: View {
                 }
                 .buttonStyle(.plain)
                 .swipeActions(edge: .trailing) {
-                    if product.status == .inUse {
+                    if !subscription.canWrite {
+                        Button {
+                            showsPaywall = true
+                        } label: {
+                            Label("Débloquer", systemImage: "lock")
+                        }
+                        .tint(.orange)
+                    } else if product.status == .inUse {
                         Button {
                             discardReason = viewModel.suggestedDiscardReason(for: product)
                             discardTarget = product

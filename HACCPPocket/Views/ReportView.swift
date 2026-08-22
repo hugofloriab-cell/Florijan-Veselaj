@@ -14,6 +14,7 @@ import UIKit
 struct ReportView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
     @Query private var products: [TrackedProduct]
@@ -149,7 +150,11 @@ struct ReportView: View {
             if report.isEmpty {
                 Text("Aucun enregistrement sur cette période : il n'y a rien à exporter.")
             } else {
-                Text("Le PDF est produit sur l'appareil. Envoyez-le par mail à votre comptable ou conservez-le sur iCloud Drive.")
+                if subscription.pdfWatermark != nil {
+                    Text("Le PDF porte le filigrane « VERSION D'ESSAI ». Il disparaît avec l'abonnement.")
+                } else {
+                    Text("Le PDF est produit sur l'appareil. Envoyez-le par mail à votre comptable ou conservez-le sur iCloud Drive.")
+                }
             }
         }
     }
@@ -161,7 +166,7 @@ struct ReportView: View {
         errorMessage = nil
 
         let report = self.report
-        let data = PDFReportService.generate(report: report)
+        let data = PDFReportService.generate(report: report, watermark: subscription.pdfWatermark)
 
         do {
             pdfURL = try PDFReportService.writeToTemporaryFile(data: data, report: report)

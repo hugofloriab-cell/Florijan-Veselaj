@@ -26,7 +26,7 @@ aucun serveur, aucun compte.
 HACCPPocket/
 ├── App/         Point d'entrée, schéma SwiftData, amorçage, réglages, formatage
 ├── Models/      Entités @Model
-├── Services/    Notifications locales, OCR Vision
+├── Services/    Notifications, OCR Vision, export PDF, abonnement
 ├── ViewModels/  Logique métier et état des formulaires
 └── Views/       Écrans SwiftUI
 ```
@@ -38,4 +38,4 @@ HACCPPocket/
 - [x] Step C1 — Navigation, tableau de bord, registre des températures
 - [x] Step C2 — Produits, nettoyage, réception, réglages
 - [x] Step C3 — Export PDF du registre mensuel
-- [ ] Step D — Paywall RevenueCat
+- [x] Step D — Paywall RevenueCat (essai 14 jours puis lecture seule)

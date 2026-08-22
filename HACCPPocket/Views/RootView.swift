@@ -72,5 +72,6 @@ struct RootView: View {
     RootView()
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
+        .environment(SubscriptionManager.shared)
         .environment(NotificationService.shared)
 }

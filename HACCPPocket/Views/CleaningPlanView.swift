@@ -12,11 +12,13 @@ import SwiftData
 struct CleaningPlanView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \CleaningTask.sortIndex) private var tasks: [CleaningTask]
 
     @State private var viewModel: CleaningPlanViewModel?
     @State private var expandedTask: CleaningTask?
+    @State private var showsPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -30,6 +32,9 @@ struct CleaningPlanView: View {
             .navigationTitle("Nettoyage")
             .sheet(item: $expandedTask) { task in
                 CleaningTaskDetailView(task: task)
+            }
+            .sheet(isPresented: $showsPaywall) {
+                PaywallView()
             }
             .task {
                 if viewModel == nil {
@@ -77,6 +82,7 @@ struct CleaningPlanView: View {
 
         return HStack(alignment: .top, spacing: 12) {
             Button {
+                guard subscription.canWrite else { showsPaywall = true; return }
                 if isDone {
                     viewModel.undoCompletion(for: task)
                 } else {

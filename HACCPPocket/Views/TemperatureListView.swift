@@ -11,6 +11,7 @@ import SwiftData
 struct TemperatureListView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
 
@@ -18,6 +19,7 @@ struct TemperatureListView: View {
     @State private var editedEquipment: Equipment?
     @State private var isCreatingEquipment = false
     @State private var showsArchived = false
+    @State private var showsPaywall = false
 
     private var visibleEquipments: [Equipment] {
         equipments.filter { showsArchived || $0.isActive }
@@ -34,6 +36,7 @@ struct TemperatureListView: View {
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: true) {
                         Button {
+                            guard subscription.canWrite else { showsPaywall = true; return }
                             entryTarget = PendingReading(
                                 equipment: equipment,
                                 moment: .suggested()
@@ -73,7 +76,11 @@ struct TemperatureListView: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        isCreatingEquipment = true
+                        if subscription.canWrite {
+                            isCreatingEquipment = true
+                        } else {
+                            showsPaywall = true
+                        }
                     } label: {
                         Label("Ajouter une enceinte", systemImage: "plus")
                     }
@@ -90,6 +97,9 @@ struct TemperatureListView: View {
                             .buttonStyle(.borderedProminent)
                     }
                 }
+            }
+            .sheet(isPresented: $showsPaywall) {
+                PaywallView()
             }
             .sheet(item: $entryTarget) { target in
                 TemperatureEntryView(
@@ -156,4 +166,5 @@ struct TemperatureListView: View {
     TemperatureListView()
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
+        .environment(SubscriptionManager.shared)
 }

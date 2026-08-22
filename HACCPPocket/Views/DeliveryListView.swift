@@ -12,11 +12,13 @@ import SwiftData
 struct DeliveryListView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
 
     @Query(sort: \DeliveryCheck.receivedAt, order: .reverse) private var deliveries: [DeliveryCheck]
 
     @State private var editedDelivery: DeliveryCheck?
     @State private var isCreating = false
+    @State private var showsPaywall = false
 
     var body: some View {
         List {
@@ -34,7 +36,11 @@ struct DeliveryListView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    isCreating = true
+                    if subscription.canWrite {
+                        isCreating = true
+                    } else {
+                        showsPaywall = true
+                    }
                 } label: {
                     Label("Nouveau contrôle", systemImage: "plus")
                 }
@@ -54,6 +60,9 @@ struct DeliveryListView: View {
         }
         .sheet(isPresented: $isCreating) {
             DeliveryFormView(context: modelContext)
+        }
+        .sheet(isPresented: $showsPaywall) {
+            PaywallView()
         }
         .sheet(item: $editedDelivery) { delivery in
             DeliveryFormView(check: delivery, context: modelContext)
