@@ -106,8 +106,13 @@ final class UserPreferences {
         sortReminders()
     }
 
+    /// `remove(atOffsets:)` est fourni par SwiftUI ; ce fichier ne décrit que
+    /// des données et n'a pas à en dépendre. La suppression se fait donc à la
+    /// main, en partant de la fin pour ne pas décaler les index restants.
     func removeReminders(at offsets: IndexSet) {
-        reminders.remove(atOffsets: offsets)
+        for index in offsets.sorted(by: >) where reminders.indices.contains(index) {
+            reminders.remove(at: index)
+        }
     }
 
     func update(_ reminder: ReminderSlot) {
