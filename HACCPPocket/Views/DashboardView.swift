@@ -36,10 +36,9 @@ struct DashboardView: View {
         )
     }
 
-    private let columns = [
-        GridItem(.flexible(), spacing: DS.gutter),
-        GridItem(.flexible(), spacing: DS.gutter)
-    ]
+    /// Grille adaptative : deux tuiles sur iPhone, trois ou quatre sur iPad,
+    /// sans code conditionnel.
+    private let columns = [GridItem(.adaptive(minimum: 158), spacing: DS.gutter)]
 
     var body: some View {
         NavigationStack {
@@ -63,6 +62,10 @@ struct DashboardView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 28)
+                // Sur un grand écran, une colonne de texte pleine largeur
+                // devient illisible : on la borne et on la centre.
+                .frame(maxWidth: 780)
+                .frame(maxWidth: .infinity)
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Aujourd'hui")
