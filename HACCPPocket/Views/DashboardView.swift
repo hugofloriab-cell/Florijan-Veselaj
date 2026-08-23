@@ -2,7 +2,9 @@
 //  DashboardView.swift
 //  HACCPPocket
 //
-//  Écran d'accueil : ce qu'il reste à faire aujourd'hui, et ce qui cloche.
+//  Écran d'accueil : quatre tuiles qui se lisent d'un coup d'œil, les
+//  anomalies en évidence, puis ce qu'il reste à saisir.
+//
 //  Toute la logique vient de `DashboardViewModel`, recalculé à chaque
 //  rafraîchissement des `@Query`.
 //
@@ -19,8 +21,8 @@ struct DashboardView: View {
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
     @Query private var products: [TrackedProduct]
     @Query(sort: \CleaningTask.sortIndex) private var cleaningTasks: [CleaningTask]
+    @Query(sort: \DeliveryCheck.receivedAt, order: .reverse) private var deliveries: [DeliveryCheck]
 
-    /// Relevé que l'utilisateur vient de sélectionner : ouvre la feuille de saisie.
     @State private var entryTarget: PendingReading?
     @State private var showsPaywall = false
     @State private var editedProduct: TrackedProduct?
@@ -34,33 +36,39 @@ struct DashboardView: View {
         )
     }
 
+    private let columns = [
+        GridItem(.flexible(), spacing: DS.gutter),
+        GridItem(.flexible(), spacing: DS.gutter)
+    ]
+
     var body: some View {
         NavigationStack {
-            List {
-                if !subscription.isSubscribed {
-                    Section {
-                        SubscriptionBanner { showsPaywall = true }
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.sectionSpacing) {
+                    Text(AppFormatters.sentenceCased(AppFormatters.longDay(.now)))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !subscription.isSubscribed {
+                        subscriptionCard
                     }
+
+                    tilesSection
+                    alertsSection
+                    pendingReadingsSection
+                    urgentProductsSection
+                    cleaningSection
+                    registersSection
                 }
-                summarySection
-                alertsSection
-                pendingReadingsSection
-                expiringProductsSection
-                cleaningSection
-                registersSection
+                .padding(.horizontal, 16)
+                .padding(.bottom, 28)
             }
+            .background(Color(.systemGroupedBackground))
             .navigationTitle("Aujourd'hui")
-            .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showsPaywall) {
-                PaywallView()
-            }
+            .sheet(isPresented: $showsPaywall) { PaywallView() }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
-            }
-            .task {
-                if cleaningViewModel == nil {
-                    cleaningViewModel = CleaningPlanViewModel(context: modelContext)
-                }
             }
             .sheet(item: $entryTarget) { target in
                 TemperatureEntryView(
@@ -78,78 +86,97 @@ struct DashboardView: View {
                     )
                 }
             }
+            .task {
+                if cleaningViewModel == nil {
+                    cleaningViewModel = CleaningPlanViewModel(context: modelContext)
+                }
+            }
         }
     }
 
-    // MARK: - En-tête
+    // MARK: - Bandeau d'abonnement
 
-    private var summarySection: some View {
-        Section {
-            // Chaque ligne renvoie sur l'onglet concerné : lire « 3 opérations
-            // dues » sans pouvoir y aller d'un geste n'a aucun intérêt.
+    private var subscriptionCard: some View {
+        SubscriptionBanner { showsPaywall = true }
+            .padding(14)
+            .cardSurface()
+    }
+
+    // MARK: - Tuiles
+
+    private var tilesSection: some View {
+        LazyVGrid(columns: columns, spacing: DS.gutter) {
             Button {
                 router.show(.temperatures)
             } label: {
-                HStack {
-                    ProgressRow(
-                        title: "Relevés de température",
-                        completed: dashboard.completedReadingsToday,
-                        total: dashboard.expectedReadingsToday
-                    )
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            .buttonStyle(.plain)
-
-            Button {
-                router.show(.cleaning)
-            } label: {
-                HStack {
-                    InfoRow(
-                        label: "Opérations de nettoyage dues",
-                        value: "\(dashboard.dueCleaningTasks.count)",
-                        systemImage: "sparkles"
-                    )
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+                MetricTile(
+                    title: "Relevés du jour",
+                    value: "\(dashboard.completedReadingsToday)/\(dashboard.expectedReadingsToday)",
+                    systemImage: "thermometer.medium",
+                    tint: dashboard.isReadingRoutineComplete ? .green : .orange,
+                    progress: dashboard.readingProgress,
+                    needsAttention: !dashboard.isReadingRoutineComplete
+                )
             }
             .buttonStyle(.plain)
 
             Button {
                 router.show(.products)
             } label: {
-                HStack {
-                    InfoRow(
-                        label: "Produits entamés",
-                        value: "\(dashboard.openProductsCount)",
-                        systemImage: "shippingbox"
-                    )
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+                MetricTile(
+                    title: "Produits entamés",
+                    value: "\(dashboard.openProductsCount)",
+                    caption: urgentProductsCaption,
+                    systemImage: "shippingbox.fill",
+                    tint: dashboard.expiredProducts.isEmpty ? .brand : .red,
+                    needsAttention: !dashboard.expiredProducts.isEmpty
+                )
             }
             .buttonStyle(.plain)
 
-            if let rate = dashboard.complianceRate() {
-                HStack {
-                    Image(systemName: "checkmark.seal")
-                        .foregroundStyle(.secondary)
-                        .frame(width: 22)
-                    Text("Conformité sur 30 jours")
-                    Spacer()
-                    Text(rate.formatted(.percent.precision(.fractionLength(0)).locale(AppFormatters.locale)))
-                        .monospacedDigit()
-                        .foregroundStyle(rate >= 0.95 ? Color.green : Color.orange)
-                }
+            Button {
+                router.show(.cleaning)
+            } label: {
+                MetricTile(
+                    title: "Nettoyages à faire",
+                    value: "\(dashboard.dueCleaningTasks.count)",
+                    caption: dashboard.overdueCleaningTasks.isEmpty
+                        ? "À jour"
+                        : "\(dashboard.overdueCleaningTasks.count) en retard",
+                    systemImage: "sparkles",
+                    tint: dashboard.overdueCleaningTasks.isEmpty ? .brand : .orange,
+                    needsAttention: !dashboard.dueCleaningTasks.isEmpty
+                )
             }
-        } header: {
-            Text(AppFormatters.sentenceCased(AppFormatters.longDay(.now)))
+            .buttonStyle(.plain)
+
+            NavigationLink {
+                DeliveryListView()
+            } label: {
+                MetricTile(
+                    title: "Réceptions du jour",
+                    value: "\(deliveriesToday.count)",
+                    caption: complianceCaption,
+                    systemImage: "truck.box.fill",
+                    tint: .brand
+                )
+            }
+            .buttonStyle(.plain)
         }
+    }
+
+    private var urgentProductsCaption: String {
+        let urgent = dashboard.expiredProducts.count + dashboard.expiringProducts.count
+        return urgent == 0 ? "Aucun urgent" : "\(urgent) à traiter"
+    }
+
+    private var deliveriesToday: [DeliveryCheck] {
+        deliveries.filter { Calendar.current.isDateInToday($0.receivedAt) }
+    }
+
+    private var complianceCaption: String {
+        guard let rate = dashboard.complianceRate() else { return "Pas d'historique" }
+        return "Conformité \(rate.formatted(.percent.precision(.fractionLength(0)).locale(AppFormatters.locale)))"
     }
 
     // MARK: - Alertes
@@ -157,14 +184,19 @@ struct DashboardView: View {
     @ViewBuilder
     private var alertsSection: some View {
         if dashboard.alerts.isEmpty {
-            Section {
-                Label("Aucune anomalie en cours", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(.green)
+            HStack(spacing: 12) {
+                RowIcon(systemImage: "checkmark.seal.fill", tint: .green)
+                Text("Aucune anomalie en cours")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
             }
+            .padding(14)
+            .cardSurface()
         } else {
-            Section("Alertes") {
+            VStack(alignment: .leading, spacing: DS.gutter) {
+                SectionTitle(text: "Alertes")
                 ForEach(dashboard.alerts) { alert in
-                    AlertRow(alert: alert)
+                    AlertCard(alert: alert)
                 }
             }
         }
@@ -174,15 +206,10 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var pendingReadingsSection: some View {
-        if dashboard.pendingReadings.isEmpty {
-            if !equipments.isEmpty {
-                Section("Relevés de température") {
-                    Label("Tous les relevés du jour sont faits", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                }
-            }
-        } else {
-            Section("Relevés à saisir") {
+        if !dashboard.pendingReadings.isEmpty {
+            VStack(alignment: .leading, spacing: DS.gutter) {
+                SectionTitle(text: "Relevés à saisir")
+
                 ForEach(dashboard.pendingReadings) { pending in
                     Button {
                         if subscription.canWrite {
@@ -191,28 +218,15 @@ struct DashboardView: View {
                             showsPaywall = true
                         }
                     } label: {
-                        HStack {
-                            Image(systemName: pending.equipment.type.systemImage)
-                                .foregroundStyle(.brand)
-                                .frame(width: 26)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(pending.equipment.name)
-                                    .foregroundStyle(.primary)
-                                Text(pending.equipment.formattedRange)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            Spacer()
-
-                            StatusBadge(
-                                text: pending.moment.label,
-                                color: pending.moment.accentColor,
-                                systemImage: pending.moment.systemImage
-                            )
-                        }
+                        ActionRow(
+                            title: pending.equipment.name,
+                            subtitle: pending.equipment.formattedRange,
+                            systemImage: pending.moment.systemImage,
+                            tint: pending.moment.accentColor,
+                            trailingText: pending.moment.label
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -221,10 +235,14 @@ struct DashboardView: View {
     // MARK: - Produits à traiter
 
     @ViewBuilder
-    private var expiringProductsSection: some View {
+    private var urgentProductsSection: some View {
         let urgent = dashboard.expiredProducts + dashboard.expiringProducts
         if !urgent.isEmpty {
-            Section("Produits à traiter") {
+            VStack(alignment: .leading, spacing: DS.gutter) {
+                SectionTitle(text: "Produits à traiter") {
+                    router.show(.products)
+                }
+
                 ForEach(urgent) { product in
                     Button {
                         if subscription.canWrite {
@@ -233,53 +251,16 @@ struct DashboardView: View {
                             showsPaywall = true
                         }
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(product.name)
-                                    .foregroundStyle(.primary)
-                                Text(product.storage.label)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            StatusBadge(
-                                text: product.remainingLabel(),
-                                color: product.urgency().color,
-                                systemImage: product.urgency().systemImage
-                            )
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        }
+                        ActionRow(
+                            title: product.name,
+                            subtitle: product.storage.label,
+                            systemImage: product.urgency().systemImage,
+                            tint: product.urgency().color,
+                            trailingText: product.remainingLabel()
+                        )
                     }
+                    .buttonStyle(.plain)
                 }
-            }
-        }
-    }
-
-    /// Pointe une opération depuis l'accueil, sans passer par l'onglet Nettoyage.
-    private func completeCleaning(_ task: CleaningTask) {
-        guard subscription.canWrite else {
-            showsPaywall = true
-            return
-        }
-        cleaningViewModel?.complete(task)
-    }
-
-    // MARK: - Autres registres
-
-    private var registersSection: some View {
-        Section("Registres") {
-            NavigationLink {
-                DeliveryListView()
-            } label: {
-                Label("Contrôles à réception", systemImage: "shippingbox")
-            }
-
-            NavigationLink {
-                ReportView()
-            } label: {
-                Label("Registre mensuel (PDF)", systemImage: "doc.text")
             }
         }
     }
@@ -289,35 +270,69 @@ struct DashboardView: View {
     @ViewBuilder
     private var cleaningSection: some View {
         if !dashboard.dueCleaningTasks.isEmpty {
-            Section("Nettoyage à réaliser") {
-                ForEach(dashboard.dueCleaningTasks.prefix(5).map { $0 }) { task in
+            VStack(alignment: .leading, spacing: DS.gutter) {
+                SectionTitle(text: "Nettoyage à réaliser") {
+                    router.show(.cleaning)
+                }
+
+                ForEach(Array(dashboard.dueCleaningTasks.prefix(4))) { task in
                     Button {
                         completeCleaning(task)
                     } label: {
-                        HStack {
-                            Image(systemName: "circle")
-                                .font(.title3)
-                                .foregroundStyle(.secondary)
-                                .frame(width: 26)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(task.title)
-                                    .foregroundStyle(.primary)
-                                if !task.zone.isEmpty {
-                                    Text(task.zone)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            if task.isOverdue() {
-                                StatusBadge(text: "En retard", color: .orange)
-                            }
-                        }
+                        ActionRow(
+                            title: task.title,
+                            subtitle: task.zone.isEmpty ? task.frequency.label : task.zone,
+                            systemImage: "circle",
+                            tint: task.isOverdue() ? .orange : .brand,
+                            trailingText: task.isOverdue() ? "En retard" : nil
+                        )
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel("Pointer \(task.title)")
                 }
             }
         }
+    }
+
+    // MARK: - Registres
+
+    private var registersSection: some View {
+        VStack(alignment: .leading, spacing: DS.gutter) {
+            SectionTitle(text: "Registres")
+
+            NavigationLink {
+                DeliveryListView()
+            } label: {
+                ActionRow(
+                    title: "Contrôles à réception",
+                    subtitle: "Températures et conformité des livraisons",
+                    systemImage: "shippingbox"
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink {
+                ReportView()
+            } label: {
+                ActionRow(
+                    title: "Registre mensuel",
+                    subtitle: "PDF prêt à présenter, export tableur",
+                    systemImage: "doc.text"
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: - Actions
+
+    /// Pointe une opération depuis l'accueil, sans passer par l'onglet Nettoyage.
+    private func completeCleaning(_ task: CleaningTask) {
+        guard subscription.canWrite else {
+            showsPaywall = true
+            return
+        }
+        cleaningViewModel?.complete(task)
     }
 }
 
@@ -326,4 +341,5 @@ struct DashboardView: View {
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
         .environment(SubscriptionManager.shared)
+        .environment(AppRouter())
 }

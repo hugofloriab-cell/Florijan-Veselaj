@@ -98,31 +98,36 @@ struct DeliveryListView: View {
 
     private func row(for delivery: DeliveryCheck) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .top, spacing: 12) {
+                RowIcon(
+                    systemImage: delivery.decision.systemImage,
+                    tint: delivery.decision == .accepted ? .green : .red
+                )
+
+                VStack(alignment: .leading, spacing: 3) {
                     Text(delivery.supplierName)
-                        .font(.headline)
+                        .font(.subheadline.weight(.semibold))
                     if !delivery.productLabel.isEmpty {
                         Text(delivery.productLabel)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                    HStack(spacing: 8) {
+                        Text(AppFormatters.shortDate(delivery.receivedAt))
+                        Text(delivery.formattedTemperature)
+                            .foregroundStyle(delivery.isTemperatureCompliant ? Color.secondary : Color.red)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
                 }
-                Spacer()
+
+                Spacer(minLength: 8)
+
                 StatusBadge(
                     text: delivery.decision.label,
-                    color: delivery.decision == .accepted ? .green : .red,
-                    systemImage: delivery.decision.systemImage
+                    color: delivery.decision == .accepted ? .green : .red
                 )
             }
-
-            HStack(spacing: 10) {
-                Label(AppFormatters.shortDate(delivery.receivedAt), systemImage: "calendar")
-                Label(delivery.formattedTemperature, systemImage: "thermometer.medium")
-                    .foregroundStyle(delivery.isTemperatureCompliant ? Color.secondary : Color.red)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
 
             if !delivery.anomalies.isEmpty {
                 Text(delivery.anomalies.joined(separator: " · "))

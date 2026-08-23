@@ -129,22 +129,32 @@ struct TemperatureListView: View {
     // MARK: - Ligne
 
     private func row(for equipment: Equipment) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Label(equipment.name, systemImage: equipment.type.systemImage)
-                    .font(.headline)
-                Spacer()
-                if let reading = equipment.latestReading {
-                    TemperatureLabel(value: reading.value, isCompliant: reading.isCompliant)
-                }
+        HStack(spacing: 12) {
+            RowIcon(
+                systemImage: equipment.type.systemImage,
+                tint: equipment.isActive ? .brand : .secondary
+            )
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(equipment.name)
+                    .font(.subheadline.weight(.semibold))
+                Text("\(equipment.type.label) · \(equipment.formattedRange)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
-            Text("\(equipment.type.label) — \(equipment.formattedRange)")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            Spacer(minLength: 8)
 
+            if let reading = equipment.latestReading {
+                VStack(alignment: .trailing, spacing: 2) {
+                    TemperatureLabel(value: reading.value, isCompliant: reading.isCompliant)
+                    Text(AppFormatters.relativeDay(reading.recordedAt))
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     /// Les pastilles Matin et Soir lancent directement la saisie du relevé

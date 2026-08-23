@@ -172,14 +172,17 @@ struct CleaningPlanView: View {
                 }
             } label: {
                 Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
+                    .font(.system(size: 26))
                     .foregroundStyle(isDone ? Color.green : Color.secondary)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isDone ? "Annuler le pointage de \(task.title)" : "Pointer \(task.title)")
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(task.title)
+                    .font(.subheadline.weight(.medium))
                     .strikethrough(isDone, color: .secondary)
                     .foregroundStyle(isDone ? .secondary : .primary)
 

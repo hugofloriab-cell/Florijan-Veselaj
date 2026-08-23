@@ -73,10 +73,10 @@ struct StatusBadge: View {
             }
         }
         .labelStyle(.titleAndIcon)
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 10)
+        .font(.caption2.weight(.bold))
+        .padding(.horizontal, 9)
         .padding(.vertical, 5)
-        .background(color.opacity(0.15), in: Capsule())
+        .background(color.opacity(0.16), in: Capsule())
         .foregroundStyle(color)
     }
 }
@@ -128,12 +128,13 @@ struct ProgressRow: View {
                 Text(title)
                 Spacer()
                 Text("\(completed) / \(total)")
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
                     .monospacedDigit()
-                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(isComplete ? Color.green : Color.orange)
             }
             ProgressView(value: progress)
                 .tint(isComplete ? Color.green : Color.orange)
+                .scaleEffect(x: 1, y: 1.4, anchor: .center)
         }
         .padding(.vertical, 4)
     }
@@ -149,7 +150,8 @@ struct TemperatureLabel: View {
 
     var body: some View {
         Text(AppFormatters.temperature(value))
-            .font(.headline.monospacedDigit())
+            .font(.system(.headline, design: .rounded, weight: .semibold))
+            .monospacedDigit()
             .foregroundStyle(isCompliant ? Color.primary : .red)
     }
 }
@@ -164,11 +166,9 @@ struct InfoRow: View {
     var systemImage: String?
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             if let systemImage {
-                Image(systemName: systemImage)
-                    .foregroundStyle(.secondary)
-                    .frame(width: 22)
+                RowIcon(systemImage: systemImage, tint: .secondary, size: 26)
             }
             Text(label)
             Spacer()

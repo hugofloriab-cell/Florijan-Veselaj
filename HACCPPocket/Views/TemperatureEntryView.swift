@@ -98,18 +98,24 @@ struct TemperatureEntryView: View {
 
     private var valueSection: some View {
         Section {
-            HStack {
-                TextField("0,0", text: Bindable(viewModel).valueText)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
-                    .multilineTextAlignment(.leading)
-                    .keyboardType(.numbersAndPunctuation)
-                    .focused($isValueFocused)
+            HStack(spacing: 12) {
+                adjustButton(-0.5, systemImage: "minus")
 
-                Text("°C")
-                    .font(.title2)
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    TextField("0,0", text: Bindable(viewModel).valueText)
+                        .font(.system(size: 46, weight: .bold, design: .rounded))
+                        .multilineTextAlignment(.center)
+                        .keyboardType(.numbersAndPunctuation)
+                        .focused($isValueFocused)
+                    Text("°C")
+                        .font(.title3.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+
+                adjustButton(0.5, systemImage: "plus")
             }
-            .padding(.vertical, 6)
+            .padding(.vertical, 10)
 
             statusBanner
         } header: {
@@ -121,6 +127,30 @@ struct TemperatureEntryView: View {
                 Text("Plage attendue : \(viewModel.equipment.formattedRange)")
             }
         }
+    }
+
+    /// Ajustement au demi-degré : en cuisine, on lit une sonde et on corrige
+    /// d'un pouce, sans repasser par le clavier.
+    private func adjustButton(_ delta: Double, systemImage: String) -> some View {
+        Button {
+            adjust(by: delta)
+        } label: {
+            Image(systemName: systemImage)
+                .font(.title3.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .background(Color.brand.opacity(0.14), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.brand)
+        .accessibilityLabel(delta > 0 ? "Augmenter d'un demi-degré" : "Diminuer d'un demi-degré")
+    }
+
+    private func adjust(by delta: Double) {
+        let current = viewModel.value ?? 0
+        let updated = ((current + delta) * 10).rounded() / 10
+        viewModel.valueText = updated.formatted(
+            .number.precision(.fractionLength(1)).locale(AppFormatters.locale)
+        )
     }
 
     @ViewBuilder

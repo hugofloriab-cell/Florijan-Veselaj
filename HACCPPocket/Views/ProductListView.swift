@@ -220,39 +220,47 @@ struct ProductListView: View {
     }
 
     private func row(for product: TrackedProduct) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
+        let tint: Color = product.status == .inUse ? product.urgency().color : .secondary
+
+        return HStack(alignment: .top, spacing: 12) {
+            RowIcon(systemImage: product.storage.systemImage, tint: tint)
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(product.name)
-                    .font(.headline)
-                Spacer()
-                StatusBadge(
-                    text: product.remainingLabel(),
-                    color: product.status == .inUse ? product.urgency().color : .secondary,
-                    systemImage: product.status == .inUse ? product.urgency().systemImage : product.status.systemImage
-                )
-            }
+                    .font(.subheadline.weight(.semibold))
 
-            HStack(spacing: 10) {
-                Label(product.storage.label, systemImage: product.storage.systemImage)
-                if !product.batchNumber.isEmpty {
-                    Label(product.batchNumber, systemImage: "number")
+                Text("À retirer le \(AppFormatters.shortDate(product.effectiveLimitDate))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    Text(product.storage.label)
+                    if !product.batchNumber.isEmpty {
+                        Text("Lot \(product.batchNumber)")
+                    }
                 }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            Text("Ouvert le \(AppFormatters.shortDate(product.openedAt)) · à retirer le \(AppFormatters.shortDate(product.effectiveLimitDate))")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
-            if product.status == .discarded, !product.discardReason.isEmpty {
-                Text(product.discardReason)
-                    .font(.caption2)
-                    .foregroundStyle(.orange)
-                    .fixedSize(horizontal: false, vertical: true)
+                if product.status == .discarded, !product.discardReason.isEmpty {
+                    Text(product.discardReason)
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+
+            Spacer(minLength: 8)
+
+            StatusBadge(
+                text: product.remainingLabel(),
+                color: tint,
+                systemImage: product.status == .inUse
+                    ? product.urgency().systemImage
+                    : product.status.systemImage
+            )
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder
