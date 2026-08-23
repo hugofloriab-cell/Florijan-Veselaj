@@ -24,6 +24,18 @@ enum SeedData {
         defaults.set(true, forKey: seedFlagKey)
     }
 
+    /// Réamorce une base repartie de zéro après un incident de stockage.
+    ///
+    /// Le drapeau « déjà amorcé » vit dans les réglages, pas dans la base :
+    /// après une mise à l'écart, il est toujours là alors que la base est
+    /// vide. Sans cette remise à zéro, l'utilisateur retrouverait une
+    /// application entièrement nue — ni enceintes, ni plan de nettoyage.
+    @MainActor
+    static func seedAfterRecovery(in context: ModelContext, defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: seedFlagKey)
+        seedIfNeeded(in: context, defaults: defaults)
+    }
+
     /// Insère la configuration par défaut. `includeSampleActivity` ajoute en plus
     /// un historique fictif, réservé aux prévisualisations Xcode.
     @MainActor

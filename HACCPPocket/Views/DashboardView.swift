@@ -49,6 +49,10 @@ struct DashboardView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
+                    // Un problème de stockage passe avant tout le reste :
+                    // l'utilisateur doit le voir au premier lancement.
+                    StoreStatusBanner()
+
                     if !subscription.isSubscribed {
                         subscriptionCard
                     }

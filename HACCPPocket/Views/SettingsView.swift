@@ -288,6 +288,8 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
+            StoreStatusRow()
+
             NavigationLink {
                 HistoryView()
             } label: {
@@ -459,6 +461,11 @@ struct SettingsView: View {
 
             InfoRow(label: "Stockage", value: "100 % local", systemImage: "iphone")
             InfoRow(label: "Version", value: appVersion, systemImage: "number")
+            InfoRow(
+                label: "Format des données",
+                value: AppSchema.versionDescription,
+                systemImage: "cylinder.split.1x2"
+            )
         } header: {
             Text("À propos")
         } footer: {

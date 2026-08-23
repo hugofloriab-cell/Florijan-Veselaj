@@ -13,9 +13,12 @@ import SwiftData
 @main
 struct HACCPPocketApp: App {
 
-    /// Construit au lancement : si le store est illisible, mieux vaut échouer
-    /// franchement que travailler sur une base corrompue.
     private let container: ModelContainer
+
+    /// État de l'ouverture du stockage. Une base illisible ne fait plus
+    /// planter le lancement : elle est mise de côté et l'utilisateur est
+    /// prévenu depuis les réglages.
+    private let storeOutcome: AppSchema.StoreOutcome
 
     @State private var preferences: UserPreferences
     @State private var notificationService: NotificationService
@@ -23,11 +26,9 @@ struct HACCPPocketApp: App {
     @State private var router = AppRouter()
 
     init() {
-        do {
-            container = try AppSchema.makeContainer()
-        } catch {
-            fatalError("Échec de l'initialisation du stockage local : \(error)")
-        }
+        let store = AppSchema.openStore()
+        container = store.container
+        storeOutcome = store.outcome
 
         _preferences = State(initialValue: UserPreferences.shared)
         _notificationService = State(initialValue: NotificationService.shared)
@@ -42,6 +43,7 @@ struct HACCPPocketApp: App {
                 .environment(notificationService)
                 .environment(subscription)
                 .environment(router)
+                .environment(\.storeOutcome, storeOutcome)
                 .task {
                     // Les rappels sont reprogrammés à chaque lancement : ils
                     // suivent ainsi les réglages sans code de synchronisation.
