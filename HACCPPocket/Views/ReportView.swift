@@ -21,6 +21,10 @@ struct ReportView: View {
     @Query private var deliveries: [DeliveryCheck]
     @Query(sort: \CleaningTask.sortIndex) private var cleaningTasks: [CleaningTask]
     @Query private var establishments: [Establishment]
+    @Query private var thermalRecords: [ThermalProcessRecord]
+    @Query private var oilChecks: [OilCheckRecord]
+    @Query private var pestVisits: [PestControlVisit]
+    @Query private var trainings: [StaffTraining]
 
     @State private var selectedMonth: Date = .now
     @State private var pdfURL: URL?
@@ -43,7 +47,11 @@ struct ReportView: View {
             equipments: equipments,
             products: products,
             deliveries: deliveries,
-            cleaningTasks: cleaningTasks
+            cleaningTasks: cleaningTasks,
+            thermalRecords: thermalRecords,
+            oilChecks: oilChecks,
+            pestVisits: pestVisits,
+            trainings: trainings
         )
     }
 

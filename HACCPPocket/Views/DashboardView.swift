@@ -304,12 +304,12 @@ struct DashboardView: View {
             SectionTitle(text: "Registres")
 
             NavigationLink {
-                DeliveryListView()
+                RegistersHubView()
             } label: {
                 ActionRow(
-                    title: "Contrôles à réception",
-                    subtitle: "Températures et conformité des livraisons",
-                    systemImage: "shippingbox"
+                    title: "Tous les registres",
+                    subtitle: "Réception, process, huiles, nuisibles, formations",
+                    systemImage: "folder"
                 )
             }
             .buttonStyle(.plain)

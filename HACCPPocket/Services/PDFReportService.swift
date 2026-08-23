@@ -22,6 +22,10 @@ struct MonthlyReport {
     let products: [TrackedProduct]
     let deliveries: [DeliveryCheck]
     let cleaningTasks: [CleaningTask]
+    let thermalRecords: [ThermalProcessRecord]
+    let oilChecks: [OilCheckRecord]
+    let pestVisits: [PestControlVisit]
+    let trainings: [StaffTraining]
     let calendar: Calendar
 
     init(
@@ -31,6 +35,10 @@ struct MonthlyReport {
         products: [TrackedProduct],
         deliveries: [DeliveryCheck],
         cleaningTasks: [CleaningTask],
+        thermalRecords: [ThermalProcessRecord] = [],
+        oilChecks: [OilCheckRecord] = [],
+        pestVisits: [PestControlVisit] = [],
+        trainings: [StaffTraining] = [],
         calendar: Calendar = .current
     ) {
         self.month = month
@@ -39,6 +47,10 @@ struct MonthlyReport {
         self.products = products
         self.deliveries = deliveries
         self.cleaningTasks = cleaningTasks
+        self.thermalRecords = thermalRecords
+        self.oilChecks = oilChecks
+        self.pestVisits = pestVisits
+        self.trainings = trainings
         self.calendar = calendar
     }
 
@@ -108,11 +120,43 @@ struct MonthlyReport {
         nonCompliantReadings.filter(\.needsCorrectiveAction)
     }
 
+    // MARK: Registres périodiques
+
+    var thermalInPeriod: [ThermalProcessRecord] {
+        thermalRecords
+            .filter { isInPeriod($0.startedAt) }
+            .sorted { $0.startedAt < $1.startedAt }
+    }
+
+    var oilChecksInPeriod: [OilCheckRecord] {
+        oilChecks
+            .filter { isInPeriod($0.checkedAt) }
+            .sorted { $0.checkedAt < $1.checkedAt }
+    }
+
+    var pestVisitsInPeriod: [PestControlVisit] {
+        pestVisits
+            .filter { isInPeriod($0.visitedAt) }
+            .sorted { $0.visitedAt < $1.visitedAt }
+    }
+
+    /// Les formations ne sont pas des événements du mois mais un état : on
+    /// joint l'ensemble des attestations valides, c'est ce que l'inspecteur
+    /// demande à voir.
+    var validTrainings: [StaffTraining] {
+        trainings
+            .filter { !$0.isExpired(at: interval.end) }
+            .sorted { $0.completedAt > $1.completedAt }
+    }
+
     var isEmpty: Bool {
         allReadings.isEmpty
             && productsInPeriod.isEmpty
             && deliveriesInPeriod.isEmpty
             && cleaningRecordsByTask.isEmpty
+            && thermalInPeriod.isEmpty
+            && oilChecksInPeriod.isEmpty
+            && pestVisitsInPeriod.isEmpty
     }
 }
 
@@ -248,6 +292,16 @@ enum PDFReportService {
             row(["Opérations de nettoyage enregistrées",
                  "\(report.cleaningRecordsByTask.reduce(0) { $0 + $1.records.count })"],
                 widths: [300, 200])
+            row(["Refroidissements et remises en température",
+                 "\(report.thermalInPeriod.count)"], widths: [300, 200])
+            row(["Contrôles de bains de friture",
+                 "\(report.oilChecksInPeriod.count)"], widths: [300, 200])
+            row(["Visites de lutte contre les nuisibles",
+                 "\(report.pestVisitsInPeriod.count)"], widths: [300, 200])
+            row(["Attestations de formation valides",
+                 "\(report.validTrainings.count)"],
+                widths: [300, 200],
+                color: report.validTrainings.isEmpty ? .systemRed : .black)
 
             // ---- Températures ----
             if report.readingsByEquipment.isEmpty {
@@ -341,6 +395,86 @@ enum PDFReportService {
                         entry.task.frequency.label,
                         "\(entry.records.count)",
                         dates
+                    ], widths: widths)
+                }
+            }
+
+            // ---- Process thermiques ----
+            sectionTitle("Refroidissements et remises en température")
+            if report.thermalInPeriod.isEmpty {
+                text("Aucune opération enregistrée sur la période.", color: .darkGray)
+            } else {
+                let widths: [CGFloat] = [130, 80, 60, 55, 55, 135]
+                row(["Produit", "Opération", "Date", "Durée", "Départ → fin", "Action corrective"],
+                    widths: widths, font: Fonts.tableHeader, color: .darkGray)
+
+                for record in report.thermalInPeriod {
+                    let arrival = record.endTemperature.map { AppFormatters.temperature($0) } ?? "en cours"
+                    row([
+                        record.productName,
+                        record.kind.shortLabel,
+                        AppFormatters.shortDate(record.startedAt),
+                        record.formattedDuration(),
+                        "\(AppFormatters.temperature(record.startTemperature)) → \(arrival)",
+                        record.isCompliant ? record.comment : (record.correctiveAction.isEmpty ? "⚠ Écart non documenté" : record.correctiveAction)
+                    ], widths: widths, color: record.isCompliant ? .black : .systemRed)
+                }
+            }
+
+            // ---- Huiles ----
+            sectionTitle("Bains de friture")
+            if report.oilChecksInPeriod.isEmpty {
+                text("Aucun contrôle enregistré sur la période.", color: .darkGray)
+            } else {
+                let widths: [CGFloat] = [70, 130, 90, 80, 145]
+                row(["Date", "Friteuse", "Composés polaires", "Aspect", "Suite donnée"],
+                    widths: widths, font: Fonts.tableHeader, color: .darkGray)
+
+                for check in report.oilChecksInPeriod {
+                    row([
+                        AppFormatters.shortDate(check.checkedAt),
+                        check.fryerName,
+                        check.formattedPolarCompounds,
+                        check.appearance.label,
+                        check.action.label
+                    ], widths: widths, color: check.isCompliant ? .black : .systemRed)
+                }
+            }
+
+            // ---- Nuisibles ----
+            sectionTitle("Lutte contre les nuisibles")
+            if report.pestVisitsInPeriod.isEmpty {
+                text("Aucune visite enregistrée sur la période.", color: .darkGray)
+            } else {
+                let widths: [CGFloat] = [70, 120, 90, 235]
+                row(["Date", "Prestataire", "Constat", "Mesures prises"],
+                    widths: widths, font: Fonts.tableHeader, color: .darkGray)
+
+                for visit in report.pestVisitsInPeriod {
+                    row([
+                        AppFormatters.shortDate(visit.visitedAt),
+                        visit.company,
+                        visit.statusLabel,
+                        visit.actionsTaken.isEmpty ? visit.findings : visit.actionsTaken
+                    ], widths: widths, color: visit.hasInfestation ? .systemRed : .black)
+                }
+            }
+
+            // ---- Formations ----
+            sectionTitle("Formations à l'hygiène alimentaire")
+            if report.validTrainings.isEmpty {
+                text("Aucune attestation enregistrée.", color: .systemRed)
+            } else {
+                let widths: [CGFloat] = [140, 150, 110, 115]
+                row(["Personne", "Formation", "Organisme", "Suivie le"],
+                    widths: widths, font: Fonts.tableHeader, color: .darkGray)
+
+                for training in report.validTrainings {
+                    row([
+                        training.personName,
+                        training.title,
+                        training.organisation,
+                        AppFormatters.shortDate(training.completedAt)
                     ], widths: widths)
                 }
             }

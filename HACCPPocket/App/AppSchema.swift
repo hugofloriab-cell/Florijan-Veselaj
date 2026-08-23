@@ -20,7 +20,12 @@ enum AppSchema {
         TrackedProduct.self,
         DeliveryCheck.self,
         CleaningTask.self,
-        CleaningRecord.self
+        CleaningRecord.self,
+        ThermalProcessRecord.self,
+        ThermalCheckpoint.self,
+        OilCheckRecord.self,
+        PestControlVisit.self,
+        StaffTraining.self
     ]
 
     static var schema: Schema {

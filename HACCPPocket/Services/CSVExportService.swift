@@ -13,6 +13,10 @@ enum CSVRegister: String, CaseIterable, Identifiable {
     case products
     case deliveries
     case cleaning
+    case thermal
+    case oil
+    case pest
+    case training
 
     var id: String { rawValue }
 
@@ -22,6 +26,10 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .products:     "Produits entamés"
         case .deliveries:   "Contrôles à réception"
         case .cleaning:     "Plan de nettoyage"
+        case .thermal:      "Refroidissement et remise en température"
+        case .oil:          "Bains de friture"
+        case .pest:         "Lutte contre les nuisibles"
+        case .training:     "Formations"
         }
     }
 
@@ -31,6 +39,10 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .products:     "shippingbox"
         case .deliveries:   "truck.box"
         case .cleaning:     "sparkles"
+        case .thermal:      "thermometer.variable"
+        case .oil:          "drop.triangle"
+        case .pest:         "ant"
+        case .training:     "graduationcap"
         }
     }
 
@@ -40,6 +52,10 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .products:     "produits"
         case .deliveries:   "receptions"
         case .cleaning:     "nettoyage"
+        case .thermal:      "process-thermiques"
+        case .oil:          "huiles"
+        case .pest:         "nuisibles"
+        case .training:     "formations"
         }
     }
 }
@@ -56,6 +72,10 @@ enum CSVExportService {
         case .products:     products(report)
         case .deliveries:   deliveries(report)
         case .cleaning:     cleaning(report)
+        case .thermal:      thermal(report)
+        case .oil:          oil(report)
+        case .pest:         pest(report)
+        case .training:     training(report)
         }
     }
 
@@ -150,6 +170,91 @@ enum CSVExportService {
                     record.comment
                 ])
             }
+        }
+        return assemble(rows)
+    }
+
+    private static func thermal(_ report: MonthlyReport) -> String {
+        var rows = [["Produit", "Lot", "Opération", "Départ", "Heure début",
+                     "Température départ (°C)", "Heure fin", "Température fin (°C)",
+                     "Durée (min)", "Limite (min)", "Conforme", "Action corrective",
+                     "Opérateur"]]
+
+        for record in report.thermalInPeriod {
+            rows.append([
+                record.productName,
+                record.batchNumber,
+                record.kind.label,
+                AppFormatters.shortDate(record.startedAt),
+                AppFormatters.time(record.startedAt),
+                decimal(record.startTemperature),
+                record.finishedAt.map { AppFormatters.time($0) } ?? "",
+                record.endTemperature.map { decimal($0) } ?? "",
+                record.isFinished ? "\(Int(record.duration() / 60))" : "",
+                "\(Int(record.maximumDurationSeconds / 60))",
+                record.isFinished ? (record.isCompliant ? "Oui" : "Non") : "En cours",
+                record.correctiveAction,
+                record.operatorName
+            ])
+        }
+        return assemble(rows)
+    }
+
+    private static func oil(_ report: MonthlyReport) -> String {
+        var rows = [["Date", "Friteuse", "Composés polaires (%)", "Seuil (%)",
+                     "Aspect", "Suite donnée", "Conforme", "Opérateur", "Commentaire"]]
+
+        for check in report.oilChecksInPeriod {
+            rows.append([
+                AppFormatters.shortDate(check.checkedAt),
+                check.fryerName,
+                check.polarCompounds.map { decimal($0) } ?? "",
+                decimal(check.polarCompoundsLimit),
+                check.appearance.label,
+                check.action.label,
+                check.isCompliant ? "Oui" : "Non",
+                check.operatorName,
+                check.comment
+            ])
+        }
+        return assemble(rows)
+    }
+
+    private static func pest(_ report: MonthlyReport) -> String {
+        var rows = [["Date", "Prestataire", "Technicien", "Présence constatée",
+                     "Constat", "Appâts remplacés", "Postes", "Mesures prises",
+                     "Prochaine visite"]]
+
+        for visit in report.pestVisitsInPeriod {
+            rows.append([
+                AppFormatters.shortDate(visit.visitedAt),
+                visit.company,
+                visit.technician,
+                visit.hasInfestation ? "Oui" : "Non",
+                visit.findings,
+                visit.baitsReplaced ? "Oui" : "Non",
+                "\(visit.deviceCount)",
+                visit.actionsTaken,
+                visit.nextVisitDate.map { AppFormatters.shortDate($0) } ?? ""
+            ])
+        }
+        return assemble(rows)
+    }
+
+    private static func training(_ report: MonthlyReport) -> String {
+        var rows = [["Personne", "Formation", "Organisme", "Suivie le",
+                     "Échéance", "Attestation jointe", "Notes"]]
+
+        for training in report.validTrainings {
+            rows.append([
+                training.personName,
+                training.title,
+                training.organisation,
+                AppFormatters.shortDate(training.completedAt),
+                training.expiresAt.map { AppFormatters.shortDate($0) } ?? "",
+                training.hasCertificate ? "Oui" : "Non",
+                training.notes
+            ])
         }
         return assemble(rows)
     }
