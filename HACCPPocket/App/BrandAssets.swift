@@ -85,7 +85,10 @@ struct BrandLogo: View {
 
 // MARK: - Raccourci de couleur
 
-extension Color {
+/// Déclaré sur `ShapeStyle` et non sur `Color` : sans cela, `.foregroundStyle(.brand)`
+/// ne compile pas, la notation pointée y étant résolue contre `ShapeStyle`.
+/// Cette forme donne aussi `Color.brand`.
+extension ShapeStyle where Self == Color {
     /// Accent de l'application, aligné sur le logo.
-    static let brand = BrandAssets.color
+    static var brand: Color { BrandAssets.color }
 }

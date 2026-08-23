@@ -86,7 +86,7 @@ struct MonthlyReport {
 
     var productsInPeriod: [TrackedProduct] {
         products
-            .filter { isInPeriod($0.openedAt) || $0.closedAt.map(isInPeriod) == true }
+            .filter { isInPeriod($0.openedAt) || $0.closedAt.map { isInPeriod($0) } == true }
             .sorted { $0.openedAt < $1.openedAt }
     }
 

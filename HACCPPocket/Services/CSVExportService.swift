@@ -100,10 +100,10 @@ enum CSVExportService {
                 product.supplier,
                 product.storage.label,
                 AppFormatters.shortDate(product.openedAt),
-                product.supplierExpiryDate.map(AppFormatters.shortDate) ?? "",
+                product.supplierExpiryDate.map { AppFormatters.shortDate($0) } ?? "",
                 AppFormatters.shortDate(product.effectiveLimitDate),
                 product.status.label,
-                product.closedAt.map(AppFormatters.shortDate) ?? "",
+                product.closedAt.map { AppFormatters.shortDate($0) } ?? "",
                 product.discardReason
             ])
         }
@@ -121,8 +121,8 @@ enum CSVExportService {
                 delivery.supplierName,
                 delivery.productLabel,
                 delivery.batchNumber,
-                delivery.temperature.map(decimal) ?? "",
-                delivery.temperatureLimit.map(decimal) ?? "",
+                delivery.temperature.map { decimal($0) } ?? "",
+                delivery.temperatureLimit.map { decimal($0) } ?? "",
                 delivery.packagingIntact ? "Oui" : "Non",
                 delivery.labellingCompliant ? "Oui" : "Non",
                 delivery.decision.label,
@@ -158,7 +158,7 @@ enum CSVExportService {
 
     private static func assemble(_ rows: [[String]]) -> String {
         rows.map { row in
-            row.map(escape).joined(separator: separator)
+            row.map { escape($0) }.joined(separator: separator)
         }
         .joined(separator: "\r\n")
     }
