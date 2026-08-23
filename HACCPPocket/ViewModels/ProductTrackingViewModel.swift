@@ -139,6 +139,27 @@ final class ProductTrackingViewModel {
         persist()
     }
 
+    /// Rouvre le même produit avec une nouvelle date d'ouverture. En cuisine,
+    /// on ré-entame chaque semaine les mêmes références : re-saisir le nom, le
+    /// fournisseur et le lot à chaque fois est le meilleur moyen de ne rien
+    /// tracer du tout.
+    @discardableResult
+    func duplicate(_ product: TrackedProduct, shelfLifeDays: Int) -> TrackedProduct {
+        let copy = TrackedProduct(
+            name: product.name,
+            openedAt: .now,
+            secondaryLimitDate: TrackedProduct.defaultLimitDate(openedAt: .now, days: shelfLifeDays),
+            storage: product.storage,
+            batchNumber: product.batchNumber,
+            barcode: product.barcode,
+            supplier: product.supplier,
+            notes: product.notes
+        )
+        modelContext.insert(copy)
+        persist()
+        return copy
+    }
+
     /// Suppression définitive, réservée à une saisie erronée.
     func delete(_ product: TrackedProduct) {
         modelContext.delete(product)

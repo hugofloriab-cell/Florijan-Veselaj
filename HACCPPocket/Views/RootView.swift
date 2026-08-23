@@ -14,6 +14,9 @@ struct RootView: View {
     /// Onglet sélectionné, conservé entre deux lancements.
     @SceneStorage("haccp.selectedTab") private var selection: String = Tab.today.rawValue
 
+    /// La première configuration ne s'affiche qu'une fois.
+    @AppStorage("haccp.didCompleteOnboarding") private var didCompleteOnboarding = false
+
     private enum Tab: String, CaseIterable {
         case today
         case temperatures
@@ -65,6 +68,16 @@ struct RootView: View {
                 .tag(Tab.settings.rawValue)
         }
         .tint(.teal)
+        .fullScreenCover(isPresented: showsOnboarding) {
+            OnboardingView()
+        }
+    }
+
+    private var showsOnboarding: Binding<Bool> {
+        Binding(
+            get: { !didCompleteOnboarding },
+            set: { didCompleteOnboarding = !$0 }
+        )
     }
 }
 

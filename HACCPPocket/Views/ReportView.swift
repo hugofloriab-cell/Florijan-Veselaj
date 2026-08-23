@@ -26,6 +26,8 @@ struct ReportView: View {
     @State private var pdfURL: URL?
     @State private var isGenerating = false
     @State private var errorMessage: String?
+    @State private var csvRegister: CSVRegister = .temperatures
+    @State private var csvURL: URL?
 
     /// Les douze derniers mois, du plus récent au plus ancien.
     private var availableMonths: [Date] {
@@ -51,6 +53,8 @@ struct ReportView: View {
             summarySection
             actionSection
 
+            csvSection
+
             if let pdfURL {
                 Section("Aperçu") {
                     PDFPreview(url: pdfURL)
@@ -62,8 +66,12 @@ struct ReportView: View {
         .navigationTitle("Registre mensuel")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: selectedMonth) { _, _ in
-            // Le PDF affiché ne correspond plus au mois choisi.
+            // Les fichiers produits ne correspondent plus au mois choisi.
             pdfURL = nil
+            csvURL = nil
+        }
+        .onChange(of: csvRegister) { _, _ in
+            csvURL = nil
         }
     }
 
@@ -159,6 +167,33 @@ struct ReportView: View {
         }
     }
 
+    private var csvSection: some View {
+        Section {
+            Picker("Registre", selection: $csvRegister) {
+                ForEach(CSVRegister.allCases) { register in
+                    Label(register.label, systemImage: register.systemImage).tag(register)
+                }
+            }
+
+            Button {
+                generateCSV()
+            } label: {
+                Label("Préparer le fichier CSV", systemImage: "tablecells")
+            }
+            .disabled(report.isEmpty)
+
+            if let csvURL {
+                ShareLink(item: csvURL) {
+                    Label("Partager le CSV", systemImage: "square.and.arrow.up")
+                }
+            }
+        } header: {
+            Text("Export tableur")
+        } footer: {
+            Text("Le CSV s'ouvre dans Numbers ou Excel. Utile pour votre comptable ou pour vos propres analyses ; le PDF, lui, reste le document à présenter en contrôle.")
+        }
+    }
+
     // MARK: - Génération
 
     private func generate() {
@@ -175,6 +210,18 @@ struct ReportView: View {
         }
 
         isGenerating = false
+    }
+
+    private func generateCSV() {
+        let report = self.report
+        let csv = CSVExportService.makeCSV(csvRegister, report: report)
+
+        do {
+            csvURL = try CSVExportService.writeToTemporaryFile(csv, register: csvRegister, report: report)
+            errorMessage = nil
+        } catch {
+            errorMessage = "Export CSV impossible : \(error.localizedDescription)"
+        }
     }
 }
 

@@ -69,6 +69,8 @@ struct TemperatureListView: View {
                     }
                 }
 
+                .onMove(perform: moveEquipments)
+
                 if equipments.contains(where: { !$0.isActive }) {
                     Section {
                         Toggle("Afficher les équipements archivés", isOn: $showsArchived)
@@ -87,6 +89,10 @@ struct TemperatureListView: View {
                     } label: {
                         Label("Ajouter une enceinte", systemImage: "plus")
                     }
+                }
+
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
                 }
             }
             .overlay {
@@ -176,6 +182,18 @@ struct TemperatureListView: View {
     }
 
     // MARK: - Actions
+
+    /// Réordonne la liste et réécrit les `sortIndex` : l'ordre choisi ici est
+    /// celui de la tournée de relevés, il doit coller au parcours réel en cuisine.
+    private func moveEquipments(from offsets: IndexSet, to destination: Int) {
+        var reordered = visibleEquipments
+        reordered.move(fromOffsets: offsets, toOffset: destination)
+
+        for (index, equipment) in reordered.enumerated() {
+            equipment.sortIndex = index
+        }
+        try? modelContext.save()
+    }
 
     /// Un équipement n'est jamais supprimé : son historique doit rester
     /// consultable lors d'un contrôle. On l'archive.

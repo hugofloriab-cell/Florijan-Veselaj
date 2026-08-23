@@ -13,6 +13,7 @@ struct ProductListView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(SubscriptionManager.self) private var subscription
+    @Environment(UserPreferences.self) private var preferences
 
     @Query(sort: \TrackedProduct.secondaryLimitDate) private var products: [TrackedProduct]
 
@@ -192,6 +193,17 @@ struct ProductListView: View {
                         Label("Étiquette", systemImage: "printer")
                     }
                     .tint(.indigo)
+
+                    Button {
+                        guard subscription.canWrite else { showsPaywall = true; return }
+                        editedProduct = viewModel.duplicate(
+                            product,
+                            shelfLifeDays: preferences.defaultShelfLifeDays
+                        )
+                    } label: {
+                        Label("Ré-entamer", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .tint(.teal)
                 }
             }
         }

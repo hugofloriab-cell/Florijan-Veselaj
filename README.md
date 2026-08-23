@@ -13,6 +13,7 @@ aucun serveur, aucun compte.
 - Export PDF mensuel « prêt pour le contrôle »
 - Impression d'étiquettes d'étiquetage (rouleaux et planches A4) avec QR de
   traçabilité, et scan de ce QR pour rouvrir la fiche produit
+- Export CSV de chaque registre pour le tableur
 
 ## Stack
 
