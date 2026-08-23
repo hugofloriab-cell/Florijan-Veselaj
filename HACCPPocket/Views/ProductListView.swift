@@ -207,7 +207,7 @@ struct ProductListView: View {
                     } label: {
                         Label("Ré-entamer", systemImage: "arrow.triangle.2.circlepath")
                     }
-                    .tint(.teal)
+                    .tint(.brand)
                 }
             }
         }

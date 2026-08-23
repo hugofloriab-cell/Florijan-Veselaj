@@ -43,7 +43,7 @@ struct OnboardingView: View {
         NavigationStack {
             VStack(spacing: 0) {
                 ProgressView(value: Double(step.rawValue + 1), total: Double(Step.allCases.count))
-                    .tint(.teal)
+                    .tint(.brand)
                     .padding(.horizontal)
                     .padding(.top, 8)
 
@@ -91,11 +91,9 @@ struct OnboardingView: View {
     private var welcomeStep: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 54))
-                    .foregroundStyle(.teal)
+                BrandLogo(size: 92)
                     .frame(maxWidth: .infinity)
-                    .padding(.top, 24)
+                    .padding(.top, 20)
 
                 Text("Votre registre sanitaire, dans votre poche")
                     .font(.title2.weight(.bold))
@@ -126,7 +124,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
                 .font(.title3)
-                .foregroundStyle(.teal)
+                .foregroundStyle(.brand)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.subheadline.weight(.semibold))
@@ -299,7 +297,7 @@ struct OnboardingView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .tint(.teal)
+            .tint(.brand)
             .frame(maxWidth: .infinity)
         }
         .padding(16)

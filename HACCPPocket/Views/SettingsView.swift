@@ -41,7 +41,7 @@ struct SettingsView: View {
                 HStack(spacing: 12) {
                     Image(systemName: subscription.isSubscribed ? "checkmark.seal.fill" : "sparkles")
                         .font(.title3)
-                        .foregroundStyle(subscription.isSubscribed ? Color.green : Color.teal)
+                        .foregroundStyle(subscription.isSubscribed ? Color.green : Color.brand)
                         .frame(width: 26)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -358,6 +358,19 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            HStack(spacing: 14) {
+                BrandLogo(size: 44)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(BrandAssets.productName)
+                        .font(.headline)
+                    Text("Traçabilité sanitaire hors ligne")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding(.vertical, 4)
+
             InfoRow(label: "Stockage", value: "100 % local", systemImage: "iphone")
             InfoRow(label: "Version", value: appVersion, systemImage: "number")
         } header: {

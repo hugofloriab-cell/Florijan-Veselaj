@@ -47,7 +47,7 @@ struct TemperatureListView: View {
                         } label: {
                             Label("Relever", systemImage: "thermometer.medium")
                         }
-                        .tint(.teal)
+                        .tint(.brand)
                     }
                     .swipeActions(edge: .trailing) {
                         Button {
@@ -160,7 +160,7 @@ struct TemperatureListView: View {
                 } label: {
                     StatusBadge(
                         text: moment.label,
-                        color: done ? .green : .teal,
+                        color: done ? .green : .brand,
                         systemImage: done ? "checkmark" : moment.systemImage
                     )
                 }

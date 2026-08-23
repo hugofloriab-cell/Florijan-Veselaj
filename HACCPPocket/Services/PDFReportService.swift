@@ -415,16 +415,27 @@ enum PDFReportService {
     }
 
     private static func drawFooter(page: Int, in context: CGContext) {
-        let footer = "HACCP Pocket · document généré le \(AppFormatters.dateAndTime(.now)) · page \(page)"
+        let baseline = Layout.page.height - Layout.margin
+        var textOrigin = Layout.margin
+
+        // Le logo de l'application signe le document : il identifie l'outil qui
+        // l'a produit, là où le logo en en-tête identifie l'établissement.
+        let logoSide: CGFloat = 12
+        if let logo = BrandAssets.tintedLogo(.gray, size: CGSize(width: logoSide, height: logoSide)) {
+            logo.draw(in: CGRect(x: Layout.margin, y: baseline, width: logoSide, height: logoSide))
+            textOrigin += logoSide + 5
+        }
+
+        let footer = "\(BrandAssets.productName) · document généré le \(AppFormatters.dateAndTime(.now)) · page \(page)"
         let attributed = NSAttributedString(
             string: footer,
             attributes: [.font: Fonts.caption, .foregroundColor: UIColor.gray]
         )
         attributed.draw(
             in: CGRect(
-                x: Layout.margin,
-                y: Layout.page.height - Layout.margin,
-                width: Layout.contentWidth,
+                x: textOrigin,
+                y: baseline + 1,
+                width: Layout.page.width - textOrigin - Layout.margin,
                 height: 14
             )
         )

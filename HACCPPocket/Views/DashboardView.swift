@@ -193,7 +193,7 @@ struct DashboardView: View {
                     } label: {
                         HStack {
                             Image(systemName: pending.equipment.type.systemImage)
-                                .foregroundStyle(.teal)
+                                .foregroundStyle(.brand)
                                 .frame(width: 26)
 
                             VStack(alignment: .leading, spacing: 2) {

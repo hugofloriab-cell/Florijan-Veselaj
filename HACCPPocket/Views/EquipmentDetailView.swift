@@ -138,14 +138,14 @@ struct EquipmentDetailView: View {
                             x: .value("Date", reading.recordedAt),
                             y: .value("Température", reading.value)
                         )
-                        .foregroundStyle(.teal)
+                        .foregroundStyle(.brand)
                         .interpolationMethod(.monotone)
 
                         PointMark(
                             x: .value("Date", reading.recordedAt),
                             y: .value("Température", reading.value)
                         )
-                        .foregroundStyle(reading.isCompliant ? Color.teal : Color.red)
+                        .foregroundStyle(reading.isCompliant ? Color.brand : Color.red)
                         .symbolSize(reading.isCompliant ? 20 : 60)
                     }
                 }

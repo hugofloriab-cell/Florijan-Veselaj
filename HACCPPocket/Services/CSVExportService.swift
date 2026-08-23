@@ -191,8 +191,20 @@ enum CSVExportService {
             .replacingOccurrences(of: " ", with: "-")
             .lowercased()
 
+        // Un CSV est un fichier texte : il ne peut pas contenir d'image. Son
+        // identité passe donc par son nom de fichier.
+        let establishment = report.establishment?.name
+            .folding(options: .diacriticInsensitive, locale: AppFormatters.locale)
+            .replacingOccurrences(of: " ", with: "-")
+            .lowercased()
+            .filter { $0.isLetter || $0.isNumber || $0 == "-" }
+
+        var components = [register.fileName]
+        if let establishment, !establishment.isEmpty { components.append(establishment) }
+        components.append(slug)
+
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(register.fileName)-\(slug).csv")
+            .appendingPathComponent(components.joined(separator: "-") + ".csv")
 
         var data = Data([0xEF, 0xBB, 0xBF])
         data.append(Data(csv.utf8))

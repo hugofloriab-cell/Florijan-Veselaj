@@ -41,7 +41,7 @@ struct RootView: View {
                 .tabItem { Label(AppRouter.Tab.settings.title, systemImage: AppRouter.Tab.settings.systemImage) }
                 .tag(AppRouter.Tab.settings)
         }
-        .tint(.teal)
+        .tint(.brand)
         .fullScreenCover(isPresented: showsOnboarding) {
             OnboardingView()
         }

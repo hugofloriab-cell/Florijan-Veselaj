@@ -76,7 +76,7 @@ struct ProductFormView: View {
             Section {
                 Label(origin, systemImage: "barcode.viewfinder")
                     .font(.caption)
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(.brand)
             }
         }
     }
@@ -126,7 +126,7 @@ struct ProductFormView: View {
                 Spacer()
                 Text(AppFormatters.shortDate(viewModel.effectiveLimitDate))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.teal)
+                    .foregroundStyle(.brand)
             }
         } header: {
             Text("Dates limites")

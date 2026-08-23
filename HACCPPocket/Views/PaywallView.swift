@@ -71,9 +71,7 @@ struct PaywallView: View {
 
     private var header: some View {
         VStack(spacing: 10) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(.teal)
+            BrandLogo(size: 76)
 
             Text(subscription.statusTitle)
                 .font(.title2.weight(.bold))
@@ -126,7 +124,7 @@ struct PaywallView: View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: systemImage)
                 .font(.title3)
-                .foregroundStyle(.teal)
+                .foregroundStyle(.brand)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -171,7 +169,7 @@ struct PaywallView: View {
         return HStack(spacing: 14) {
             Image(systemName: isSelected ? "largecircle.fill.circle" : "circle")
                 .font(.title2)
-                .foregroundStyle(isSelected ? Color.teal : Color.secondary)
+                .foregroundStyle(isSelected ? Color.brand : Color.secondary)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(plan.title)
@@ -179,7 +177,7 @@ struct PaywallView: View {
                 if let highlight = plan.highlight {
                     Text(highlight)
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(.teal)
+                        .foregroundStyle(.brand)
                 }
             }
 
@@ -197,7 +195,7 @@ struct PaywallView: View {
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14))
         .overlay {
             RoundedRectangle(cornerRadius: 14)
-                .strokeBorder(isSelected ? Color.teal : Color.clear, lineWidth: 2)
+                .strokeBorder(isSelected ? Color.brand : Color.clear, lineWidth: 2)
         }
     }
 
@@ -219,7 +217,7 @@ struct PaywallView: View {
                 .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.teal)
+            .tint(.brand)
             .disabled(subscription.isPurchasing || subscription.isSubscribed || selectedPlan == nil)
 
             Button("Restaurer mes achats") {
@@ -304,7 +302,7 @@ struct SubscriptionBanner: View {
                 HStack(spacing: 12) {
                     Image(systemName: subscription.canWrite ? "hourglass" : "lock.fill")
                         .font(.title3)
-                        .foregroundStyle(subscription.canWrite ? Color.teal : Color.orange)
+                        .foregroundStyle(subscription.canWrite ? Color.brand : Color.orange)
                         .frame(width: 26)
 
                     VStack(alignment: .leading, spacing: 2) {
