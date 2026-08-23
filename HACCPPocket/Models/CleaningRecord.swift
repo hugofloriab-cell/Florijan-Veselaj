@@ -12,16 +12,16 @@ import SwiftData
 @Model
 final class CleaningRecord {
 
-    var completedAt: Date
+    var completedAt: Date = Date.now
 
     /// Opérateur ayant réalisé l'opération.
-    var operatorName: String
+    var operatorName: String = ""
 
     /// Produit réellement employé : on recopie celui de la tâche par défaut,
     /// mais il peut changer (rupture de stock, produit de remplacement).
-    var productUsed: String
+    var productUsed: String = ""
 
-    var comment: String
+    var comment: String = ""
 
     /// Photo facultative de la zone nettoyée.
     @Attribute(.externalStorage) var photoData: Data?

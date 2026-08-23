@@ -26,6 +26,7 @@ struct MonthlyReport {
     let oilChecks: [OilCheckRecord]
     let pestVisits: [PestControlVisit]
     let trainings: [StaffTraining]
+    let dishes: [Dish]
     let calendar: Calendar
 
     init(
@@ -39,6 +40,7 @@ struct MonthlyReport {
         oilChecks: [OilCheckRecord] = [],
         pestVisits: [PestControlVisit] = [],
         trainings: [StaffTraining] = [],
+        dishes: [Dish] = [],
         calendar: Calendar = .current
     ) {
         self.month = month
@@ -51,7 +53,21 @@ struct MonthlyReport {
         self.oilChecks = oilChecks
         self.pestVisits = pestVisits
         self.trainings = trainings
+        self.dishes = dishes
         self.calendar = calendar
+    }
+
+    /// La carte, dans l'ordre où elle se lit : entrées, plats, desserts.
+    var dishesInMenuOrder: [Dish] {
+        dishes.sorted { left, right in
+            if left.category.sortWeight != right.category.sortWeight {
+                return left.category.sortWeight < right.category.sortWeight
+            }
+            if left.sortIndex != right.sortIndex {
+                return left.sortIndex < right.sortIndex
+            }
+            return left.name.localizedCaseInsensitiveCompare(right.name) == .orderedAscending
+        }
     }
 
     /// Bornes du mois, du 1er à 00:00 au dernier jour à 23:59.

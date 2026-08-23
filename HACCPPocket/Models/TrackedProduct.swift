@@ -104,27 +104,27 @@ final class TrackedProduct {
     /// dans le QR code de l'étiquette pour retrouver la fiche au scan.
     var identifier: UUID = UUID()
 
-    var name: String
+    var name: String = ""
 
     /// Numéro de lot fournisseur (obligatoire en cas de retrait/rappel).
-    var batchNumber: String
+    var batchNumber: String = ""
 
     /// Code-barres lu via Vision, conservé pour retrouver le produit rapidement.
-    var barcode: String
+    var barcode: String = ""
 
-    var supplier: String
+    var supplier: String = ""
 
     /// DLC / DDM imprimée par le fournisseur, lue par OCR quand elle existe.
     var supplierExpiryDate: Date?
 
     /// Date d'ouverture, point de départ de la DLC secondaire.
-    var openedAt: Date
+    var openedAt: Date = Date.now
 
     /// DLC secondaire : la date réelle de retrait du produit.
-    var secondaryLimitDate: Date
+    var secondaryLimitDate: Date = Date.now
 
-    var storageRawValue: String
-    var statusRawValue: String
+    var storageRawValue: String = ""
+    var statusRawValue: String = ""
 
     /// Photo de l'étiquette d'origine : la preuve la plus solide en contrôle.
     @Attribute(.externalStorage) var labelPhotoData: Data?
@@ -133,10 +133,16 @@ final class TrackedProduct {
     var closedAt: Date?
 
     /// Motif de la mise au rebut, exigé pour justifier une destruction.
-    var discardReason: String
+    var discardReason: String = ""
 
-    var notes: String
-    var createdAt: Date
+    var notes: String = ""
+
+    /// Allergènes déclarés sur l'emballage du produit. Ils servent à alimenter
+    /// la fiche allergènes des plats : personne ne retient de tête que le
+    /// bouillon du commerce contient du céleri.
+    var allergenRawValues: [String] = []
+
+    var createdAt: Date = Date.now
 
     init(
         name: String,
@@ -150,6 +156,7 @@ final class TrackedProduct {
         supplierExpiryDate: Date? = nil,
         labelPhotoData: Data? = nil,
         notes: String = "",
+        allergens: Set<Allergen> = [],
         createdAt: Date = .now,
         identifier: UUID = UUID()
     ) {
@@ -168,6 +175,7 @@ final class TrackedProduct {
         self.closedAt = nil
         self.discardReason = ""
         self.notes = notes
+        self.allergenRawValues = Allergen.rawValues(from: allergens)
         self.createdAt = createdAt
     }
 }
@@ -199,6 +207,11 @@ extension TrackedProduct {
 // MARK: - Logique métier
 
 extension TrackedProduct {
+
+    var allergens: Set<Allergen> {
+        get { Allergen.set(from: allergenRawValues) }
+        set { allergenRawValues = Allergen.rawValues(from: newValue) }
+    }
 
     var storage: StorageZone {
         get { StorageZone(rawValue: storageRawValue) ?? .positiveCold }

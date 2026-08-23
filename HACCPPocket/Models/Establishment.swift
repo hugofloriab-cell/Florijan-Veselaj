@@ -13,25 +13,25 @@ import SwiftData
 final class Establishment {
 
     /// Raison sociale / enseigne.
-    var name: String
+    var name: String = ""
 
     /// Adresse complète (multi-lignes autorisées).
-    var address: String
+    var address: String = ""
 
     /// Numéro SIRET, affiché sur les documents officiels.
-    var siret: String
+    var siret: String = ""
 
     /// Nom du responsable du Plan de Maîtrise Sanitaire.
-    var managerName: String
+    var managerName: String = ""
 
     /// Numéro d'agrément sanitaire, si l'établissement en possède un.
-    var approvalNumber: String
+    var approvalNumber: String = ""
 
     /// Logo affiché en en-tête des PDF. Stocké hors base pour ne pas alourdir le store.
     @Attribute(.externalStorage) var logoData: Data?
 
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date.now
+    var updatedAt: Date = Date.now
 
     init(
         name: String = "",

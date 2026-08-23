@@ -12,19 +12,19 @@ import SwiftData
 @Model
 final class PestControlVisit {
 
-    var visitedAt: Date
+    var visitedAt: Date = Date.now
 
-    var company: String
-    var technician: String
+    var company: String = ""
+    var technician: String = ""
 
     /// Constat du technicien : traces, captures, zones à surveiller.
-    var findings: String
+    var findings: String = ""
 
-    var baitsReplaced: Bool
-    var deviceCount: Int
+    var baitsReplaced: Bool = true
+    var deviceCount: Int = 0
 
     /// Mesures prises ou recommandées.
-    var actionsTaken: String
+    var actionsTaken: String = ""
 
     var nextVisitDate: Date?
 
@@ -32,9 +32,9 @@ final class PestControlVisit {
     @Attribute(.externalStorage) var reportPhotoData: Data?
 
     /// Vrai si le technicien a constaté une présence de nuisibles.
-    var hasInfestation: Bool
+    var hasInfestation: Bool = false
 
-    var createdAt: Date
+    var createdAt: Date = Date.now
 
     init(
         company: String,

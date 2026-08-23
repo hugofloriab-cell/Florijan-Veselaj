@@ -51,6 +51,10 @@ final class ProductFormViewModel {
     /// Photo de l'étiquette, conservée comme preuve.
     var labelPhotoData: Data?
 
+    /// Allergènes déclarés sur l'emballage. Ils alimenteront la fiche
+    /// allergènes des plats qui utilisent ce produit.
+    var allergens: Set<Allergen>
+
     /// Permet de forcer une DLC secondaire différente du calcul automatique.
     var overridesSecondaryLimit: Bool
     var customSecondaryLimitDate: Date
@@ -84,6 +88,7 @@ final class ProductFormViewModel {
             self.openedAt = product.openedAt
             self.notes = product.notes
             self.labelPhotoData = product.labelPhotoData
+            self.allergens = product.allergens
             self.hasSupplierExpiry = product.supplierExpiryDate != nil
             self.supplierExpiryDate = product.supplierExpiryDate ?? .now
 
@@ -107,6 +112,7 @@ final class ProductFormViewModel {
             self.shelfLifeDays = prefs.defaultShelfLifeDays
             self.notes = ""
             self.labelPhotoData = nil
+            self.allergens = []
             self.hasSupplierExpiry = false
             self.supplierExpiryDate = .now
             self.overridesSecondaryLimit = false
@@ -225,6 +231,7 @@ final class ProductFormViewModel {
             existing.supplierExpiryDate = hasSupplierExpiry ? supplierExpiryDate : nil
             existing.labelPhotoData = labelPhotoData
             existing.notes = notes
+            existing.allergens = allergens
             product = existing
         } else {
             let created = TrackedProduct(
@@ -237,7 +244,8 @@ final class ProductFormViewModel {
                 supplier: supplier,
                 supplierExpiryDate: hasSupplierExpiry ? supplierExpiryDate : nil,
                 labelPhotoData: labelPhotoData,
-                notes: notes
+                notes: notes,
+                allergens: allergens
             )
             modelContext.insert(created)
             product = created

@@ -16,6 +16,7 @@ struct RegistersHubView: View {
     @Query private var pestVisits: [PestControlVisit]
     @Query private var trainings: [StaffTraining]
     @Query private var deliveries: [DeliveryCheck]
+    @Query private var dishes: [Dish]
 
     /// Opérations thermiques encore ouvertes : c'est l'information la plus
     /// urgente de cet écran, un refroidissement oublié devient non conforme.
@@ -29,6 +30,11 @@ struct RegistersHubView: View {
 
     private var overduePest: Bool {
         pestVisits.contains { $0.isNextVisitOverdue() }
+    }
+
+    /// Plats dont la fiche allergènes n'a jamais été remplie.
+    private var incompleteDishes: Int {
+        dishes.filter { $0.isAvailable && $0.needsAllergenReview }.count
     }
 
     private var oilToChange: Int {
@@ -72,6 +78,22 @@ struct RegistersHubView: View {
                         systemImage: "drop.triangle",
                         badge: oilToChange > 0 ? "\(oilToChange) à traiter" : nil,
                         badgeColor: .red
+                    )
+                }
+            }
+
+            Section("Information du consommateur") {
+                NavigationLink {
+                    MenuListView()
+                } label: {
+                    registerRow(
+                        "Ma carte et les allergènes",
+                        detail: dishes.isEmpty
+                            ? "Vos plats et leurs allergènes déclarés"
+                            : "\(dishes.count) plat(s) à la carte",
+                        systemImage: "fork.knife",
+                        badge: incompleteDishes > 0 ? "\(incompleteDishes) à compléter" : nil,
+                        badgeColor: .orange
                     )
                 }
             }

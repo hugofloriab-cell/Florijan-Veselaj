@@ -52,28 +52,28 @@ enum ReadingMoment: String, Codable, CaseIterable, Identifiable, Sendable {
 @Model
 final class TemperatureReading {
 
-    var recordedAt: Date
+    var recordedAt: Date = Date.now
 
     /// Température relevée, en degrés Celsius.
-    var value: Double
+    var value: Double = 0
 
-    var momentRawValue: String
+    var momentRawValue: String = ""
 
     /// Personne ayant effectué le relevé (traçabilité exigée).
-    var operatorName: String
+    var operatorName: String = ""
 
-    var comment: String
+    var comment: String = ""
 
     /// Action corrective obligatoire dès qu'un relevé est hors plage.
-    var correctiveAction: String
+    var correctiveAction: String = ""
 
     /// Seuils figés au moment du relevé : si l'utilisateur modifie plus tard la
     /// plage de l'équipement, l'historique reste jugé sur les règles de l'époque.
-    var thresholdMin: Double
-    var thresholdMax: Double
+    var thresholdMin: Double = 0
+    var thresholdMax: Double = 0
 
     /// Conformité stockée (et non calculée) pour rester filtrable par `#Predicate`.
-    var isCompliant: Bool
+    var isCompliant: Bool = true
 
     var equipment: Equipment?
 

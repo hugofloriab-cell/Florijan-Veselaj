@@ -20,7 +20,7 @@ enum AppSchema {
 
     /// La version de schéma que l'application utilise aujourd'hui.
     /// Une seule ligne à changer le jour où l'on passe en V2.
-    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV1.self
+    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV2.self
 
     /// Toutes les entités persistées. Ajouter un modèle dans la version de
     /// schéma courante, et nulle part ailleurs.
@@ -39,13 +39,39 @@ enum AppSchema {
         return "v\(version.major).\(version.minor).\(version.patch)"
     }
 
+    // MARK: - Synchronisation iCloud
+
+    /// Synchronisation des registres entre les appareils d'un même compte
+    /// iCloud (iPhone, iPad, Mac).
+    ///
+    /// Désactivée pour l'instant : CloudKit exige la capacité iCloud dans le
+    /// projet Xcode, qui n'est accordée qu'avec un compte développeur payant.
+    /// Tant qu'elle est à `false`, l'application reste strictement locale.
+    ///
+    /// Le schéma, lui, respecte déjà toutes les contraintes CloudKit — voir
+    /// `SchemaVersions.swift`. Le jour venu, il n'y aura donc que trois
+    /// gestes, et aucune migration supplémentaire :
+    ///
+    ///   1. Xcode → cible HACCPPocket → Signing & Capabilities → + Capability
+    ///      → iCloud, puis cocher « CloudKit » et créer le conteneur
+    ///      `iCloud.com.<votre-identifiant>.HACCPPocket` ;
+    ///   2. ajouter aussi la capacité « Background Modes » et y cocher
+    ///      « Remote notifications », sans quoi les modifications faites sur
+    ///      un autre appareil n'arrivent qu'au prochain lancement ;
+    ///   3. passer cette constante à `true`.
+    static let usesCloudSync = false
+
     // MARK: - Emplacement du store
 
     /// Configuration de production. On la construit à un seul endroit pour que
     /// la procédure de secours vise exactement le fichier qu'ouvre SwiftData,
     /// sans avoir à deviner son emplacement.
     private static var productionConfiguration: ModelConfiguration {
-        ModelConfiguration("HACCPPocket", schema: schema)
+        ModelConfiguration(
+            "HACCPPocket",
+            schema: schema,
+            cloudKitDatabase: usesCloudSync ? .automatic : .none
+        )
     }
 
     /// Emplacement réel du fichier de base de données, lu depuis la

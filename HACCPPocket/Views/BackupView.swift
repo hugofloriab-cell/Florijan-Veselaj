@@ -45,6 +45,7 @@ struct BackupView: View {
     @Query private var oilChecks: [OilCheckRecord]
     @Query private var pestVisits: [PestControlVisit]
     @Query private var trainings: [StaffTraining]
+    @Query private var dishes: [Dish]
 
     @AppStorage("haccp.backup.lastExportedAt") private var lastExportTimestamp: Double = 0
     @AppStorage("haccp.backup.includePhotos") private var includePhotos = true
@@ -120,7 +121,7 @@ struct BackupView: View {
     private var totalRecords: Int {
         equipments.count + readings.count + products.count + deliveries.count
             + cleaningRecords.count + thermalRecords.count + oilChecks.count
-            + pestVisits.count + trainings.count
+            + pestVisits.count + trainings.count + dishes.count
     }
 
     private var lastExportDate: Date? {

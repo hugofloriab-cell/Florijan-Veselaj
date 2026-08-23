@@ -43,14 +43,14 @@ enum DeliveryDecision: String, Codable, CaseIterable, Identifiable, Sendable {
 @Model
 final class DeliveryCheck {
 
-    var receivedAt: Date
+    var receivedAt: Date = Date.now
 
-    var supplierName: String
+    var supplierName: String = ""
 
     /// Désignation de la marchandise contrôlée.
-    var productLabel: String
+    var productLabel: String = ""
 
-    var batchNumber: String
+    var batchNumber: String = ""
 
     /// Température relevée à cœur ou en surface, en °C. `nil` pour l'épicerie sèche.
     var temperature: Double?
@@ -58,23 +58,23 @@ final class DeliveryCheck {
     /// Seuil maximal admis pour cette livraison (ex. 4 °C en frais, -18 °C en surgelé).
     var temperatureLimit: Double?
 
-    var packagingIntact: Bool
+    var packagingIntact: Bool = true
 
     /// Étiquetage conforme : DLC lisible, numéro de lot présent, marque de salubrité.
-    var labellingCompliant: Bool
+    var labellingCompliant: Bool = true
 
-    var decisionRawValue: String
+    var decisionRawValue: String = ""
 
     /// Motif de refus ou réserve émise sur le bon de livraison.
-    var reason: String
+    var reason: String = ""
 
-    var operatorName: String
+    var operatorName: String = ""
 
     /// Photo du bon de livraison ou de la non-conformité constatée.
     @Attribute(.externalStorage) var photoData: Data?
 
-    var notes: String
-    var createdAt: Date
+    var notes: String = ""
+    var createdAt: Date = Date.now
 
     init(
         supplierName: String,

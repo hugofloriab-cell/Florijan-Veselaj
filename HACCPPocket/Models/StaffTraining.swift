@@ -13,14 +13,14 @@ import SwiftData
 @Model
 final class StaffTraining {
 
-    var personName: String
+    var personName: String = ""
 
     /// Intitulé, par exemple « Hygiène alimentaire — 14 heures ».
-    var title: String
+    var title: String = ""
 
-    var organisation: String
+    var organisation: String = ""
 
-    var completedAt: Date
+    var completedAt: Date = Date.now
 
     /// Certaines formations doivent être renouvelées ; laisser vide sinon.
     var expiresAt: Date?
@@ -28,8 +28,8 @@ final class StaffTraining {
     /// Photo ou scan de l'attestation.
     @Attribute(.externalStorage) var certificateData: Data?
 
-    var notes: String
-    var createdAt: Date
+    var notes: String = ""
+    var createdAt: Date = Date.now
 
     init(
         personName: String,

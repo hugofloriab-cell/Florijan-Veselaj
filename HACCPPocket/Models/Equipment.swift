@@ -70,27 +70,27 @@ enum EquipmentType: String, Codable, CaseIterable, Identifiable, Sendable {
 @Model
 final class Equipment {
 
-    var name: String
+    var name: String = ""
 
     /// Le type est persisté sous forme de `String` : sur iOS 17, `#Predicate`
     /// ne sait pas comparer un enum stocké. On garde la valeur brute filtrable
     /// et on expose l'enum via une propriété calculée.
-    var typeRawValue: String
+    var typeRawValue: String = ""
 
     /// Emplacement physique (cuisine, réserve, laboratoire...).
-    var location: String
+    var location: String = ""
 
-    var minTemperature: Double
-    var maxTemperature: Double
+    var minTemperature: Double = 0
+    var maxTemperature: Double = 0
 
     /// Ordre d'affichage dans la liste des relevés.
-    var sortIndex: Int
+    var sortIndex: Int = 0
 
     /// Archivage doux : on ne supprime jamais un équipement qui possède un
     /// historique, la réglementation impose de conserver les enregistrements.
-    var isActive: Bool
+    var isActive: Bool = true
 
-    var createdAt: Date
+    var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \TemperatureReading.equipment)
     var readings: [TemperatureReading] = []

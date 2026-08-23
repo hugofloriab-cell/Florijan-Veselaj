@@ -38,6 +38,7 @@ struct BackupArchive: Codable {
     var oilChecks: [OilDTO] = []
     var pestVisits: [PestDTO] = []
     var trainings: [TrainingDTO] = []
+    var dishes: [DishDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -53,6 +54,7 @@ struct BackupArchive: Codable {
             + oilChecks.count
             + pestVisits.count
             + trainings.count
+            + dishes.count
     }
 }
 
@@ -112,6 +114,7 @@ struct ProductDTO: Codable {
     var closedAt: Date?
     var discardReason: String
     var notes: String
+    var allergenRawValues: [String]
     var createdAt: Date
 }
 
@@ -211,6 +214,19 @@ struct TrainingDTO: Codable {
     var certificateData: Data?
     var notes: String
     var createdAt: Date
+}
+
+struct DishDTO: Codable {
+    var name: String
+    var categoryRawValue: String
+    var summary: String
+    var composition: String
+    var allergenRawValues: [String]
+    var isAvailable: Bool
+    var isHomemade: Bool
+    var sortIndex: Int
+    var createdAt: Date
+    var updatedAt: Date
 }
 
 // MARK: - Erreurs
@@ -326,6 +342,7 @@ enum BackupService {
                 closedAt: $0.closedAt,
                 discardReason: $0.discardReason,
                 notes: $0.notes,
+                allergenRawValues: $0.allergenRawValues,
                 createdAt: $0.createdAt
             )
         }
@@ -434,6 +451,21 @@ enum BackupService {
                 certificateData: photo($0.certificateData),
                 notes: $0.notes,
                 createdAt: $0.createdAt
+            )
+        }
+
+        archive.dishes = try context.fetch(FetchDescriptor<Dish>()).map {
+            DishDTO(
+                name: $0.name,
+                categoryRawValue: $0.categoryRawValue,
+                summary: $0.summary,
+                composition: $0.composition,
+                allergenRawValues: $0.allergenRawValues,
+                isAvailable: $0.isAvailable,
+                isHomemade: $0.isHomemade,
+                sortIndex: $0.sortIndex,
+                createdAt: $0.createdAt,
+                updatedAt: $0.updatedAt
             )
         }
 
@@ -558,6 +590,7 @@ enum BackupService {
             )
             product.closedAt = dto.closedAt
             product.discardReason = dto.discardReason
+            product.allergenRawValues = dto.allergenRawValues
             context.insert(product)
         }
 
@@ -683,6 +716,24 @@ enum BackupService {
             context.insert(training)
         }
 
+        for dto in archive.dishes {
+            let dish = Dish(
+                name: dto.name,
+                category: DishCategory(rawValue: dto.categoryRawValue) ?? .main,
+                summary: dto.summary,
+                composition: dto.composition,
+                isAvailable: dto.isAvailable,
+                isHomemade: dto.isHomemade,
+                sortIndex: dto.sortIndex,
+                createdAt: dto.createdAt
+            )
+            // Valeurs brutes recopiées telles quelles : une archive doit se
+            // restaurer à l'identique, même écrite par une version différente.
+            dish.allergenRawValues = dto.allergenRawValues
+            dish.updatedAt = dto.updatedAt
+            context.insert(dish)
+        }
+
         try context.save()
         return archive.totalRecords
     }
@@ -703,6 +754,7 @@ enum BackupService {
         try delete(OilCheckRecord.self, in: context)
         try delete(PestControlVisit.self, in: context)
         try delete(StaffTraining.self, in: context)
+        try delete(Dish.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

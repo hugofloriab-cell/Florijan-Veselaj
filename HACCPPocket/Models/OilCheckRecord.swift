@@ -64,25 +64,25 @@ final class OilCheckRecord {
     /// Seuil réglementaire de composés polaires, en pourcentage.
     static let polarCompoundsLimit: Double = 25
 
-    var checkedAt: Date
+    var checkedAt: Date = Date.now
 
     /// Friteuse concernée, saisie librement : toutes n'ont pas de nom officiel.
-    var fryerName: String
+    var fryerName: String = ""
 
     /// Mesure au testeur, en pourcentage. `nil` si contrôle visuel seul.
     var polarCompounds: Double?
 
     /// Seuil appliqué au moment du contrôle, figé pour l'historique.
-    var polarCompoundsLimit: Double
+    var polarCompoundsLimit: Double = 0
 
-    var appearanceRawValue: String
-    var actionRawValue: String
+    var appearanceRawValue: String = ""
+    var actionRawValue: String = ""
 
-    var operatorName: String
-    var comment: String
+    var operatorName: String = ""
+    var comment: String = ""
 
-    var isCompliant: Bool
-    var createdAt: Date
+    var isCompliant: Bool = true
+    var createdAt: Date = Date.now
 
     init(
         fryerName: String,

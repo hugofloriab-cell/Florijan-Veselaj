@@ -85,8 +85,8 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
 @Model
 final class ThermalCheckpoint {
 
-    var recordedAt: Date
-    var temperature: Double
+    var recordedAt: Date = Date.now
+    var temperature: Double = 0
 
     var record: ThermalProcessRecord?
 
@@ -102,13 +102,13 @@ final class ThermalCheckpoint {
 @Model
 final class ThermalProcessRecord {
 
-    var kindRawValue: String
+    var kindRawValue: String = ""
 
-    var productName: String
-    var batchNumber: String
+    var productName: String = ""
+    var batchNumber: String = ""
 
-    var startedAt: Date
-    var startTemperature: Double
+    var startedAt: Date = Date.now
+    var startTemperature: Double = 0
 
     /// `nil` tant que l'opération est en cours.
     var finishedAt: Date?
@@ -117,17 +117,17 @@ final class ThermalProcessRecord {
     /// Seuils figés au moment de la saisie : si la réglementation ou nos
     /// valeurs par défaut changent, l'historique reste jugé sur les règles
     /// en vigueur ce jour-là.
-    var targetTemperature: Double
-    var maximumDurationSeconds: Double
+    var targetTemperature: Double = 0
+    var maximumDurationSeconds: Double = 0
 
-    var operatorName: String
-    var comment: String
-    var correctiveAction: String
+    var operatorName: String = ""
+    var comment: String = ""
+    var correctiveAction: String = ""
 
     /// Stockée plutôt que calculée, pour rester filtrable par `#Predicate`.
-    var isCompliant: Bool
+    var isCompliant: Bool = true
 
-    var createdAt: Date
+    var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \ThermalCheckpoint.record)
     var checkpoints: [ThermalCheckpoint] = []

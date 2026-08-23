@@ -319,6 +319,17 @@ struct DashboardView: View {
             .buttonStyle(.plain)
 
             NavigationLink {
+                MenuListView()
+            } label: {
+                ActionRow(
+                    title: "Ma carte et les allergènes",
+                    subtitle: "Fiche à afficher en salle",
+                    systemImage: "fork.knife"
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink {
                 HistoryView()
             } label: {
                 ActionRow(

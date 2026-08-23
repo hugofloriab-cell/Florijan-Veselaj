@@ -65,22 +65,22 @@ enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
 final class CleaningTask {
 
     /// Intitulé de l'opération (ex. « Désinfection du plan de travail »).
-    var title: String
+    var title: String = ""
 
     /// Zone concernée (cuisine, plonge, sanitaires, salle...).
-    var zone: String
+    var zone: String = ""
 
     /// Produit utilisé et dosage, exigés par le plan de nettoyage.
-    var productUsed: String
+    var productUsed: String = ""
 
     /// Mode opératoire résumé, consultable au moment de cocher la tâche.
-    var procedure: String
+    var procedure: String = ""
 
-    var frequencyRawValue: String
+    var frequencyRawValue: String = ""
 
-    var isActive: Bool
-    var sortIndex: Int
-    var createdAt: Date
+    var isActive: Bool = true
+    var sortIndex: Int = 0
+    var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \CleaningRecord.task)
     var records: [CleaningRecord] = []

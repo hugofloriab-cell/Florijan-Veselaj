@@ -17,6 +17,7 @@ enum CSVRegister: String, CaseIterable, Identifiable {
     case oil
     case pest
     case training
+    case menu
 
     var id: String { rawValue }
 
@@ -30,6 +31,7 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .oil:          "Bains de friture"
         case .pest:         "Lutte contre les nuisibles"
         case .training:     "Formations"
+        case .menu:         "Carte et allergènes"
         }
     }
 
@@ -43,6 +45,7 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .oil:          "drop.triangle"
         case .pest:         "ant"
         case .training:     "graduationcap"
+        case .menu:         "fork.knife"
         }
     }
 
@@ -56,6 +59,7 @@ enum CSVRegister: String, CaseIterable, Identifiable {
         case .oil:          "huiles"
         case .pest:         "nuisibles"
         case .training:     "formations"
+        case .menu:         "carte-allergenes"
         }
     }
 }
@@ -76,6 +80,7 @@ enum CSVExportService {
         case .oil:          oil(report)
         case .pest:         pest(report)
         case .training:     training(report)
+        case .menu:         menu(report)
         }
     }
 
@@ -260,6 +265,33 @@ enum CSVExportService {
     }
 
     // MARK: - Fabrication du fichier
+
+    /// La carte n'est pas un registre daté : on exporte l'état du jour, avec
+    /// une colonne par allergène pour que le tableur reste filtrable.
+    private static func menu(_ report: MonthlyReport) -> String {
+        var header = ["Catégorie", "Plat", "Description", "Au menu", "Fait maison", "Composition"]
+        header.append(contentsOf: Allergen.allCases.map(\.shortLabel))
+        header.append("Fiche à compléter")
+
+        var rows = [header]
+
+        for dish in report.dishesInMenuOrder {
+            var row = [
+                dish.category.label,
+                dish.displayName,
+                dish.summary,
+                dish.isAvailable ? "Oui" : "Non",
+                dish.isHomemade ? "Oui" : "Non",
+                dish.composition
+            ]
+            let present = dish.allergens
+            row.append(contentsOf: Allergen.allCases.map { present.contains($0) ? "X" : "" })
+            row.append(dish.needsAllergenReview ? "Oui" : "Non")
+            rows.append(row)
+        }
+
+        return assemble(rows)
+    }
 
     private static func assemble(_ rows: [[String]]) -> String {
         rows.map { row in

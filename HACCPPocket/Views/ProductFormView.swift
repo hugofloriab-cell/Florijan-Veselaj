@@ -36,6 +36,7 @@ struct ProductFormView: View {
                 storageSection
                 datesSection
                 labelSection
+                allergenSection
                 notesSection
             }
             .navigationTitle(viewModel.title)
@@ -183,6 +184,19 @@ struct ProductFormView: View {
             Text("Étiquette")
         } footer: {
             Text("La photo est analysée sur l'appareil pour retrouver la DLC et le code-barres. Aucune image n'est envoyée sur Internet.")
+        }
+    }
+
+    private var allergenSection: some View {
+        Section {
+            AllergenSummaryRow(
+                selection: Bindable(viewModel).allergens,
+                subject: viewModel.name.isEmpty ? "Allergènes" : viewModel.name
+            )
+        } header: {
+            Text("Allergènes")
+        } footer: {
+            Text("Recopiez ce qui est déclaré sur l'emballage. Ces allergènes vous seront rappelés au moment de renseigner les plats qui utilisent ce produit.")
         }
     }
 
