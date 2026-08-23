@@ -281,10 +281,18 @@ struct HistoryView: View {
 
     private var allEntries: [HistoryEntry] {
         var entries: [HistoryEntry] = []
-        entries.reserveCapacity(
-            readings.count + products.count + deliveries.count + cleaningRecords.count
-                + thermalRecords.count + oilChecks.count + pestVisits.count + trainings.count
-        )
+        // Réservation calculée pas à pas : une longue chaîne d'additions dans
+        // un argument générique coûte cher au vérificateur de types.
+        var expected: Int = 0
+        expected += readings.count
+        expected += products.count
+        expected += deliveries.count
+        expected += cleaningRecords.count
+        expected += thermalRecords.count
+        expected += oilChecks.count
+        expected += pestVisits.count
+        expected += trainings.count
+        entries.reserveCapacity(expected)
 
         entries.append(contentsOf: readings.map { entry(for: $0) })
         entries.append(contentsOf: products.map { entry(for: $0) })

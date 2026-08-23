@@ -43,18 +43,31 @@ struct BackupArchive: Codable {
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
     var totalRecords: Int {
-        establishments.count
-            + equipments.count
-            + equipments.reduce(0) { $0 + $1.readings.count }
-            + products.count
-            + deliveries.count
-            + cleaningTasks.count
-            + cleaningTasks.reduce(0) { $0 + $1.records.count }
-            + thermalRecords.count
-            + oilChecks.count
-            + pestVisits.count
-            + trainings.count
-            + dishes.count
+        // Additionné pas à pas, en Int explicite. Une chaîne de douze termes
+        // mêlant `count` et `reduce` oblige le compilateur à essayer toutes
+        // les surcharges de `+` : c'est exactement ce qu'il n'arrive plus à
+        // faire en un temps raisonnable.
+        var total: Int = 0
+
+        total += establishments.count
+        total += equipments.count
+        total += products.count
+        total += deliveries.count
+        total += cleaningTasks.count
+        total += thermalRecords.count
+        total += oilChecks.count
+        total += pestVisits.count
+        total += trainings.count
+        total += dishes.count
+
+        for equipment in equipments {
+            total += equipment.readings.count
+        }
+        for task in cleaningTasks {
+            total += task.records.count
+        }
+
+        return total
     }
 }
 
@@ -565,7 +578,27 @@ enum BackupService {
 
         try eraseEverything(in: context)
 
-        for dto in archive.establishments {
+        // Une fonction par modèle : chacune reste courte, et le compilateur
+        // n'a jamais à vérifier une fonction de deux cents lignes.
+        restoreEstablishments(archive.establishments, into: context)
+        restoreEquipments(archive.equipments, into: context)
+        restoreProducts(archive.products, into: context)
+        restoreDeliveries(archive.deliveries, into: context)
+        restoreCleaningTasks(archive.cleaningTasks, into: context)
+        restoreThermalRecords(archive.thermalRecords, into: context)
+        restoreOilChecks(archive.oilChecks, into: context)
+        restorePestVisits(archive.pestVisits, into: context)
+        restoreTrainings(archive.trainings, into: context)
+        restoreDishes(archive.dishes, into: context)
+
+        try context.save()
+        return archive.totalRecords
+    }
+
+    // MARK: Restauration, modèle par modèle
+
+    private static func restoreEstablishments(_ items: [EstablishmentDTO], into context: ModelContext) {
+        for dto in items {
             let establishment = Establishment(
                 name: dto.name,
                 address: dto.address,
@@ -578,11 +611,14 @@ enum BackupService {
             establishment.updatedAt = dto.updatedAt
             context.insert(establishment)
         }
+    }
 
-        for dto in archive.equipments {
+    private static func restoreEquipments(_ items: [EquipmentDTO], into context: ModelContext) {
+        for dto in items {
+            let type = EquipmentType(rawValue: dto.typeRawValue) ?? .positiveCold
             let equipment = Equipment(
                 name: dto.name,
-                type: EquipmentType(rawValue: dto.typeRawValue) ?? .positiveCold,
+                type: type,
                 location: dto.location,
                 minTemperature: dto.minTemperature,
                 maxTemperature: dto.maxTemperature,
@@ -590,35 +626,51 @@ enum BackupService {
                 isActive: dto.isActive,
                 createdAt: dto.createdAt
             )
+            // On recopie la valeur brute : un type inconnu, écrit par une
+            // version plus récente, doit survivre à l'aller-retour.
             equipment.typeRawValue = dto.typeRawValue
             context.insert(equipment)
 
-            for readingDTO in dto.readings {
-                let reading = TemperatureReading(
-                    value: readingDTO.value,
-                    equipment: equipment,
-                    moment: ReadingMoment(rawValue: readingDTO.momentRawValue) ?? .other,
-                    operatorName: readingDTO.operatorName,
-                    comment: readingDTO.comment,
-                    correctiveAction: readingDTO.correctiveAction,
-                    recordedAt: readingDTO.recordedAt
-                )
-                // Les seuils sont figés au moment du relevé : on restaure ceux
-                // de l'archive, pas ceux de l'enceinte d'aujourd'hui.
-                reading.thresholdMin = readingDTO.thresholdMin
-                reading.thresholdMax = readingDTO.thresholdMax
-                reading.isCompliant = readingDTO.isCompliant
-                context.insert(reading)
-            }
+            restoreReadings(dto.readings, of: equipment, into: context)
         }
+    }
 
-        for dto in archive.products {
+    private static func restoreReadings(
+        _ items: [ReadingDTO],
+        of equipment: Equipment,
+        into context: ModelContext
+    ) {
+        for dto in items {
+            let moment = ReadingMoment(rawValue: dto.momentRawValue) ?? .other
+            let reading = TemperatureReading(
+                value: dto.value,
+                equipment: equipment,
+                moment: moment,
+                operatorName: dto.operatorName,
+                comment: dto.comment,
+                correctiveAction: dto.correctiveAction,
+                recordedAt: dto.recordedAt
+            )
+            // Les seuils sont figés au moment du relevé : on restaure ceux de
+            // l'archive, pas ceux de l'enceinte d'aujourd'hui.
+            reading.thresholdMin = dto.thresholdMin
+            reading.thresholdMax = dto.thresholdMax
+            reading.isCompliant = dto.isCompliant
+            context.insert(reading)
+        }
+    }
+
+    private static func restoreProducts(_ items: [ProductDTO], into context: ModelContext) {
+        for dto in items {
+            let storage = StorageZone(rawValue: dto.storageRawValue) ?? .positiveCold
+            let status = ProductStatus(rawValue: dto.statusRawValue) ?? .inUse
+
             let product = TrackedProduct(
                 name: dto.name,
                 openedAt: dto.openedAt,
                 secondaryLimitDate: dto.secondaryLimitDate,
-                storage: StorageZone(rawValue: dto.storageRawValue) ?? .positiveCold,
-                status: ProductStatus(rawValue: dto.statusRawValue) ?? .inUse,
+                storage: storage,
+                status: status,
                 batchNumber: dto.batchNumber,
                 barcode: dto.barcode,
                 supplier: dto.supplier,
@@ -633,8 +685,11 @@ enum BackupService {
             product.allergenRawValues = dto.allergenRawValues
             context.insert(product)
         }
+    }
 
-        for dto in archive.deliveries {
+    private static func restoreDeliveries(_ items: [DeliveryDTO], into context: ModelContext) {
+        for dto in items {
+            let decision = DeliveryDecision(rawValue: dto.decisionRawValue) ?? .accepted
             let delivery = DeliveryCheck(
                 supplierName: dto.supplierName,
                 productLabel: dto.productLabel,
@@ -643,7 +698,7 @@ enum BackupService {
                 temperatureLimit: dto.temperatureLimit,
                 packagingIntact: dto.packagingIntact,
                 labellingCompliant: dto.labellingCompliant,
-                decision: DeliveryDecision(rawValue: dto.decisionRawValue) ?? .accepted,
+                decision: decision,
                 reason: dto.reason,
                 batchNumber: dto.batchNumber,
                 operatorName: dto.operatorName,
@@ -653,11 +708,14 @@ enum BackupService {
             )
             context.insert(delivery)
         }
+    }
 
-        for dto in archive.cleaningTasks {
+    private static func restoreCleaningTasks(_ items: [CleaningTaskDTO], into context: ModelContext) {
+        for dto in items {
+            let frequency = CleaningFrequency(rawValue: dto.frequencyRawValue) ?? .daily
             let task = CleaningTask(
                 title: dto.title,
-                frequency: CleaningFrequency(rawValue: dto.frequencyRawValue) ?? .daily,
+                frequency: frequency,
                 zone: dto.zone,
                 productUsed: dto.productUsed,
                 procedure: dto.procedure,
@@ -667,22 +725,33 @@ enum BackupService {
             )
             context.insert(task)
 
-            for recordDTO in dto.records {
-                let record = CleaningRecord(
-                    task: task,
-                    completedAt: recordDTO.completedAt,
-                    operatorName: recordDTO.operatorName,
-                    productUsed: recordDTO.productUsed,
-                    comment: recordDTO.comment,
-                    photoData: recordDTO.photoData
-                )
-                context.insert(record)
-            }
+            restoreCleaningRecords(dto.records, of: task, into: context)
         }
+    }
 
-        for dto in archive.thermalRecords {
+    private static func restoreCleaningRecords(
+        _ items: [CleaningRecordDTO],
+        of task: CleaningTask,
+        into context: ModelContext
+    ) {
+        for dto in items {
+            let record = CleaningRecord(
+                task: task,
+                completedAt: dto.completedAt,
+                operatorName: dto.operatorName,
+                productUsed: dto.productUsed,
+                comment: dto.comment,
+                photoData: dto.photoData
+            )
+            context.insert(record)
+        }
+    }
+
+    private static func restoreThermalRecords(_ items: [ThermalDTO], into context: ModelContext) {
+        for dto in items {
+            let kind = ThermalProcessKind(rawValue: dto.kindRawValue) ?? .cooling
             let record = ThermalProcessRecord(
-                kind: ThermalProcessKind(rawValue: dto.kindRawValue) ?? .cooling,
+                kind: kind,
                 productName: dto.productName,
                 startTemperature: dto.startTemperature,
                 batchNumber: dto.batchNumber,
@@ -691,6 +760,8 @@ enum BackupService {
                 comment: dto.comment,
                 createdAt: dto.createdAt
             )
+            // Les seuils sont figés à l'ouverture de l'opération : ils
+            // viennent de l'archive, pas des règles d'aujourd'hui.
             record.finishedAt = dto.finishedAt
             record.endTemperature = dto.endTemperature
             record.targetTemperature = dto.targetTemperature
@@ -708,14 +779,19 @@ enum BackupService {
                 context.insert(point)
             }
         }
+    }
 
-        for dto in archive.oilChecks {
+    private static func restoreOilChecks(_ items: [OilDTO], into context: ModelContext) {
+        for dto in items {
+            let appearance = OilAppearance(rawValue: dto.appearanceRawValue) ?? .clear
+            let action = OilAction(rawValue: dto.actionRawValue) ?? .kept
+
             let check = OilCheckRecord(
                 fryerName: dto.fryerName,
                 checkedAt: dto.checkedAt,
                 polarCompounds: dto.polarCompounds,
-                appearance: OilAppearance(rawValue: dto.appearanceRawValue) ?? .clear,
-                action: OilAction(rawValue: dto.actionRawValue) ?? .kept,
+                appearance: appearance,
+                action: action,
                 operatorName: dto.operatorName,
                 comment: dto.comment,
                 createdAt: dto.createdAt
@@ -724,8 +800,10 @@ enum BackupService {
             check.isCompliant = dto.isCompliant
             context.insert(check)
         }
+    }
 
-        for dto in archive.pestVisits {
+    private static func restorePestVisits(_ items: [PestDTO], into context: ModelContext) {
+        for dto in items {
             let visit = PestControlVisit(
                 company: dto.company,
                 visitedAt: dto.visitedAt,
@@ -741,8 +819,10 @@ enum BackupService {
             )
             context.insert(visit)
         }
+    }
 
-        for dto in archive.trainings {
+    private static func restoreTrainings(_ items: [TrainingDTO], into context: ModelContext) {
+        for dto in items {
             let training = StaffTraining(
                 personName: dto.personName,
                 title: dto.title,
@@ -755,11 +835,14 @@ enum BackupService {
             )
             context.insert(training)
         }
+    }
 
-        for dto in archive.dishes {
+    private static func restoreDishes(_ items: [DishDTO], into context: ModelContext) {
+        for dto in items {
+            let category = DishCategory(rawValue: dto.categoryRawValue) ?? .main
             let dish = Dish(
                 name: dto.name,
-                category: DishCategory(rawValue: dto.categoryRawValue) ?? .main,
+                category: category,
                 summary: dto.summary,
                 composition: dto.composition,
                 isAvailable: dto.isAvailable,
@@ -773,9 +856,6 @@ enum BackupService {
             dish.updatedAt = dto.updatedAt
             context.insert(dish)
         }
-
-        try context.save()
-        return archive.totalRecords
     }
 
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,

@@ -119,9 +119,20 @@ struct BackupView: View {
     // MARK: - Résumé
 
     private var totalRecords: Int {
-        equipments.count + readings.count + products.count + deliveries.count
-            + cleaningRecords.count + thermalRecords.count + oilChecks.count
-            + pestVisits.count + trainings.count + dishes.count
+        // Même précaution que dans `BackupArchive` : une longue chaîne
+        // d'additions coûte cher à vérifier, on accumule plutôt.
+        var total: Int = 0
+        total += equipments.count
+        total += readings.count
+        total += products.count
+        total += deliveries.count
+        total += cleaningRecords.count
+        total += thermalRecords.count
+        total += oilChecks.count
+        total += pestVisits.count
+        total += trainings.count
+        total += dishes.count
+        return total
     }
 
     private var lastExportDate: Date? {
