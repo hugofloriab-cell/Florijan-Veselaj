@@ -215,7 +215,7 @@ struct StaffTrainingFormView: View {
         NavigationStack {
             Form {
                 Section("Personne") {
-                    TextField("Nom et prénom", text: $personName)
+                    OperatorField(name: $personName, placeholder: "Nom et prénom")
                         .textContentType(.name)
                 }
 

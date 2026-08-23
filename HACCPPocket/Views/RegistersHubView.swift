@@ -104,6 +104,16 @@ struct RegistersHubView: View {
 
             Section {
                 NavigationLink {
+                    HistoryView()
+                } label: {
+                    registerRow(
+                        "Historique complet",
+                        detail: "Rechercher dans tous les registres",
+                        systemImage: "clock.arrow.circlepath"
+                    )
+                }
+
+                NavigationLink {
                     ReportView()
                 } label: {
                     registerRow(
@@ -112,8 +122,18 @@ struct RegistersHubView: View {
                         systemImage: "doc.text"
                     )
                 }
+
+                NavigationLink {
+                    BackupView()
+                } label: {
+                    registerRow(
+                        "Sauvegarde",
+                        detail: "Exporter ou restaurer toutes les données",
+                        systemImage: "externaldrive"
+                    )
+                }
             } footer: {
-                Text("Le registre mensuel rassemble l'ensemble de ces enregistrements en un seul document.")
+                Text("Le registre mensuel rassemble l'ensemble de ces enregistrements en un seul document. La sauvegarde, elle, met vos données à l'abri de la perte de l'appareil.")
             }
         }
         .navigationTitle("Registres")

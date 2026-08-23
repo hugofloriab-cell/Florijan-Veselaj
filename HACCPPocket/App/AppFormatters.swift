@@ -63,6 +63,14 @@ enum AppFormatters {
         return String(first).uppercased(with: locale) + text.dropFirst()
     }
 
+    /// Ex. « 2026-08-23 » — horodatage neutre pour les noms de fichiers.
+    /// Volontairement indépendant de la locale : un nom de fichier doit rester
+    /// triable et lisible sur n'importe quel ordinateur.
+    static func fileStamp(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
     /// Ex. « août 2026 » — titre des exports mensuels.
     static func monthTitle(_ date: Date) -> String {
         date.formatted(.dateTime.month(.wide).year().locale(locale))

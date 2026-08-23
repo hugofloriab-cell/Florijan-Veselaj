@@ -137,8 +137,7 @@ struct DeliveryFormView: View {
 
     private var detailsSection: some View {
         Section("Détails") {
-            TextField("Opérateur", text: Bindable(viewModel).operatorName)
-                .textContentType(.name)
+            OperatorField(name: Bindable(viewModel).operatorName)
             TextField("Observations", text: Bindable(viewModel).notes, axis: .vertical)
                 .lineLimit(1...4)
         }

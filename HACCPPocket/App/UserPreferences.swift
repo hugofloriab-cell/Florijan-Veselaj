@@ -56,6 +56,7 @@ final class UserPreferences {
         static let operatorName = "haccp.operatorName"
         static let shelfLifeDays = "haccp.defaultShelfLifeDays"
         static let reminders = "haccp.reminders.v2"
+        static let knownOperators = "haccp.operators.v1"
     }
 
     private let defaults: UserDefaults
@@ -75,12 +76,21 @@ final class UserPreferences {
         didSet { persistReminders() }
     }
 
+    /// L'équipe. Une cuisine n'est jamais tenue par une seule personne, et la
+    /// traçabilité impose de savoir qui a fait quoi : chaque formulaire doit
+    /// pouvoir désigner l'opérateur en un geste, sans le retaper.
+    var knownOperators: [String] {
+        didSet { defaults.set(knownOperators, forKey: Key.knownOperators) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
         self.operatorName = defaults.string(forKey: Key.operatorName) ?? ""
         self.defaultShelfLifeDays = (defaults.object(forKey: Key.shelfLifeDays) as? Int)
             ?? TrackedProduct.defaultShelfLifeDays
+
+        self.knownOperators = defaults.stringArray(forKey: Key.knownOperators) ?? []
 
         if let data = defaults.data(forKey: Key.reminders),
            let decoded = try? JSONDecoder().decode([ReminderSlot].self, from: data) {
@@ -123,6 +133,43 @@ final class UserPreferences {
 
     private func sortReminders() {
         reminders.sort { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
+    }
+
+    // MARK: - Équipe
+
+    /// Enregistre un nom dans l'équipe s'il est nouveau. Appelé après chaque
+    /// saisie : la liste se construit toute seule à l'usage, personne n'a à
+    /// remplir un annuaire avant de commencer.
+    func rememberOperator(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        guard !knownOperators.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame }) else { return }
+
+        knownOperators.append(trimmed)
+        knownOperators.sort { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
+    func removeOperators(at offsets: IndexSet) {
+        for index in offsets.sorted(by: >) where knownOperators.indices.contains(index) {
+            knownOperators.remove(at: index)
+        }
+    }
+
+    /// Désigne l'opérateur du moment : il devient le nom pré-rempli partout.
+    func selectOperator(_ name: String) {
+        rememberOperator(name)
+        operatorName = name
+    }
+
+    /// Noms proposés dans les formulaires, l'opérateur courant en tête.
+    var operatorSuggestions: [String] {
+        var names = knownOperators
+        let current = operatorName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !current.isEmpty {
+            names.removeAll { $0.caseInsensitiveCompare(current) == .orderedSame }
+            names.insert(current, at: 0)
+        }
+        return names
     }
 
     // MARK: - Conversions pour les DatePicker

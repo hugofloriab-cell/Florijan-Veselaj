@@ -28,6 +28,7 @@ struct SettingsView: View {
     @State private var logoItem: PhotosPickerItem?
     @State private var showsTestAlert = false
     @State private var testScheduled = false
+    @State private var newTeamMember = ""
 
     private var establishment: Establishment? { establishments.first }
 
@@ -96,7 +97,9 @@ struct SettingsView: View {
                 establishmentSection
                 logoSection
                 operatorSection
+                teamSection
                 remindersSection
+                dataSection
                 aboutSection
             }
             .navigationTitle("Réglages")
@@ -205,8 +208,10 @@ struct SettingsView: View {
 
     private var operatorSection: some View {
         Section {
-            TextField("Nom de l'opérateur", text: Bindable(preferences).operatorName)
-                .textContentType(.name)
+            OperatorField(
+                name: Bindable(preferences).operatorName,
+                placeholder: "Nom de l'opérateur"
+            )
 
             Stepper(
                 "DLC secondaire : \(preferences.defaultShelfLifeDays) jour(s)",
@@ -217,6 +222,87 @@ struct SettingsView: View {
             Text("Saisie")
         } footer: {
             Text("Ces valeurs pré-remplissent les formulaires. La règle des 3 jours après ouverture est la pratique la plus répandue.")
+        }
+    }
+
+    // MARK: - Équipe
+
+    private var teamSection: some View {
+        Section {
+            if preferences.knownOperators.isEmpty {
+                Text("Aucun nom enregistré pour l'instant.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(preferences.knownOperators, id: \.self) { name in
+                    Button {
+                        preferences.selectOperator(name)
+                    } label: {
+                        HStack {
+                            Text(name)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                            if name.caseInsensitiveCompare(preferences.operatorName) == .orderedSame {
+                                Image(systemName: "checkmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.brand)
+                            }
+                        }
+                    }
+                }
+                .onDelete { preferences.removeOperators(at: $0) }
+            }
+
+            HStack {
+                TextField("Ajouter une personne", text: $newTeamMember)
+                    .textInputAutocapitalization(.words)
+                    .autocorrectionDisabled()
+                    .onSubmit { addTeamMember() }
+
+                Button {
+                    addTeamMember()
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.brand)
+                        .accessibilityLabel("Ajouter à l'équipe")
+                }
+                .buttonStyle(.plain)
+                .disabled(newTeamMember.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        } header: {
+            Text("Équipe")
+        } footer: {
+            Text("Les noms saisis dans les formulaires s'ajoutent tout seuls à cette liste. Appuyez sur un nom pour en faire l'opérateur du moment.")
+        }
+    }
+
+    private func addTeamMember() {
+        let trimmed = newTeamMember.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        preferences.rememberOperator(trimmed)
+        newTeamMember = ""
+    }
+
+    // MARK: - Données
+
+    private var dataSection: some View {
+        Section {
+            NavigationLink {
+                HistoryView()
+            } label: {
+                Label("Historique complet", systemImage: "clock.arrow.circlepath")
+            }
+
+            NavigationLink {
+                BackupView()
+            } label: {
+                Label("Sauvegarde et restauration", systemImage: "externaldrive")
+            }
+        } header: {
+            Text("Mes données")
+        } footer: {
+            Text("L'historique retrouve n'importe quel enregistrement passé. La sauvegarde exporte la totalité de l'application dans un fichier.")
         }
     }
 

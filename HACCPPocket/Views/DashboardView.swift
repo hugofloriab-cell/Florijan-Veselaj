@@ -315,6 +315,17 @@ struct DashboardView: View {
             .buttonStyle(.plain)
 
             NavigationLink {
+                HistoryView()
+            } label: {
+                ActionRow(
+                    title: "Historique",
+                    subtitle: "Retrouver un lot, une date, un opérateur",
+                    systemImage: "clock.arrow.circlepath"
+                )
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink {
                 ReportView()
             } label: {
                 ActionRow(

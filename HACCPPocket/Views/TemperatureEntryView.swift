@@ -201,8 +201,7 @@ struct TemperatureEntryView: View {
                 in: ...Date.now
             )
 
-            TextField("Opérateur", text: Bindable(model).operatorName)
-                .textContentType(.name)
+            OperatorField(name: Bindable(model).operatorName)
 
             TextField("Commentaire (facultatif)", text: Bindable(model).comment, axis: .vertical)
                 .lineLimit(1...4)

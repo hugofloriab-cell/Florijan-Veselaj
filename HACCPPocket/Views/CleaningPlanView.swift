@@ -103,7 +103,10 @@ struct CleaningPlanView: View {
                     Image(systemName: "person.fill")
                         .foregroundStyle(.secondary)
                         .frame(width: 22)
-                    TextField("Qui réalise le nettoyage ?", text: Bindable(viewModel).operatorName)
+                    OperatorField(
+                        name: Bindable(viewModel).operatorName,
+                        placeholder: "Qui réalise le nettoyage ?"
+                    )
                 }
                 Toggle("Afficher les opérations déjà faites", isOn: Bindable(viewModel).showsCompletedTasks)
             } footer: {

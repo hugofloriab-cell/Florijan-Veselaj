@@ -234,7 +234,7 @@ struct OilCheckFormView: View {
                 }
 
                 Section("Détails") {
-                    TextField("Opérateur", text: $operatorName)
+                    OperatorField(name: $operatorName)
                     TextField("Commentaire", text: $comment, axis: .vertical)
                         .lineLimit(1...3)
                 }
