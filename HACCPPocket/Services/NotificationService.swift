@@ -2,8 +2,8 @@
 //  NotificationService.swift
 //  HACCPPocket
 //
-//  Rappels locaux : relevé du matin, relevé du soir, contrôle des DLC.
-//  100 % local, aucune notification push distante, donc aucun serveur.
+//  Rappels locaux, entièrement définis par l'utilisateur. Aucune notification
+//  distante, donc aucun serveur.
 //
 
 import Foundation
@@ -16,33 +16,14 @@ final class NotificationService {
 
     static let shared = NotificationService()
 
-    /// Les trois rappels quotidiens de l'application.
-    enum Reminder: String, CaseIterable, Sendable {
-        case morningReading = "haccp.reminder.morning"
-        case eveningReading = "haccp.reminder.evening"
-        case expiryDigest   = "haccp.reminder.expiry"
-
-        var title: String {
-            switch self {
-            case .morningReading: "Relevé du matin"
-            case .eveningReading: "Relevé du soir"
-            case .expiryDigest:   "Contrôle des DLC"
-            }
-        }
-
-        var body: String {
-            switch self {
-            case .morningReading:
-                "Relevez les températures de vos enceintes avant le service."
-            case .eveningReading:
-                "Dernier relevé de la journée : n'oubliez pas vos enceintes froides."
-            case .expiryDigest:
-                "Vérifiez les produits entamés qui arrivent en fin de DLC secondaire."
-            }
-        }
-    }
+    /// Préfixe commun : permet de retirer nos rappels sans toucher au reste
+    /// du centre de notifications.
+    private static let identifierPrefix = "haccp.reminder."
+    private static let testIdentifier = "haccp.reminder.test"
 
     private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    private(set) var scheduledCount: Int = 0
+    private(set) var lastError: String?
 
     private let center: UNUserNotificationCenter
 
@@ -56,11 +37,33 @@ final class NotificationService {
         authorizationStatus == .authorized || authorizationStatus == .provisional
     }
 
+    var isDenied: Bool {
+        authorizationStatus == .denied
+    }
+
+    /// Message d'état affiché dans les réglages : c'est lui qui explique
+    /// pourquoi un rappel ne part pas.
+    var statusMessage: String {
+        switch authorizationStatus {
+        case .notDetermined:
+            "Les notifications ne sont pas encore autorisées : aucun rappel ne partira."
+        case .denied:
+            "Les notifications sont refusées. Ouvrez Réglages ▸ Notifications ▸ HACCP Pocket pour les réactiver."
+        case .authorized, .provisional, .ephemeral:
+            scheduledCount > 0
+                ? "\(scheduledCount) rappel(s) programmé(s) sur cet appareil."
+                : "Aucun rappel actif. Activez-en au moins un ci-dessous."
+        @unknown default:
+            "État des notifications inconnu."
+        }
+    }
+
     // MARK: - Autorisation
 
     func refreshAuthorizationStatus() async {
         let settings = await center.notificationSettings()
         authorizationStatus = settings.authorizationStatus
+        await refreshScheduledCount()
     }
 
     @discardableResult
@@ -70,65 +73,113 @@ final class NotificationService {
             await refreshAuthorizationStatus()
             return granted
         } catch {
+            lastError = error.localizedDescription
             await refreshAuthorizationStatus()
             return false
         }
     }
 
-    // MARK: - Programmation
-
-    /// Applique les préférences de l'utilisateur : reprogramme tout depuis zéro.
-    /// Appelée au lancement et à chaque modification d'un réglage de rappel.
-    func applySchedule(from preferences: UserPreferences) async {
-        cancelAll()
-
+    /// Demande l'autorisation si elle n'a jamais été posée. Appelée quand
+    /// l'utilisateur active son premier rappel : lui faire chercher un bouton
+    /// séparé était le meilleur moyen qu'aucun rappel ne parte jamais.
+    func requestAuthorizationIfNeeded() async {
         await refreshAuthorizationStatus()
-        guard isAuthorized else { return }
-
-        if preferences.remindersEnabled {
-            await schedule(.morningReading, at: preferences.morningComponents)
-            await schedule(.eveningReading, at: preferences.eveningComponents)
-        }
-
-        if preferences.expiryDigestEnabled {
-            await schedule(.expiryDigest, at: preferences.expiryDigestComponents)
+        if authorizationStatus == .notDetermined {
+            await requestAuthorization()
         }
     }
 
-    /// Programme un rappel quotidien répétitif à l'heure demandée.
-    private func schedule(_ reminder: Reminder, at time: DateComponents) async {
+    // MARK: - Programmation
+
+    /// Reprogramme tous les rappels depuis les préférences.
+    func applySchedule(from preferences: UserPreferences) async {
+        await removeAllReminders()
+        await refreshAuthorizationStatus()
+
+        guard isAuthorized else {
+            scheduledCount = 0
+            return
+        }
+
+        for reminder in preferences.enabledReminders {
+            await schedule(reminder)
+        }
+
+        await refreshScheduledCount()
+    }
+
+    private func schedule(_ reminder: ReminderSlot) async {
         let content = UNMutableNotificationContent()
-        content.title = reminder.title
-        content.body = reminder.body
+        content.title = reminder.label.isEmpty ? "Rappel" : reminder.label
+        content.body = "Ouvrez HACCP Pocket pour enregistrer ce point de contrôle."
         content.sound = .default
 
-        var components = DateComponents()
-        components.hour = time.hour
-        components.minute = time.minute
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: reminder.components,
+            repeats: true
+        )
 
-        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         let request = UNNotificationRequest(
-            identifier: reminder.rawValue,
+            identifier: reminder.notificationIdentifier,
             content: content,
             trigger: trigger
         )
 
-        try? await center.add(request)
+        do {
+            try await center.add(request)
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
-    /// Retire les trois rappels. Ne touche à rien d'autre dans le centre de
-    /// notifications, au cas où l'app en programmerait d'autres plus tard.
-    func cancelAll() {
-        center.removePendingNotificationRequests(
-            withIdentifiers: Reminder.allCases.map(\.rawValue)
+    private func removeAllReminders() async {
+        let pending = await center.pendingNotificationRequests()
+        let identifiers = pending
+            .map(\.identifier)
+            .filter { $0.hasPrefix(NotificationService.identifierPrefix) }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    private func refreshScheduledCount() async {
+        let pending = await center.pendingNotificationRequests()
+        scheduledCount = pending
+            .filter { $0.identifier.hasPrefix(NotificationService.identifierPrefix) }
+            .filter { $0.identifier != NotificationService.testIdentifier }
+            .count
+    }
+
+    // MARK: - Diagnostic
+
+    /// Programme une notification dans quelques secondes. Sans ce bouton,
+    /// vérifier que les rappels fonctionnent obligeait à attendre le lendemain.
+    ///
+    /// - Important : sur iPhone, une notification n'apparaît pas en bannière
+    ///   si l'application est au premier plan. Verrouillez l'écran ou passez
+    ///   sur l'écran d'accueil pendant le décompte.
+    @discardableResult
+    func sendTestNotification(afterSeconds seconds: TimeInterval = 10) async -> Bool {
+        await refreshAuthorizationStatus()
+        guard isAuthorized else { return false }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Test de rappel"
+        content.body = "Si vous lisez ceci, les rappels de HACCP Pocket fonctionnent."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: NotificationService.testIdentifier,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
         )
-    }
 
-    /// Liste des rappels réellement programmés — utile pour l'écran Réglages
-    /// et pour diagnostiquer un rappel qui ne part pas.
-    func pendingReminders() async -> [Reminder] {
-        let requests = await center.pendingNotificationRequests()
-        let identifiers = Set(requests.map(\.identifier))
-        return Reminder.allCases.filter { identifiers.contains($0.rawValue) }
+        do {
+            try await center.add(request)
+            lastError = nil
+            return true
+        } catch {
+            lastError = error.localizedDescription
+            return false
+        }
     }
 }

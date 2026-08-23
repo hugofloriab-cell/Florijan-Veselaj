@@ -22,13 +22,16 @@ struct ProductFormView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var isPresentingCamera = false
 
-    init(product: TrackedProduct? = nil, context: ModelContext) {
-        _viewModel = State(initialValue: ProductFormViewModel(product: product, context: context))
+    init(product: TrackedProduct? = nil, prefill: ProductPrefill? = nil, context: ModelContext) {
+        _viewModel = State(
+            initialValue: ProductFormViewModel(product: product, prefill: prefill, context: context)
+        )
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                prefillBanner
                 identificationSection
                 storageSection
                 datesSection
@@ -66,6 +69,17 @@ struct ProductFormView: View {
     }
 
     // MARK: - Sections
+
+    @ViewBuilder
+    private var prefillBanner: some View {
+        if let origin = viewModel.prefillOrigin {
+            Section {
+                Label(origin, systemImage: "barcode.viewfinder")
+                    .font(.caption)
+                    .foregroundStyle(.teal)
+            }
+        }
+    }
 
     private var identificationSection: some View {
         Section("Produit") {

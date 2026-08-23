@@ -20,6 +20,7 @@ struct HACCPPocketApp: App {
     @State private var preferences: UserPreferences
     @State private var notificationService: NotificationService
     @State private var subscription: SubscriptionManager
+    @State private var router = AppRouter()
 
     init() {
         do {
@@ -40,6 +41,7 @@ struct HACCPPocketApp: App {
                 .environment(preferences)
                 .environment(notificationService)
                 .environment(subscription)
+                .environment(router)
                 .task {
                     // Les rappels sont reprogrammés à chaque lancement : ils
                     // suivent ainsi les réglages sans code de synchronisation.

@@ -9,6 +9,10 @@
 import SwiftUI
 import SwiftData
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 struct CleaningPlanView: View {
 
     @Environment(\.modelContext) private var modelContext
@@ -22,6 +26,7 @@ struct CleaningPlanView: View {
     @State private var editedTask: CleaningTask?
     @State private var isCreatingTask = false
     @State private var taskPendingDeletion: CleaningTask?
+    @State private var photoTask: CleaningTask?
 
     var body: some View {
         NavigationStack {
@@ -74,6 +79,15 @@ struct CleaningPlanView: View {
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
             }
+            .sheet(item: $photoTask) { task in
+                PhotoCaptureSheet(
+                    title: "Photo du nettoyage",
+                    message: "La photo est jointe à l'enregistrement de l'opération et figure dans vos preuves d'exécution."
+                ) { data in
+                    viewModel?.complete(task, photoData: data)
+                    photoTask = nil
+                }
+            }
             .task {
                 if viewModel == nil {
                     viewModel = CleaningPlanViewModel(context: modelContext)
@@ -100,6 +114,15 @@ struct CleaningPlanView: View {
                 Section(section.frequency.label) {
                     ForEach(section.tasks) { task in
                         row(for: task, viewModel: viewModel)
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                Button {
+                                    guard subscription.canWrite else { showsPaywall = true; return }
+                                    photoTask = task
+                                } label: {
+                                    Label("Photo", systemImage: "camera")
+                                }
+                                .tint(.indigo)
+                            }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
                                     taskPendingDeletion = task
@@ -194,6 +217,15 @@ struct CleaningTaskDetailView: View {
 
     let task: CleaningTask
 
+    private func photo(from data: Data) -> Image? {
+        #if canImport(UIKit)
+        guard let uiImage = UIImage(data: data) else { return nil }
+        return Image(uiImage: uiImage)
+        #else
+        return nil
+        #endif
+    }
+
     private var history: [CleaningRecord] {
         task.records
             .sorted { $0.completedAt > $1.completedAt }
@@ -237,7 +269,7 @@ struct CleaningTaskDetailView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(history) { record in
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 Text(AppFormatters.dateAndTime(record.completedAt))
                                     .font(.subheadline)
                                 if record.isTraceable {
@@ -248,6 +280,14 @@ struct CleaningTaskDetailView: View {
                                     Label("Opérateur non renseigné", systemImage: "exclamationmark.triangle")
                                         .font(.caption)
                                         .foregroundStyle(.orange)
+                                }
+
+                                if let data = record.photoData, let image = photo(from: data) {
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(height: 120)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
                             }
                         }

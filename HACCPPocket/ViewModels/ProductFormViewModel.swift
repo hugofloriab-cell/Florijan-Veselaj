@@ -10,6 +10,20 @@ import Foundation
 import Observation
 import SwiftData
 
+/// Valeurs proposées à la création d'un produit, typiquement issues d'un scan.
+struct ProductPrefill: Identifiable, Equatable {
+    let id = UUID()
+    var name: String?
+    var barcode: String?
+    var supplier: String?
+    var batchNumber: String?
+    var supplierExpiryDate: Date?
+    var shelfLifeDays: Int?
+    var storage: StorageZone?
+    /// Message expliquant d'où viennent les valeurs pré-remplies.
+    var origin: String?
+}
+
 @MainActor
 @Observable
 final class ProductFormViewModel {
@@ -47,8 +61,12 @@ final class ProductFormViewModel {
 
     // MARK: - Initialisation
 
+    /// Origine des valeurs pré-remplies, affichée en tête du formulaire.
+    private(set) var prefillOrigin: String?
+
     init(
         product: TrackedProduct? = nil,
+        prefill: ProductPrefill? = nil,
         context: ModelContext,
         preferences: UserPreferences? = nil
     ) {
@@ -97,6 +115,27 @@ final class ProductFormViewModel {
                 days: prefs.defaultShelfLifeDays
             )
         }
+
+        if let prefill, product == nil {
+            apply(prefill)
+        }
+    }
+
+    /// Applique les valeurs d'un scan sans jamais écraser une saisie existante.
+    private func apply(_ prefill: ProductPrefill) {
+        if let value = prefill.name, name.isEmpty { name = value }
+        if let value = prefill.barcode, barcode.isEmpty { barcode = value }
+        if let value = prefill.supplier, supplier.isEmpty { supplier = value }
+        if let value = prefill.batchNumber, batchNumber.isEmpty { batchNumber = value }
+        if let value = prefill.storage { storage = value }
+        if let value = prefill.shelfLifeDays { shelfLifeDays = value }
+
+        if let value = prefill.supplierExpiryDate {
+            hasSupplierExpiry = true
+            supplierExpiryDate = value
+        }
+
+        prefillOrigin = prefill.origin
     }
 
     var isEditing: Bool { existingProduct != nil }

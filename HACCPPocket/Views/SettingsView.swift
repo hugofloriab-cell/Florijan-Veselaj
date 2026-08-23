@@ -26,6 +26,8 @@ struct SettingsView: View {
 
     @State private var showsPaywall = false
     @State private var logoItem: PhotosPickerItem?
+    @State private var showsTestAlert = false
+    @State private var testScheduled = false
 
     private var establishment: Establishment? { establishments.first }
 
@@ -79,14 +81,12 @@ struct SettingsView: View {
 
     /// Toute modification d'un réglage de rappel change cette signature, ce qui
     /// relance la reprogrammation via `.task(id:)`.
+    /// Toute modification d'un rappel change cette signature, ce qui relance la
+    /// reprogrammation via `.task(id:)`.
     private var schedulingSignature: String {
-        [
-            preferences.remindersEnabled.description,
-            "\(preferences.morningHour):\(preferences.morningMinute)",
-            "\(preferences.eveningHour):\(preferences.eveningMinute)",
-            preferences.expiryDigestEnabled.description,
-            "\(preferences.expiryDigestHour)"
-        ].joined(separator: "|")
+        preferences.reminders
+            .map { "\($0.id.uuidString)-\($0.hour):\($0.minute)-\($0.isEnabled)-\($0.label)" }
+            .joined(separator: "|")
     }
 
     var body: some View {
@@ -224,60 +224,134 @@ struct SettingsView: View {
 
     private var remindersSection: some View {
         Section {
-            if !notificationService.isAuthorized {
-                Button {
-                    Task { await notificationService.requestAuthorization() }
-                } label: {
-                    Label("Autoriser les notifications", systemImage: "bell.badge")
+            authorizationRow
+
+            ForEach(preferences.reminders) { reminder in
+                reminderRow(reminder)
+            }
+            .onDelete { preferences.removeReminders(at: $0) }
+
+            Button {
+                preferences.addReminder()
+                Task { await notificationService.requestAuthorizationIfNeeded() }
+            } label: {
+                Label("Ajouter un rappel", systemImage: "plus")
+            }
+
+            Button {
+                Task {
+                    testScheduled = await notificationService.sendTestNotification(afterSeconds: 10)
+                    showsTestAlert = true
                 }
+            } label: {
+                Label("Tester dans 10 secondes", systemImage: "bell.badge.waveform")
             }
-
-            Toggle("Rappels des relevés", isOn: Bindable(preferences).remindersEnabled)
-
-            if preferences.remindersEnabled {
-                DatePicker("Matin", selection: morningTime, displayedComponents: .hourAndMinute)
-                DatePicker("Soir", selection: eveningTime, displayedComponents: .hourAndMinute)
-            }
-
-            Toggle("Rappel des DLC", isOn: Bindable(preferences).expiryDigestEnabled)
-
-            if preferences.expiryDigestEnabled {
-                Picker("Heure", selection: Bindable(preferences).expiryDigestHour) {
-                    ForEach(5..<23, id: \.self) { hour in
-                        Text(String(format: "%02d:00", hour)).tag(hour)
-                    }
-                }
-            }
+            .disabled(!notificationService.isAuthorized)
         } header: {
             Text("Rappels")
         } footer: {
-            Text(reminderFooter)
+            Text("Créez autant de rappels que votre service en demande : ouverture, coupure, réception, fermeture. Ils sont programmés sur l'appareil et n'utilisent aucune connexion.")
+        }
+        .alert(
+            testScheduled ? "Test programmé" : "Test impossible",
+            isPresented: $showsTestAlert
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(testScheduled
+                 ? "Verrouillez l'écran ou revenez à l'écran d'accueil : iOS n'affiche pas de bannière tant que l'application est au premier plan."
+                 : "Autorisez d'abord les notifications.")
         }
     }
 
-    private var reminderFooter: String {
-        switch notificationService.authorizationStatus {
-        case .denied:
-            "Les notifications sont refusées pour HACCP Pocket. Activez-les dans Réglages ▸ Notifications."
-        case .authorized, .provisional, .ephemeral:
-            "Les rappels sont programmés sur l'appareil. Aucune donnée ne transite par Internet."
-        default:
-            "Autorisez les notifications pour recevoir les rappels de relevés."
+    /// Sans cette ligne, un rappel qui ne part pas restait inexplicable.
+    @ViewBuilder
+    private var authorizationRow: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: notificationService.isAuthorized ? "bell.badge.fill" : "bell.slash.fill")
+                .foregroundStyle(notificationService.isAuthorized ? Color.green : Color.orange)
+                .frame(width: 24)
+            Text(notificationService.statusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 2)
+
+        if notificationService.authorizationStatus == .notDetermined {
+            Button {
+                Task { await notificationService.requestAuthorization() }
+            } label: {
+                Label("Autoriser les notifications", systemImage: "bell.badge")
+            }
+        } else if notificationService.isDenied {
+            Button {
+                openSystemSettings()
+            } label: {
+                Label("Ouvrir les réglages d'iOS", systemImage: "arrow.up.forward.app")
+            }
         }
     }
 
-    private var morningTime: Binding<Date> {
+    private func reminderRow(_ reminder: ReminderSlot) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                TextField("Intitulé", text: labelBinding(for: reminder))
+                    .font(.subheadline.weight(.medium))
+                Toggle("", isOn: enabledBinding(for: reminder))
+                    .labelsHidden()
+                    .accessibilityLabel("Activer \(reminder.label)")
+            }
+
+            DatePicker(
+                "Heure",
+                selection: timeBinding(for: reminder),
+                displayedComponents: .hourAndMinute
+            )
+            .disabled(!reminder.isEnabled)
+        }
+        .padding(.vertical, 2)
+    }
+
+    // MARK: Liaisons vers les rappels
+
+    private func labelBinding(for reminder: ReminderSlot) -> Binding<String> {
         Binding(
-            get: { preferences.time(hour: preferences.morningHour, minute: preferences.morningMinute) },
-            set: { preferences.setMorning(from: $0) }
+            get: { reminder.label },
+            set: { newValue in
+                var updated = reminder
+                updated.label = newValue
+                preferences.update(updated)
+            }
         )
     }
 
-    private var eveningTime: Binding<Date> {
+    private func enabledBinding(for reminder: ReminderSlot) -> Binding<Bool> {
         Binding(
-            get: { preferences.time(hour: preferences.eveningHour, minute: preferences.eveningMinute) },
-            set: { preferences.setEvening(from: $0) }
+            get: { reminder.isEnabled },
+            set: { newValue in
+                var updated = reminder
+                updated.isEnabled = newValue
+                preferences.update(updated)
+                if newValue {
+                    Task { await notificationService.requestAuthorizationIfNeeded() }
+                }
+            }
         )
+    }
+
+    private func timeBinding(for reminder: ReminderSlot) -> Binding<Date> {
+        Binding(
+            get: { preferences.time(for: reminder) },
+            set: { preferences.setTime($0, for: reminder) }
+        )
+    }
+
+    private func openSystemSettings() {
+        #if canImport(UIKit)
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+        #endif
     }
 
     // MARK: - À propos

@@ -14,6 +14,7 @@ struct DashboardView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(SubscriptionManager.self) private var subscription
+    @Environment(AppRouter.self) private var router
 
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
     @Query private var products: [TrackedProduct]
@@ -84,23 +85,55 @@ struct DashboardView: View {
 
     private var summarySection: some View {
         Section {
-            ProgressRow(
-                title: "Relevés de température",
-                completed: dashboard.completedReadingsToday,
-                total: dashboard.expectedReadingsToday
-            )
+            // Chaque ligne renvoie sur l'onglet concerné : lire « 3 opérations
+            // dues » sans pouvoir y aller d'un geste n'a aucun intérêt.
+            Button {
+                router.show(.temperatures)
+            } label: {
+                HStack {
+                    ProgressRow(
+                        title: "Relevés de température",
+                        completed: dashboard.completedReadingsToday,
+                        total: dashboard.expectedReadingsToday
+                    )
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
 
-            InfoRow(
-                label: "Opérations de nettoyage dues",
-                value: "\(dashboard.dueCleaningTasks.count)",
-                systemImage: "sparkles"
-            )
+            Button {
+                router.show(.cleaning)
+            } label: {
+                HStack {
+                    InfoRow(
+                        label: "Opérations de nettoyage dues",
+                        value: "\(dashboard.dueCleaningTasks.count)",
+                        systemImage: "sparkles"
+                    )
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
 
-            InfoRow(
-                label: "Produits entamés",
-                value: "\(dashboard.openProductsCount)",
-                systemImage: "shippingbox"
-            )
+            Button {
+                router.show(.products)
+            } label: {
+                HStack {
+                    InfoRow(
+                        label: "Produits entamés",
+                        value: "\(dashboard.openProductsCount)",
+                        systemImage: "shippingbox"
+                    )
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
 
             if let rate = dashboard.complianceRate() {
                 HStack {

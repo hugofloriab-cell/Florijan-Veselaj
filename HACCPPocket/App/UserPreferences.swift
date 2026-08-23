@@ -3,12 +3,48 @@
 //  HACCPPocket
 //
 //  Réglages utilisateur persistés dans UserDefaults : identité de l'opérateur,
-//  durée de vie secondaire par défaut, horaires des rappels. Observable, donc
-//  toute vue qui le lit se rafraîchit automatiquement.
+//  durée de vie secondaire par défaut, et la liste des rappels quotidiens.
 //
 
 import Foundation
 import Observation
+
+// MARK: - Rappel
+
+/// Un rappel quotidien librement défini par l'utilisateur. Les horaires de
+/// travail d'une cuisine ne se résument pas à « matin » et « soir » : coupure
+/// de service, réception de 14 h, contrôle de fin de mise en place…
+struct ReminderSlot: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
+    var label: String
+    var hour: Int
+    var minute: Int
+    var isEnabled: Bool = true
+
+    var components: DateComponents {
+        DateComponents(hour: hour, minute: minute)
+    }
+
+    /// Ex. « 08:30 »
+    var formattedTime: String {
+        String(format: "%02d:%02d", hour, minute)
+    }
+
+    /// Identifiant de la notification correspondante.
+    var notificationIdentifier: String {
+        "haccp.reminder.\(id.uuidString)"
+    }
+
+    static func defaults() -> [ReminderSlot] {
+        [
+            ReminderSlot(label: "Relevé du matin", hour: 8, minute: 30),
+            ReminderSlot(label: "Relevé du soir", hour: 19, minute: 0),
+            ReminderSlot(label: "Contrôle des DLC", hour: 9, minute: 0)
+        ]
+    }
+}
+
+// MARK: - Préférences
 
 @MainActor
 @Observable
@@ -19,13 +55,7 @@ final class UserPreferences {
     private enum Key {
         static let operatorName = "haccp.operatorName"
         static let shelfLifeDays = "haccp.defaultShelfLifeDays"
-        static let remindersEnabled = "haccp.remindersEnabled"
-        static let morningHour = "haccp.morningHour"
-        static let morningMinute = "haccp.morningMinute"
-        static let eveningHour = "haccp.eveningHour"
-        static let eveningMinute = "haccp.eveningMinute"
-        static let expiryDigestHour = "haccp.expiryDigestHour"
-        static let expiryDigestEnabled = "haccp.expiryDigestEnabled"
+        static let reminders = "haccp.reminders.v2"
     }
 
     private let defaults: UserDefaults
@@ -40,80 +70,70 @@ final class UserPreferences {
         didSet { defaults.set(defaultShelfLifeDays, forKey: Key.shelfLifeDays) }
     }
 
-    var remindersEnabled: Bool {
-        didSet { defaults.set(remindersEnabled, forKey: Key.remindersEnabled) }
-    }
-
-    var morningHour: Int {
-        didSet { defaults.set(morningHour, forKey: Key.morningHour) }
-    }
-
-    var morningMinute: Int {
-        didSet { defaults.set(morningMinute, forKey: Key.morningMinute) }
-    }
-
-    var eveningHour: Int {
-        didSet { defaults.set(eveningHour, forKey: Key.eveningHour) }
-    }
-
-    var eveningMinute: Int {
-        didSet { defaults.set(eveningMinute, forKey: Key.eveningMinute) }
-    }
-
-    var expiryDigestEnabled: Bool {
-        didSet { defaults.set(expiryDigestEnabled, forKey: Key.expiryDigestEnabled) }
-    }
-
-    var expiryDigestHour: Int {
-        didSet { defaults.set(expiryDigestHour, forKey: Key.expiryDigestHour) }
+    /// Rappels quotidiens, dans l'ordre chronologique.
+    var reminders: [ReminderSlot] {
+        didSet { persistReminders() }
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
-        // `object(forKey:)` distingue « absent » de « valeur 0 », contrairement
-        // à `integer(forKey:)` qui renverrait 0 au premier lancement.
         self.operatorName = defaults.string(forKey: Key.operatorName) ?? ""
         self.defaultShelfLifeDays = (defaults.object(forKey: Key.shelfLifeDays) as? Int)
             ?? TrackedProduct.defaultShelfLifeDays
-        self.remindersEnabled = (defaults.object(forKey: Key.remindersEnabled) as? Bool) ?? true
-        self.morningHour = (defaults.object(forKey: Key.morningHour) as? Int) ?? 8
-        self.morningMinute = (defaults.object(forKey: Key.morningMinute) as? Int) ?? 30
-        self.eveningHour = (defaults.object(forKey: Key.eveningHour) as? Int) ?? 19
-        self.eveningMinute = (defaults.object(forKey: Key.eveningMinute) as? Int) ?? 0
-        self.expiryDigestEnabled = (defaults.object(forKey: Key.expiryDigestEnabled) as? Bool) ?? true
-        self.expiryDigestHour = (defaults.object(forKey: Key.expiryDigestHour) as? Int) ?? 9
-    }
-}
 
-// MARK: - Conversion en composantes de date
-
-extension UserPreferences {
-
-    var morningComponents: DateComponents {
-        DateComponents(hour: morningHour, minute: morningMinute)
+        if let data = defaults.data(forKey: Key.reminders),
+           let decoded = try? JSONDecoder().decode([ReminderSlot].self, from: data) {
+            self.reminders = decoded
+        } else {
+            self.reminders = ReminderSlot.defaults()
+        }
     }
 
-    var eveningComponents: DateComponents {
-        DateComponents(hour: eveningHour, minute: eveningMinute)
+    private func persistReminders() {
+        guard let data = try? JSONEncoder().encode(reminders) else { return }
+        defaults.set(data, forKey: Key.reminders)
     }
 
-    var expiryDigestComponents: DateComponents {
-        DateComponents(hour: expiryDigestHour, minute: 0)
+    // MARK: - Édition des rappels
+
+    var enabledReminders: [ReminderSlot] {
+        reminders.filter(\.isEnabled)
     }
 
-    /// Heure de rappel exprimée en `Date`, pour l'affichage dans un `DatePicker`.
-    func time(hour: Int, minute: Int, calendar: Calendar = .current) -> Date {
+    func addReminder(label: String = "Nouveau rappel", hour: Int = 12, minute: Int = 0) {
+        reminders.append(ReminderSlot(label: label, hour: hour, minute: minute))
+        sortReminders()
+    }
+
+    func removeReminders(at offsets: IndexSet) {
+        reminders.remove(atOffsets: offsets)
+    }
+
+    func update(_ reminder: ReminderSlot) {
+        guard let index = reminders.firstIndex(where: { $0.id == reminder.id }) else { return }
+        reminders[index] = reminder
+        sortReminders()
+    }
+
+    private func sortReminders() {
+        reminders.sort { ($0.hour, $0.minute) < ($1.hour, $1.minute) }
+    }
+
+    // MARK: - Conversions pour les DatePicker
+
+    func date(hour: Int, minute: Int, calendar: Calendar = .current) -> Date {
         calendar.date(bySettingHour: hour, minute: minute, second: 0, of: .now) ?? .now
     }
 
-    func setMorning(from date: Date, calendar: Calendar = .current) {
-        morningHour = calendar.component(.hour, from: date)
-        morningMinute = calendar.component(.minute, from: date)
+    func time(for reminder: ReminderSlot) -> Date {
+        date(hour: reminder.hour, minute: reminder.minute)
     }
 
-    func setEvening(from date: Date, calendar: Calendar = .current) {
-        eveningHour = calendar.component(.hour, from: date)
-        eveningMinute = calendar.component(.minute, from: date)
+    func setTime(_ date: Date, for reminder: ReminderSlot, calendar: Calendar = .current) {
+        var updated = reminder
+        updated.hour = calendar.component(.hour, from: date)
+        updated.minute = calendar.component(.minute, from: date)
+        update(updated)
     }
 }

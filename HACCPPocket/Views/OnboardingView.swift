@@ -37,6 +37,7 @@ struct OnboardingView: View {
 
     @State private var step: Step = .welcome
     @State private var isCreatingEquipment = false
+    @State private var editedEquipment: Equipment?
 
     var body: some View {
         NavigationStack {
@@ -61,6 +62,9 @@ struct OnboardingView: View {
             }
             .sheet(isPresented: $isCreatingEquipment) {
                 EquipmentEditorView(equipment: nil, sortIndex: equipments.count)
+            }
+            .sheet(item: $editedEquipment) { equipment in
+                EquipmentEditorView(equipment: equipment)
             }
             .task {
                 if establishments.isEmpty {
@@ -160,16 +164,31 @@ struct OnboardingView: View {
         Form {
             Section {
                 ForEach(equipments) { equipment in
-                    VStack(alignment: .leading, spacing: 2) {
-                        Label(equipment.name, systemImage: equipment.type.systemImage)
-                        Text(equipment.formattedRange)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                    Button {
+                        editedEquipment = equipment
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label(equipment.name, systemImage: equipment.type.systemImage)
+                                    .foregroundStyle(.primary)
+                                Text(equipment.formattedRange)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
-                }
-                .onDelete { offsets in
-                    offsets.map { equipments[$0] }.forEach { modelContext.delete($0) }
-                    try? modelContext.save()
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            modelContext.delete(equipment)
+                            try? modelContext.save()
+                        } label: {
+                            Label("Supprimer", systemImage: "trash")
+                        }
+                    }
                 }
 
                 Button {
@@ -180,7 +199,7 @@ struct OnboardingView: View {
             } header: {
                 Text("Enceintes à surveiller")
             } footer: {
-                Text("Nous en avons pré-rempli trois. Renommez-les, supprimez celles que vous n'avez pas, ajoutez les vôtres : c'est sur cette liste que se basent les relevés quotidiens.")
+                Text("Touchez une enceinte pour la renommer ou ajuster sa plage de température. Balayez-la vers la gauche pour la supprimer. C'est sur cette liste que se basent les relevés quotidiens.")
             }
         }
     }
@@ -188,16 +207,30 @@ struct OnboardingView: View {
     private var remindersStep: some View {
         Form {
             Section {
-                Toggle("Rappels matin et soir", isOn: Bindable(preferences).remindersEnabled)
+                ForEach(preferences.reminders) { reminder in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            TextField("Intitulé", text: labelBinding(for: reminder))
+                                .font(.subheadline.weight(.medium))
+                            Toggle("", isOn: enabledBinding(for: reminder))
+                                .labelsHidden()
+                        }
+                        DatePicker("Heure", selection: timeBinding(for: reminder), displayedComponents: .hourAndMinute)
+                            .disabled(!reminder.isEnabled)
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onDelete { preferences.removeReminders(at: $0) }
 
-                if preferences.remindersEnabled {
-                    DatePicker("Matin", selection: morningTime, displayedComponents: .hourAndMinute)
-                    DatePicker("Soir", selection: eveningTime, displayedComponents: .hourAndMinute)
+                Button {
+                    preferences.addReminder()
+                } label: {
+                    Label("Ajouter un rappel", systemImage: "plus")
                 }
             } header: {
                 Text("Ne rien oublier")
             } footer: {
-                Text("Un oubli de relevé est une ligne vide dans le registre. Les rappels sont locaux : ils ne quittent pas l'appareil.")
+                Text("Ouverture, coupure, réception, fermeture : créez autant de rappels que votre service en demande. Un oubli de relevé est une ligne vide dans le registre.")
             }
 
             if !notificationService.isAuthorized {
@@ -207,22 +240,41 @@ struct OnboardingView: View {
                     } label: {
                         Label("Autoriser les notifications", systemImage: "bell.badge")
                     }
+                } footer: {
+                    Text("Sans cette autorisation, aucun rappel ne partira.")
                 }
             }
         }
     }
 
-    private var morningTime: Binding<Date> {
+    // MARK: Liaisons vers les rappels
+
+    private func labelBinding(for reminder: ReminderSlot) -> Binding<String> {
         Binding(
-            get: { preferences.time(hour: preferences.morningHour, minute: preferences.morningMinute) },
-            set: { preferences.setMorning(from: $0) }
+            get: { reminder.label },
+            set: { newValue in
+                var updated = reminder
+                updated.label = newValue
+                preferences.update(updated)
+            }
         )
     }
 
-    private var eveningTime: Binding<Date> {
+    private func enabledBinding(for reminder: ReminderSlot) -> Binding<Bool> {
         Binding(
-            get: { preferences.time(hour: preferences.eveningHour, minute: preferences.eveningMinute) },
-            set: { preferences.setEvening(from: $0) }
+            get: { reminder.isEnabled },
+            set: { newValue in
+                var updated = reminder
+                updated.isEnabled = newValue
+                preferences.update(updated)
+            }
+        )
+    }
+
+    private func timeBinding(for reminder: ReminderSlot) -> Binding<Date> {
+        Binding(
+            get: { preferences.time(for: reminder) },
+            set: { preferences.setTime($0, for: reminder) }
         )
     }
 

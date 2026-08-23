@@ -25,6 +25,7 @@ struct ProductListView: View {
     @State private var labelProduct: TrackedProduct?
     @State private var isScanning = false
     @State private var scanMessage: String?
+    @State private var scanPrefill: ProductPrefill?
 
     /// Produit en cours de mise au rebut : l'alerte demande le motif.
     @State private var discardTarget: TrackedProduct?
@@ -78,6 +79,9 @@ struct ProductListView: View {
                 QRScannerView { code in
                     handleScan(code)
                 }
+            }
+            .sheet(item: $scanPrefill) { prefill in
+                ProductFormView(prefill: prefill, context: modelContext)
             }
             .alert(
                 "Étiquette non reconnue",
@@ -280,19 +284,72 @@ struct ProductListView: View {
 
     // MARK: - Actions
 
-    /// Retrouve le produit désigné par le QR d'une étiquette et ouvre sa fiche.
+    /// Aiguille un code scanné : étiquette de l'app, code fournisseur porteur
+    /// d'une DLC, ou simple code-barres à compléter à la main.
     private func handleScan(_ code: String) {
-        guard let identifier = LabelPayload.decode(code) else {
-            scanMessage = "Ce QR code ne provient pas d'une étiquette HACCP Pocket."
+        // 1. Une de nos étiquettes : on rouvre la fiche existante.
+        if let identifier = LabelPayload.decode(code) {
+            if let product = products.first(where: { $0.identifier == identifier }) {
+                editedProduct = product
+            } else {
+                scanMessage = "Le produit correspondant à cette étiquette n'existe plus dans l'application."
+            }
             return
         }
 
-        guard let product = products.first(where: { $0.identifier == identifier }) else {
-            scanMessage = "Le produit correspondant à cette étiquette n'existe plus dans l'application."
+        guard subscription.canWrite else {
+            showsPaywall = true
             return
         }
 
-        editedProduct = product
+        // 2. Code fournisseur : on n'en tire que ce qu'il contient réellement.
+        let reading = BarcodePayload.parse(code)
+        var prefill = ProductPrefill(barcode: reading.productCode)
+        var origins: [String] = []
+
+        if let date = reading.mostRestrictiveDate {
+            prefill.supplierExpiryDate = date
+            origins.append("DLC lue sur le code : \(AppFormatters.shortDate(date))")
+        }
+
+        if let batch = reading.batchNumber {
+            prefill.batchNumber = batch
+            origins.append("lot \(batch)")
+        }
+
+        // 3. Déjà ouvert par le passé ? On reprend ce qui avait été saisi.
+        if let previous = previousProduct(withCode: reading.productCode) {
+            prefill.name = previous.name
+            prefill.supplier = previous.supplier
+            prefill.storage = previous.storage
+            prefill.shelfLifeDays = shelfLife(of: previous)
+            origins.append("produit reconnu dans votre historique")
+        }
+
+        if origins.isEmpty {
+            origins.append("Ce code ne contient ni date ni lot : complétez la fiche à la main.")
+        }
+
+        prefill.origin = origins.joined(separator: " · ")
+        scanPrefill = prefill
+    }
+
+    /// Produit le plus récent partageant ce code-barres.
+    private func previousProduct(withCode code: String) -> TrackedProduct? {
+        guard !code.isEmpty else { return nil }
+        return products
+            .filter { $0.barcode == code }
+            .max { $0.openedAt < $1.openedAt }
+    }
+
+    /// Durée de vie appliquée la dernière fois à ce produit.
+    private func shelfLife(of product: TrackedProduct, calendar: Calendar = .current) -> Int {
+        let days = calendar.dateComponents(
+            [.day],
+            from: calendar.startOfDay(for: product.openedAt),
+            to: calendar.startOfDay(for: product.secondaryLimitDate)
+        ).day ?? preferences.defaultShelfLifeDays
+        return max(0, days)
     }
 
     private func confirmDiscard() {

@@ -2,8 +2,9 @@
 //  RootView.swift
 //  HACCPPocket
 //
-//  Racine de la navigation. Une barre d'onglets : chaque onglet correspond à
-//  un registre du Plan de Maîtrise Sanitaire.
+//  Racine de la navigation. Chaque onglet correspond à un registre du Plan de
+//  Maîtrise Sanitaire. La sélection passe par `AppRouter`, afin qu'un autre
+//  écran puisse y renvoyer.
 //
 
 import SwiftUI
@@ -11,61 +12,34 @@ import SwiftData
 
 struct RootView: View {
 
-    /// Onglet sélectionné, conservé entre deux lancements.
-    @SceneStorage("haccp.selectedTab") private var selection: String = Tab.today.rawValue
+    @Environment(AppRouter.self) private var router
 
     /// La première configuration ne s'affiche qu'une fois.
     @AppStorage("haccp.didCompleteOnboarding") private var didCompleteOnboarding = false
 
-    private enum Tab: String, CaseIterable {
-        case today
-        case temperatures
-        case products
-        case cleaning
-        case settings
-
-        var title: String {
-            switch self {
-            case .today:        "Aujourd'hui"
-            case .temperatures: "Températures"
-            case .products:     "Produits"
-            case .cleaning:     "Nettoyage"
-            case .settings:     "Réglages"
-            }
-        }
-
-        var systemImage: String {
-            switch self {
-            case .today:        "checklist"
-            case .temperatures: "thermometer.medium"
-            case .products:     "shippingbox"
-            case .cleaning:     "sparkles"
-            case .settings:     "gearshape"
-            }
-        }
-    }
-
     var body: some View {
-        TabView(selection: $selection) {
+        @Bindable var router = router
+
+        TabView(selection: $router.selectedTab) {
             DashboardView()
-                .tabItem { Label(Tab.today.title, systemImage: Tab.today.systemImage) }
-                .tag(Tab.today.rawValue)
+                .tabItem { Label(AppRouter.Tab.today.title, systemImage: AppRouter.Tab.today.systemImage) }
+                .tag(AppRouter.Tab.today)
 
             TemperatureListView()
-                .tabItem { Label(Tab.temperatures.title, systemImage: Tab.temperatures.systemImage) }
-                .tag(Tab.temperatures.rawValue)
+                .tabItem { Label(AppRouter.Tab.temperatures.title, systemImage: AppRouter.Tab.temperatures.systemImage) }
+                .tag(AppRouter.Tab.temperatures)
 
             ProductListView()
-                .tabItem { Label(Tab.products.title, systemImage: Tab.products.systemImage) }
-                .tag(Tab.products.rawValue)
+                .tabItem { Label(AppRouter.Tab.products.title, systemImage: AppRouter.Tab.products.systemImage) }
+                .tag(AppRouter.Tab.products)
 
             CleaningPlanView()
-                .tabItem { Label(Tab.cleaning.title, systemImage: Tab.cleaning.systemImage) }
-                .tag(Tab.cleaning.rawValue)
+                .tabItem { Label(AppRouter.Tab.cleaning.title, systemImage: AppRouter.Tab.cleaning.systemImage) }
+                .tag(AppRouter.Tab.cleaning)
 
             SettingsView()
-                .tabItem { Label(Tab.settings.title, systemImage: Tab.settings.systemImage) }
-                .tag(Tab.settings.rawValue)
+                .tabItem { Label(AppRouter.Tab.settings.title, systemImage: AppRouter.Tab.settings.systemImage) }
+                .tag(AppRouter.Tab.settings)
         }
         .tint(.teal)
         .fullScreenCover(isPresented: showsOnboarding) {
@@ -85,6 +59,7 @@ struct RootView: View {
     RootView()
         .modelContainer(AppSchema.preview)
         .environment(UserPreferences.shared)
-        .environment(SubscriptionManager.shared)
         .environment(NotificationService.shared)
+        .environment(SubscriptionManager.shared)
+        .environment(AppRouter())
 }

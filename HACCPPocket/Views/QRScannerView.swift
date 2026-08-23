@@ -45,7 +45,7 @@ struct QRScannerView: View {
                     )
                 }
             }
-            .navigationTitle("Scanner une étiquette")
+            .navigationTitle("Scanner")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -66,7 +66,7 @@ struct QRScannerView: View {
 
             Spacer()
 
-            Text("Visez le QR code de l'étiquette")
+            Text("Visez un QR d'étiquette ou le code-barres du produit")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.white)
                 .padding(.horizontal, 16)
@@ -138,7 +138,13 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
         guard session.canAddOutput(output) else { return }
         session.addOutput(output)
         output.setMetadataObjectsDelegate(self, queue: .main)
-        output.metadataObjectTypes = [.qr]
+        // QR pour nos étiquettes, EAN pour les produits, GS1-128 et DataMatrix
+        // pour les cartons fournisseurs qui portent DLC et numéro de lot.
+        output.metadataObjectTypes = [
+            .qr, .dataMatrix, .pdf417,
+            .ean13, .ean8, .upce,
+            .code128, .code39, .itf14
+        ]
 
         let layer = AVCaptureVideoPreviewLayer(session: session)
         layer.videoGravity = .resizeAspectFill
