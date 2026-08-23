@@ -21,6 +21,9 @@ struct ProductListView: View {
     @State private var isCreating = false
     @State private var showsPaywall = false
     @State private var productPendingDeletion: TrackedProduct?
+    @State private var labelProduct: TrackedProduct?
+    @State private var isScanning = false
+    @State private var scanMessage: String?
 
     /// Produit en cours de mise au rebut : l'alerte demande le motif.
     @State private var discardTarget: TrackedProduct?
@@ -52,12 +55,39 @@ struct ProductListView: View {
                         Label("Nouveau produit", systemImage: "plus")
                     }
                 }
+
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        isScanning = true
+                    } label: {
+                        Label("Scanner une étiquette", systemImage: "qrcode.viewfinder")
+                    }
+                }
             }
             .sheet(isPresented: $isCreating) {
                 ProductFormView(context: modelContext)
             }
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
+            }
+            .sheet(item: $labelProduct) { product in
+                LabelPrintView(product: product)
+            }
+            .sheet(isPresented: $isScanning) {
+                QRScannerView { code in
+                    handleScan(code)
+                }
+            }
+            .alert(
+                "Étiquette non reconnue",
+                isPresented: Binding(
+                    get: { scanMessage != nil },
+                    set: { if !$0 { scanMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { scanMessage = nil }
+            } message: {
+                Text(scanMessage ?? "")
             }
             .confirmationDialog(
                 "Supprimer ce produit ?",
@@ -155,6 +185,13 @@ struct ProductListView: View {
                     } label: {
                         Label("Supprimer", systemImage: "trash")
                     }
+
+                    Button {
+                        labelProduct = product
+                    } label: {
+                        Label("Étiquette", systemImage: "printer")
+                    }
+                    .tint(.indigo)
                 }
             }
         }
@@ -230,6 +267,21 @@ struct ProductListView: View {
     }
 
     // MARK: - Actions
+
+    /// Retrouve le produit désigné par le QR d'une étiquette et ouvre sa fiche.
+    private func handleScan(_ code: String) {
+        guard let identifier = LabelPayload.decode(code) else {
+            scanMessage = "Ce QR code ne provient pas d'une étiquette HACCP Pocket."
+            return
+        }
+
+        guard let product = products.first(where: { $0.identifier == identifier }) else {
+            scanMessage = "Le produit correspondant à cette étiquette n'existe plus dans l'application."
+            return
+        }
+
+        editedProduct = product
+    }
 
     private func confirmDiscard() {
         guard let product = discardTarget, let viewModel else { return }

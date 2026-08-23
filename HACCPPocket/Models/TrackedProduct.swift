@@ -100,6 +100,10 @@ final class TrackedProduct {
     /// Durée de vie secondaire appliquée par défaut après ouverture (en jours).
     static let defaultShelfLifeDays: Int = 3
 
+    /// Identifiant stable, indépendant de SwiftData : c'est lui qu'on encode
+    /// dans le QR code de l'étiquette pour retrouver la fiche au scan.
+    var identifier: UUID = UUID()
+
     var name: String
 
     /// Numéro de lot fournisseur (obligatoire en cas de retrait/rappel).
@@ -146,8 +150,10 @@ final class TrackedProduct {
         supplierExpiryDate: Date? = nil,
         labelPhotoData: Data? = nil,
         notes: String = "",
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        identifier: UUID = UUID()
     ) {
+        self.identifier = identifier
         self.name = name
         self.openedAt = openedAt
         self.secondaryLimitDate = secondaryLimitDate

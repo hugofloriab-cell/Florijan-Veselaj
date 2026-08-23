@@ -11,6 +11,8 @@ aucun serveur, aucun compte.
 - Contrôle des marchandises à réception
 - Plan de nettoyage et de désinfection avec preuve d'exécution
 - Export PDF mensuel « prêt pour le contrôle »
+- Impression d'étiquettes d'étiquetage (rouleaux et planches A4) avec QR de
+  traçabilité, et scan de ce QR pour rouvrir la fiche produit
 
 ## Stack
 
