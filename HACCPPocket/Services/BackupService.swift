@@ -285,191 +285,231 @@ enum BackupService {
         archive.appVersion = appVersion
         archive.includesPhotos = includePhotos
 
-        func photo(_ data: Data?) -> Data? { includePhotos ? data : nil }
-
-        archive.establishments = try context.fetch(FetchDescriptor<Establishment>()).map {
-            EstablishmentDTO(
-                name: $0.name,
-                address: $0.address,
-                siret: $0.siret,
-                managerName: $0.managerName,
-                approvalNumber: $0.approvalNumber,
-                logoData: photo($0.logoData),
-                createdAt: $0.createdAt,
-                updatedAt: $0.updatedAt
-            )
-        }
-
-        archive.equipments = try context.fetch(FetchDescriptor<Equipment>()).map { equipment in
-            EquipmentDTO(
-                name: equipment.name,
-                typeRawValue: equipment.typeRawValue,
-                location: equipment.location,
-                minTemperature: equipment.minTemperature,
-                maxTemperature: equipment.maxTemperature,
-                sortIndex: equipment.sortIndex,
-                isActive: equipment.isActive,
-                createdAt: equipment.createdAt,
-                readings: equipment.readings.map { reading in
-                    ReadingDTO(
-                        recordedAt: reading.recordedAt,
-                        value: reading.value,
-                        momentRawValue: reading.momentRawValue,
-                        operatorName: reading.operatorName,
-                        comment: reading.comment,
-                        correctiveAction: reading.correctiveAction,
-                        thresholdMin: reading.thresholdMin,
-                        thresholdMax: reading.thresholdMax,
-                        isCompliant: reading.isCompliant
-                    )
-                }
-            )
-        }
-
-        archive.products = try context.fetch(FetchDescriptor<TrackedProduct>()).map {
-            ProductDTO(
-                identifier: $0.identifier,
-                name: $0.name,
-                batchNumber: $0.batchNumber,
-                barcode: $0.barcode,
-                supplier: $0.supplier,
-                supplierExpiryDate: $0.supplierExpiryDate,
-                openedAt: $0.openedAt,
-                secondaryLimitDate: $0.secondaryLimitDate,
-                storageRawValue: $0.storageRawValue,
-                statusRawValue: $0.statusRawValue,
-                labelPhotoData: photo($0.labelPhotoData),
-                closedAt: $0.closedAt,
-                discardReason: $0.discardReason,
-                notes: $0.notes,
-                allergenRawValues: $0.allergenRawValues,
-                createdAt: $0.createdAt
-            )
-        }
-
-        archive.deliveries = try context.fetch(FetchDescriptor<DeliveryCheck>()).map {
-            DeliveryDTO(
-                receivedAt: $0.receivedAt,
-                supplierName: $0.supplierName,
-                productLabel: $0.productLabel,
-                batchNumber: $0.batchNumber,
-                temperature: $0.temperature,
-                temperatureLimit: $0.temperatureLimit,
-                packagingIntact: $0.packagingIntact,
-                labellingCompliant: $0.labellingCompliant,
-                decisionRawValue: $0.decisionRawValue,
-                reason: $0.reason,
-                operatorName: $0.operatorName,
-                photoData: photo($0.photoData),
-                notes: $0.notes,
-                createdAt: $0.createdAt
-            )
-        }
-
-        archive.cleaningTasks = try context.fetch(FetchDescriptor<CleaningTask>()).map { task in
-            CleaningTaskDTO(
-                title: task.title,
-                zone: task.zone,
-                productUsed: task.productUsed,
-                procedure: task.procedure,
-                frequencyRawValue: task.frequencyRawValue,
-                isActive: task.isActive,
-                sortIndex: task.sortIndex,
-                createdAt: task.createdAt,
-                records: task.records.map { record in
-                    CleaningRecordDTO(
-                        completedAt: record.completedAt,
-                        operatorName: record.operatorName,
-                        productUsed: record.productUsed,
-                        comment: record.comment,
-                        photoData: photo(record.photoData)
-                    )
-                }
-            )
-        }
-
-        archive.thermalRecords = try context.fetch(FetchDescriptor<ThermalProcessRecord>()).map { record in
-            ThermalDTO(
-                kindRawValue: record.kindRawValue,
-                productName: record.productName,
-                batchNumber: record.batchNumber,
-                startedAt: record.startedAt,
-                startTemperature: record.startTemperature,
-                finishedAt: record.finishedAt,
-                endTemperature: record.endTemperature,
-                targetTemperature: record.targetTemperature,
-                maximumDurationSeconds: record.maximumDurationSeconds,
-                operatorName: record.operatorName,
-                comment: record.comment,
-                correctiveAction: record.correctiveAction,
-                isCompliant: record.isCompliant,
-                createdAt: record.createdAt,
-                checkpoints: record.checkpoints.map { point in
-                    CheckpointDTO(recordedAt: point.recordedAt, temperature: point.temperature)
-                }
-            )
-        }
-
-        archive.oilChecks = try context.fetch(FetchDescriptor<OilCheckRecord>()).map {
-            OilDTO(
-                checkedAt: $0.checkedAt,
-                fryerName: $0.fryerName,
-                polarCompounds: $0.polarCompounds,
-                polarCompoundsLimit: $0.polarCompoundsLimit,
-                appearanceRawValue: $0.appearanceRawValue,
-                actionRawValue: $0.actionRawValue,
-                operatorName: $0.operatorName,
-                comment: $0.comment,
-                isCompliant: $0.isCompliant,
-                createdAt: $0.createdAt
-            )
-        }
-
-        archive.pestVisits = try context.fetch(FetchDescriptor<PestControlVisit>()).map {
-            PestDTO(
-                visitedAt: $0.visitedAt,
-                company: $0.company,
-                technician: $0.technician,
-                findings: $0.findings,
-                baitsReplaced: $0.baitsReplaced,
-                deviceCount: $0.deviceCount,
-                actionsTaken: $0.actionsTaken,
-                nextVisitDate: $0.nextVisitDate,
-                reportPhotoData: photo($0.reportPhotoData),
-                hasInfestation: $0.hasInfestation,
-                createdAt: $0.createdAt
-            )
-        }
-
-        archive.trainings = try context.fetch(FetchDescriptor<StaffTraining>()).map {
-            TrainingDTO(
-                personName: $0.personName,
-                title: $0.title,
-                organisation: $0.organisation,
-                completedAt: $0.completedAt,
-                expiresAt: $0.expiresAt,
-                certificateData: photo($0.certificateData),
-                notes: $0.notes,
-                createdAt: $0.createdAt
-            )
-        }
-
-        archive.dishes = try context.fetch(FetchDescriptor<Dish>()).map {
-            DishDTO(
-                name: $0.name,
-                categoryRawValue: $0.categoryRawValue,
-                summary: $0.summary,
-                composition: $0.composition,
-                allergenRawValues: $0.allergenRawValues,
-                isAvailable: $0.isAvailable,
-                isHomemade: $0.isHomemade,
-                sortIndex: $0.sortIndex,
-                createdAt: $0.createdAt,
-                updatedAt: $0.updatedAt
-            )
-        }
+        // Chaque conversion vit dans sa propre fonction, au type de retour
+        // explicite. Regroupées, elles formaient une seule expression que le
+        // compilateur Swift n'arrivait plus à vérifier en un temps raisonnable.
+        archive.establishments = try context.fetch(FetchDescriptor<Establishment>())
+            .map { establishmentDTO(for: $0, includePhotos: includePhotos) }
+        archive.equipments = try context.fetch(FetchDescriptor<Equipment>())
+            .map { equipmentDTO(for: $0) }
+        archive.products = try context.fetch(FetchDescriptor<TrackedProduct>())
+            .map { productDTO(for: $0, includePhotos: includePhotos) }
+        archive.deliveries = try context.fetch(FetchDescriptor<DeliveryCheck>())
+            .map { deliveryDTO(for: $0, includePhotos: includePhotos) }
+        archive.cleaningTasks = try context.fetch(FetchDescriptor<CleaningTask>())
+            .map { cleaningTaskDTO(for: $0, includePhotos: includePhotos) }
+        archive.thermalRecords = try context.fetch(FetchDescriptor<ThermalProcessRecord>())
+            .map { thermalDTO(for: $0) }
+        archive.oilChecks = try context.fetch(FetchDescriptor<OilCheckRecord>())
+            .map { oilDTO(for: $0) }
+        archive.pestVisits = try context.fetch(FetchDescriptor<PestControlVisit>())
+            .map { pestDTO(for: $0, includePhotos: includePhotos) }
+        archive.trainings = try context.fetch(FetchDescriptor<StaffTraining>())
+            .map { trainingDTO(for: $0, includePhotos: includePhotos) }
+        archive.dishes = try context.fetch(FetchDescriptor<Dish>())
+            .map { dishDTO(for: $0) }
 
         return archive
+    }
+
+    // MARK: Conversions modèle → archive
+    //
+    // Une fonction par modèle, au nom distinct et au type de retour explicite.
+    // Treize surcharges du même nom obligeraient le compilateur à trancher à
+    // chaque appel, et c'est précisément ce qu'il n'arrivait plus à faire.
+
+    /// `includePhotos` à `false` produit une sauvegarde légère : les photos
+    /// représentent l'essentiel du poids du fichier.
+    private static func photo(_ data: Data?, includePhotos: Bool) -> Data? {
+        includePhotos ? data : nil
+    }
+
+    private static func establishmentDTO(for establishment: Establishment, includePhotos: Bool) -> EstablishmentDTO {
+        EstablishmentDTO(
+            name: establishment.name,
+            address: establishment.address,
+            siret: establishment.siret,
+            managerName: establishment.managerName,
+            approvalNumber: establishment.approvalNumber,
+            logoData: photo(establishment.logoData, includePhotos: includePhotos),
+            createdAt: establishment.createdAt,
+            updatedAt: establishment.updatedAt
+        )
+    }
+
+    private static func readingDTO(for reading: TemperatureReading) -> ReadingDTO {
+        ReadingDTO(
+            recordedAt: reading.recordedAt,
+            value: reading.value,
+            momentRawValue: reading.momentRawValue,
+            operatorName: reading.operatorName,
+            comment: reading.comment,
+            correctiveAction: reading.correctiveAction,
+            thresholdMin: reading.thresholdMin,
+            thresholdMax: reading.thresholdMax,
+            isCompliant: reading.isCompliant
+        )
+    }
+
+    private static func equipmentDTO(for equipment: Equipment) -> EquipmentDTO {
+        EquipmentDTO(
+            name: equipment.name,
+            typeRawValue: equipment.typeRawValue,
+            location: equipment.location,
+            minTemperature: equipment.minTemperature,
+            maxTemperature: equipment.maxTemperature,
+            sortIndex: equipment.sortIndex,
+            isActive: equipment.isActive,
+            createdAt: equipment.createdAt,
+            readings: equipment.readings.map { readingDTO(for: $0) }
+        )
+    }
+
+    private static func productDTO(for product: TrackedProduct, includePhotos: Bool) -> ProductDTO {
+        ProductDTO(
+            identifier: product.identifier,
+            name: product.name,
+            batchNumber: product.batchNumber,
+            barcode: product.barcode,
+            supplier: product.supplier,
+            supplierExpiryDate: product.supplierExpiryDate,
+            openedAt: product.openedAt,
+            secondaryLimitDate: product.secondaryLimitDate,
+            storageRawValue: product.storageRawValue,
+            statusRawValue: product.statusRawValue,
+            labelPhotoData: photo(product.labelPhotoData, includePhotos: includePhotos),
+            closedAt: product.closedAt,
+            discardReason: product.discardReason,
+            notes: product.notes,
+            allergenRawValues: product.allergenRawValues,
+            createdAt: product.createdAt
+        )
+    }
+
+    private static func deliveryDTO(for delivery: DeliveryCheck, includePhotos: Bool) -> DeliveryDTO {
+        DeliveryDTO(
+            receivedAt: delivery.receivedAt,
+            supplierName: delivery.supplierName,
+            productLabel: delivery.productLabel,
+            batchNumber: delivery.batchNumber,
+            temperature: delivery.temperature,
+            temperatureLimit: delivery.temperatureLimit,
+            packagingIntact: delivery.packagingIntact,
+            labellingCompliant: delivery.labellingCompliant,
+            decisionRawValue: delivery.decisionRawValue,
+            reason: delivery.reason,
+            operatorName: delivery.operatorName,
+            photoData: photo(delivery.photoData, includePhotos: includePhotos),
+            notes: delivery.notes,
+            createdAt: delivery.createdAt
+        )
+    }
+
+    private static func cleaningRecordDTO(for record: CleaningRecord, includePhotos: Bool) -> CleaningRecordDTO {
+        CleaningRecordDTO(
+            completedAt: record.completedAt,
+            operatorName: record.operatorName,
+            productUsed: record.productUsed,
+            comment: record.comment,
+            photoData: photo(record.photoData, includePhotos: includePhotos)
+        )
+    }
+
+    private static func cleaningTaskDTO(for task: CleaningTask, includePhotos: Bool) -> CleaningTaskDTO {
+        CleaningTaskDTO(
+            title: task.title,
+            zone: task.zone,
+            productUsed: task.productUsed,
+            procedure: task.procedure,
+            frequencyRawValue: task.frequencyRawValue,
+            isActive: task.isActive,
+            sortIndex: task.sortIndex,
+            createdAt: task.createdAt,
+            records: task.records.map { cleaningRecordDTO(for: $0, includePhotos: includePhotos) }
+        )
+    }
+
+    private static func checkpointDTO(for checkpoint: ThermalCheckpoint) -> CheckpointDTO {
+        CheckpointDTO(recordedAt: checkpoint.recordedAt, temperature: checkpoint.temperature)
+    }
+
+    private static func thermalDTO(for record: ThermalProcessRecord) -> ThermalDTO {
+        ThermalDTO(
+            kindRawValue: record.kindRawValue,
+            productName: record.productName,
+            batchNumber: record.batchNumber,
+            startedAt: record.startedAt,
+            startTemperature: record.startTemperature,
+            finishedAt: record.finishedAt,
+            endTemperature: record.endTemperature,
+            targetTemperature: record.targetTemperature,
+            maximumDurationSeconds: record.maximumDurationSeconds,
+            operatorName: record.operatorName,
+            comment: record.comment,
+            correctiveAction: record.correctiveAction,
+            isCompliant: record.isCompliant,
+            createdAt: record.createdAt,
+            checkpoints: record.checkpoints.map { checkpointDTO(for: $0) }
+        )
+    }
+
+    private static func oilDTO(for check: OilCheckRecord) -> OilDTO {
+        OilDTO(
+            checkedAt: check.checkedAt,
+            fryerName: check.fryerName,
+            polarCompounds: check.polarCompounds,
+            polarCompoundsLimit: check.polarCompoundsLimit,
+            appearanceRawValue: check.appearanceRawValue,
+            actionRawValue: check.actionRawValue,
+            operatorName: check.operatorName,
+            comment: check.comment,
+            isCompliant: check.isCompliant,
+            createdAt: check.createdAt
+        )
+    }
+
+    private static func pestDTO(for visit: PestControlVisit, includePhotos: Bool) -> PestDTO {
+        PestDTO(
+            visitedAt: visit.visitedAt,
+            company: visit.company,
+            technician: visit.technician,
+            findings: visit.findings,
+            baitsReplaced: visit.baitsReplaced,
+            deviceCount: visit.deviceCount,
+            actionsTaken: visit.actionsTaken,
+            nextVisitDate: visit.nextVisitDate,
+            reportPhotoData: photo(visit.reportPhotoData, includePhotos: includePhotos),
+            hasInfestation: visit.hasInfestation,
+            createdAt: visit.createdAt
+        )
+    }
+
+    private static func trainingDTO(for training: StaffTraining, includePhotos: Bool) -> TrainingDTO {
+        TrainingDTO(
+            personName: training.personName,
+            title: training.title,
+            organisation: training.organisation,
+            completedAt: training.completedAt,
+            expiresAt: training.expiresAt,
+            certificateData: photo(training.certificateData, includePhotos: includePhotos),
+            notes: training.notes,
+            createdAt: training.createdAt
+        )
+    }
+
+    private static func dishDTO(for dish: Dish) -> DishDTO {
+        DishDTO(
+            name: dish.name,
+            categoryRawValue: dish.categoryRawValue,
+            summary: dish.summary,
+            composition: dish.composition,
+            allergenRawValues: dish.allergenRawValues,
+            isAvailable: dish.isAvailable,
+            isHomemade: dish.isHomemade,
+            sortIndex: dish.sortIndex,
+            createdAt: dish.createdAt,
+            updatedAt: dish.updatedAt
+        )
     }
 
     /// Écrit l'archive dans un fichier temporaire prêt à être partagé.

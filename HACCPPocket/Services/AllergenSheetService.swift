@@ -62,7 +62,10 @@ struct AllergenSheet {
 
 // MARK: - Rendu
 
-@MainActor
+/// Volontairement sans isolation d'acteur, comme `PDFReportService` : le
+/// rendu se fait dans une fermeture de `UIGraphicsPDFRenderer`, qui n'est pas
+/// isolée. Marquer le service `@MainActor` empêcherait ses propres fonctions
+/// de dessin de s'y appeler.
 enum AllergenSheetService {
 
     private enum Layout {
