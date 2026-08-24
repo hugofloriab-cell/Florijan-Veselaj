@@ -4,10 +4,10 @@
 //
 //  Racine de la navigation, adaptée à la taille de l'écran.
 //
-//  Sur iPhone : une barre d'onglets. Sur iPad et Mac : une barre latérale,
-//  qui est la convention de ces plateformes et libère la hauteur d'écran.
-//  La sélection passe par `AppRouter` dans les deux cas, si bien qu'un
-//  raccourci du tableau de bord fonctionne quelle que soit la présentation.
+//  Sur iPhone : une barre de cinq onglets, et les registres s'atteignent
+//  depuis le tableau de bord. Sur iPad et Mac : une barre latérale qui porte
+//  tout, parce qu'un écran de cette taille n'a aucune raison de cacher la
+//  moitié de l'application derrière un tableau de bord.
 //
 
 import SwiftUI
@@ -56,11 +56,11 @@ struct RootView: View {
     private var tabLayout: some View {
         @Bindable var router = router
 
-        return TabView(selection: $router.selectedTab) {
-            ForEach(AppRouter.Tab.allCases, id: \.self) { tab in
-                destination(for: tab)
-                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
-                    .tag(tab)
+        return TabView(selection: $router.tabSelection) {
+            ForEach(AppRouter.Destination.tabCases) { destination in
+                screen(for: destination)
+                    .tabItem { Label(destination.title, systemImage: destination.systemImage) }
+                    .tag(destination)
             }
         }
         .tint(.brand)
@@ -71,9 +71,12 @@ struct RootView: View {
     private var splitLayout: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             sidebar
+                .navigationSplitViewColumnWidth(min: 220, ideal: 264, max: 320)
         } detail: {
-            destination(for: router.selectedTab)
-                .id(router.selectedTab)
+            // `id` force la reconstruction du détail : sans lui, la pile de
+            // navigation de l'écran précédent survivrait au changement.
+            screen(for: router.selection)
+                .id(router.selection)
         }
         .navigationSplitViewStyle(.balanced)
         .tint(.brand)
@@ -97,39 +100,58 @@ struct RootView: View {
                 .selectionDisabled()
             }
 
-            Section("Registres") {
-                ForEach(AppRouter.Tab.allCases, id: \.self) { tab in
-                    Label(tab.title, systemImage: tab.systemImage)
-                        .tag(tab)
+            ForEach(AppRouter.sidebarSections) { section in
+                Section(section.title) {
+                    ForEach(section.destinations) { destination in
+                        Label(destination.title, systemImage: destination.systemImage)
+                            .tag(destination)
+                    }
                 }
             }
         }
         .listStyle(.sidebar)
-        .navigationTitle("HACCP Pocket")
+        .navigationTitle(BrandAssets.productName)
         .navigationBarTitleDisplayMode(.inline)
     }
 
     /// `List` attend une sélection optionnelle ; le routeur, lui, a toujours un
-    /// onglet courant. On ignore donc la désélection.
-    private var sidebarSelection: Binding<AppRouter.Tab?> {
+    /// écran courant. On ignore donc la désélection.
+    private var sidebarSelection: Binding<AppRouter.Destination?> {
         Binding(
-            get: { router.selectedTab },
+            get: { router.selection },
             set: { newValue in
-                if let newValue { router.selectedTab = newValue }
+                if let newValue { router.selection = newValue }
             }
         )
     }
 
     // MARK: - Écrans
 
+    /// Les écrans de registre sont normalement empilés depuis le tableau de
+    /// bord et n'apportent donc pas leur propre `NavigationStack`. Présentés
+    /// directement depuis la barre latérale, il faut le leur fournir.
     @ViewBuilder
-    private func destination(for tab: AppRouter.Tab) -> some View {
-        switch tab {
-        case .today:        DashboardView()
-        case .temperatures: TemperatureListView()
-        case .products:     ProductListView()
-        case .cleaning:     CleaningPlanView()
-        case .settings:     SettingsView()
+    private func screen(for destination: AppRouter.Destination) -> some View {
+        switch destination {
+        case .today:
+            DashboardView()
+        case .temperatures:
+            TemperatureListView()
+        case .products:
+            ProductListView()
+        case .cleaning:
+            CleaningPlanView()
+        case .settings:
+            SettingsView()
+
+        case .registers:
+            NavigationStack { RegistersHubView() }
+        case .menu:
+            NavigationStack { MenuListView() }
+        case .history:
+            NavigationStack { HistoryView() }
+        case .report:
+            NavigationStack { ReportView() }
         }
     }
 
