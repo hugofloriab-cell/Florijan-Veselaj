@@ -33,12 +33,22 @@
 //  2. Créer la version suivante en dessous, avec un numéro incrémenté et la
 //     liste complète des modèles — y compris ceux qui n'ont pas changé.
 //
-//  3. Geler la forme d'origine de tout modèle dont la forme change : en
-//     recopier une version réduite à ses seules propriétés stockées à
-//     l'intérieur de la version qui le précède, comme `HACCPSchemaV1
-//     .TrackedProduct`. Ni méthode, ni propriété calculée : seule la forme
-//     des données entre dans un schéma. Un modèle inchangé se référence
-//     directement, sans copie.
+//  3. Ne PAS recopier les modèles tant que la migration reste légère.
+//     SwiftData n'a pas besoin de la forme d'origine décrite en Swift : elle
+//     est enregistrée dans le store, et c'est là qu'il la lit. Référencer
+//     directement les modèles courants dans chaque version suffit.
+//
+//     ⚠️ Piège vérifié à nos dépens le 24 août 2026 : recopier un seul modèle
+//     à l'intérieur d'une version, en laissant les autres pointer sur le
+//     modèle de haut niveau, fait échouer la migration. Deux classes `@Model`
+//     portant le même nom d'entité coexistent alors dans le module, et
+//     SwiftData ne sait plus laquelle correspond au store. La base est alors
+//     mise de côté et l'utilisateur repart d'un registre vierge.
+//
+//     Si une migration personnalisée impose vraiment de relire les anciennes
+//     valeurs, alors TOUTES les versions doivent imbriquer TOUS leurs
+//     modèles, et la version courante être exposée par des `typealias`.
+//     C'est un chantier à part entière, à ne lancer que s'il est inévitable.
 //
 //  4. Décrire le passage d'une version à l'autre :
 //
@@ -104,12 +114,14 @@ import SwiftData
 
 // MARK: - Version 1
 
-/// Schéma de la première version publiée. **Ne plus jamais modifier.**
+/// Schéma de la première version publiée.
 ///
-/// `TrackedProduct` est recopié ici, réduit à ses seules propriétés stockées :
-/// la V2 lui ajoute les allergènes, il fallait donc en figer la forme
-/// d'origine. Les autres modèles n'ayant pas changé de forme entre V1 et V2,
-/// la référence directe suffit et évite onze copies inutiles.
+/// Les modèles sont référencés directement, sans copie figée. Pour une
+/// migration légère, SwiftData n'a pas besoin de la forme d'origine décrite
+/// en Swift : il la lit dans le store lui-même, où elle est enregistrée. Ce
+/// n'est que pour une migration personnalisée, où il faut relire les
+/// anciennes valeurs, que les versions doivent porter leur propre copie des
+/// modèles — et dans ce cas **toutes** les versions, sans exception.
 enum HACCPSchemaV1: VersionedSchema {
 
     static var versionIdentifier: Schema.Version {
@@ -121,7 +133,7 @@ enum HACCPSchemaV1: VersionedSchema {
             Establishment.self,
             Equipment.self,
             TemperatureReading.self,
-            HACCPSchemaV1.TrackedProduct.self,
+            TrackedProduct.self,
             DeliveryCheck.self,
             CleaningTask.self,
             CleaningRecord.self,
@@ -131,31 +143,6 @@ enum HACCPSchemaV1: VersionedSchema {
             PestControlVisit.self,
             StaffTraining.self
         ]
-    }
-
-    /// Forme d'origine de la fiche produit, sans les allergènes.
-    ///
-    /// Aucune méthode ni propriété calculée : seule la forme des données
-    /// entre dans un schéma, et une copie figée ne sert qu'à ça.
-    @Model
-    final class TrackedProduct {
-        var identifier: UUID = UUID()
-        var name: String = ""
-        var batchNumber: String = ""
-        var barcode: String = ""
-        var supplier: String = ""
-        var supplierExpiryDate: Date?
-        var openedAt: Date = Date.now
-        var secondaryLimitDate: Date = Date.now
-        var storageRawValue: String = ""
-        var statusRawValue: String = ""
-        @Attribute(.externalStorage) var labelPhotoData: Data?
-        var closedAt: Date?
-        var discardReason: String = ""
-        var notes: String = ""
-        var createdAt: Date = Date.now
-
-        init() {}
     }
 }
 
