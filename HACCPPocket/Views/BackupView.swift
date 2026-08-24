@@ -59,6 +59,10 @@ struct BackupView: View {
     @State private var showsRestoreConfirmation = false
     @State private var showsEraseConfirmation = false
 
+    @State private var archivedStores: [AppSchema.ArchivedStore] = []
+    @State private var storeToRestore: AppSchema.ArchivedStore?
+    @State private var showsRestartNotice = false
+
     /// Un seul état pour les messages : empiler plusieurs alertes sur la même
     /// vue est une source d'ennuis, et l'utilisateur n'en voit qu'une à la fois.
     @State private var message: BackupMessage?
@@ -68,10 +72,12 @@ struct BackupView: View {
     var body: some View {
         List {
             summarySection
+            archivedStoresSection
             exportSection
             importSection
             eraseSection
         }
+        .onAppear { archivedStores = AppSchema.archivedStores() }
         .navigationTitle("Sauvegarde")
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: includePhotos) { _, _ in
@@ -98,6 +104,21 @@ struct BackupView: View {
             }
         } message: { archive in
             Text(restoreMessage(for: archive))
+        }
+        .alert(
+            "Remettre cette base en service ?",
+            isPresented: restoreConfirmationBinding,
+            presenting: storeToRestore
+        ) { archive in
+            Button("Remettre en service") { requestRestore(archive) }
+            Button("Annuler", role: .cancel) { storeToRestore = nil }
+        } message: { archive in
+            Text("La base actuelle (\(totalRecords) enregistrements) sera écartée à son tour, sans être supprimée. L'opération est donc réversible : si vous vous trompez de fichier, vous pourrez revenir en arrière.")
+        }
+        .alert("Fermez puis rouvrez l'application", isPresented: $showsRestartNotice) {
+            Button("J'ai compris", role: .cancel) { }
+        } message: {
+            Text("L'échange se fera au prochain démarrage, quand plus rien ne tient les fichiers ouverts.\n\nFermez complètement HACCP Pocket — glissez vers le haut depuis le bas de l'écran, puis balayez la fenêtre de l'application — et rouvrez-la.")
         }
         .alert("Effacer toutes les données ?", isPresented: $showsEraseConfirmation) {
             Button("Tout effacer", role: .destructive) { eraseEverything() }
@@ -166,6 +187,63 @@ struct BackupView: View {
     private var isExportStale: Bool {
         guard let lastExportDate else { return true }
         return Date.now.timeIntervalSince(lastExportDate) > 30 * 24 * 3600
+    }
+
+    // MARK: - Bases mises de côté
+
+    @ViewBuilder
+    private var archivedStoresSection: some View {
+        if !archivedStores.isEmpty {
+            Section {
+                ForEach(archivedStores) { archive in
+                    Button {
+                        storeToRestore = archive
+                    } label: {
+                        HStack(spacing: 12) {
+                            RowIcon(systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90", tint: .orange)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Base du \(AppFormatters.dateAndTime(archive.modifiedAt))")
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                Text(sizeLabel(archive.byteSize))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            Text("Remettre")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.brand)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } header: {
+                Text("Bases mises de côté")
+            } footer: {
+                Text("Une base que l'application n'a pas su ouvrir est écartée plutôt que supprimée. Vous pouvez la remettre en service : c'est sans risque, la base actuelle est conservée de la même façon.")
+            }
+        }
+    }
+
+    private func requestRestore(_ archive: AppSchema.ArchivedStore) {
+        AppSchema.requestRestore(of: archive)
+        storeToRestore = nil
+        showsRestartNotice = true
+    }
+
+    private func sizeLabel(_ bytes: Int) -> String {
+        let megabytes = Double(bytes) / 1_048_576
+        if megabytes >= 1 {
+            return String(format: "%.1f Mo", megabytes)
+        }
+        return String(format: "%.0f Ko", Double(bytes) / 1024)
+    }
+
+    private var restoreConfirmationBinding: Binding<Bool> {
+        Binding(get: { storeToRestore != nil }, set: { if !$0 { storeToRestore = nil } })
     }
 
     // MARK: - Export

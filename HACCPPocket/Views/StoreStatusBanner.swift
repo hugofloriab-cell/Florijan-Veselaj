@@ -46,7 +46,7 @@ extension AppSchema.StoreOutcome {
             "Les registres sont enregistrés normalement sur cet appareil."
 
         case .recovered(let fileName):
-            "L'application est repartie sur un registre vierge. L'ancienne base n'a pas été supprimée : elle a été mise de côté sous le nom « \(fileName) ». Ne réinstallez pas l'application, contactez-nous pour tenter de la récupérer."
+            "L'application est repartie sur un registre vierge. Vos anciennes données n'ont pas été supprimées : elles ont été mises de côté sous le nom « \(fileName) ». Allez dans Réglages puis Sauvegarde pour les remettre en service. Ne réinstallez pas l'application : ce serait le seul geste qui les effacerait vraiment."
 
         case .memoryFallback:
             "L'appareil n'a pas autorisé la création du fichier de registre. Tout ce que vous saisirez maintenant sera perdu à la fermeture. Vérifiez l'espace de stockage disponible, puis redémarrez l'application."

@@ -121,6 +121,11 @@ enum AppSchema {
     @MainActor
     static func openStore() -> StoreResult {
 
+        // 0. Une remise en service demandée depuis les réglages s'exécute
+        //    avant toute ouverture : c'est le seul moment où les fichiers ne
+        //    sont tenus par personne.
+        performPendingRestoreIfNeeded()
+
         // 1. Tentative normale, avec le plan de migration.
         if let container = try? makeContainer() {
             SeedData.seedIfNeeded(in: container.mainContext)
@@ -170,14 +175,19 @@ enum AppSchema {
 
     // MARK: - Mise à l'écart d'une base illisible
 
-    /// Renomme la base défaillante avec un horodatage et renvoie sa nouvelle
-    /// adresse. Rien n'est supprimé : ces fichiers restent récupérables.
+    /// Préfixe des bases écartées. Volontairement lisible : un utilisateur
+    /// doit pouvoir reconnaître ce fichier s'il tombe dessus.
+    private static let archivePrefix = "HACCPPocket-illisible-"
+
+    /// Renomme la base défaillante avec un horodatage à la minute et renvoie
+    /// sa nouvelle adresse. Rien n'est supprimé, et rien n'est écrasé : deux
+    /// incidents le même jour produisent deux fichiers distincts.
     @discardableResult
     static func setStoreAside(at date: Date = .now) throws -> URL {
         let fileManager = FileManager.default
         let directory = storeURL.deletingLastPathComponent()
-        let originalName = storeURL.lastPathComponent              // HACCPPocket.store
-        let archivedName = "HACCPPocket-illisible-\(AppFormatters.fileStamp(date)).store"
+        let originalName = storeURL.lastPathComponent
+        let archivedName = "\(archivePrefix)\(AppFormatters.fileTimestamp(date)).store"
 
         for source in storeFileURLs where fileManager.fileExists(atPath: source.path) {
             // HACCPPocket.store.wal devient HACCPPocket-illisible-….store.wal :
@@ -186,13 +196,121 @@ enum AppSchema {
                 .replacingOccurrences(of: originalName, with: archivedName)
             let target = directory.appending(path: targetName)
 
-            if fileManager.fileExists(atPath: target.path) {
-                try? fileManager.removeItem(at: target)
-            }
-            try fileManager.moveItem(at: source, to: target)
+            // Un fichier déjà présent ne serait pas remplacé : on cherche un
+            // nom libre plutôt que de détruire une sauvegarde antérieure.
+            try fileManager.moveItem(at: source, to: freeURL(from: target))
         }
 
         return directory.appending(path: archivedName)
+    }
+
+    /// Décale le nom tant qu'un fichier existe déjà.
+    private static func freeURL(from url: URL) -> URL {
+        let fileManager = FileManager.default
+        guard fileManager.fileExists(atPath: url.path) else { return url }
+
+        let directory = url.deletingLastPathComponent()
+        let name = url.lastPathComponent
+
+        for suffix in 2...99 {
+            let candidate = directory.appending(path: "\(suffix)-\(name)")
+            if !fileManager.fileExists(atPath: candidate.path) { return candidate }
+        }
+        return url
+    }
+
+    // MARK: - Bases mises de côté
+
+    /// Une base écartée lors d'un incident, telle qu'elle est proposée à
+    /// l'utilisateur dans les réglages.
+    struct ArchivedStore: Identifiable, Hashable {
+        let fileName: String
+        let url: URL
+        let modifiedAt: Date
+        let byteSize: Int
+
+        var id: String { fileName }
+    }
+
+    /// Inventaire des bases écartées, la plus récente en tête.
+    static func archivedStores() -> [ArchivedStore] {
+        let fileManager = FileManager.default
+        let directory = storeURL.deletingLastPathComponent()
+
+        let contents = (try? fileManager.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey]
+        )) ?? []
+
+        var found: [ArchivedStore] = []
+
+        for url in contents {
+            let name = url.lastPathComponent
+            // On ne liste que le fichier principal : les .shm et .wal
+            // l'accompagnent et n'ont pas à apparaître.
+            guard name.hasPrefix(archivePrefix), name.hasSuffix(".store") else { continue }
+
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
+            found.append(
+                ArchivedStore(
+                    fileName: name,
+                    url: url,
+                    modifiedAt: values?.contentModificationDate ?? .distantPast,
+                    byteSize: values?.fileSize ?? 0
+                )
+            )
+        }
+
+        return found.sorted { $0.modifiedAt > $1.modifiedAt }
+    }
+
+    // MARK: - Remise en service d'une base écartée
+
+    private static let pendingRestoreKey = "haccp.store.pendingRestore"
+
+    /// Demande la remise en service d'une base écartée.
+    ///
+    /// L'échange de fichiers n'a pas lieu tout de suite : SwiftData tient la
+    /// base courante ouverte, et permuter des fichiers sous ses pieds est le
+    /// meilleur moyen de casser les deux. On note l'intention, et le prochain
+    /// lancement fera l'échange avant d'ouvrir quoi que ce soit.
+    static func requestRestore(of archive: ArchivedStore, defaults: UserDefaults = .standard) {
+        defaults.set(archive.fileName, forKey: pendingRestoreKey)
+    }
+
+    static func pendingRestoreFileName(defaults: UserDefaults = .standard) -> String? {
+        defaults.string(forKey: pendingRestoreKey)
+    }
+
+    static func cancelPendingRestore(defaults: UserDefaults = .standard) {
+        defaults.removeObject(forKey: pendingRestoreKey)
+    }
+
+    /// Exécute l'échange demandé, avant toute ouverture de conteneur.
+    ///
+    /// La base courante n'est pas détruite : elle est écartée à son tour, ce
+    /// qui rend l'opération réversible. Se tromper de fichier ne coûte donc
+    /// qu'un aller-retour.
+    private static func performPendingRestoreIfNeeded(defaults: UserDefaults = .standard) {
+        guard let fileName = pendingRestoreFileName(defaults: defaults) else { return }
+        defaults.removeObject(forKey: pendingRestoreKey)
+
+        let fileManager = FileManager.default
+        let directory = storeURL.deletingLastPathComponent()
+        let archiveURL = directory.appending(path: fileName)
+
+        guard fileManager.fileExists(atPath: archiveURL.path) else { return }
+
+        // La base courante prend la place d'une archive.
+        try? setStoreAside()
+
+        let originalName = storeURL.lastPathComponent
+        for suffix in ["", ".shm", ".wal"] {
+            let source = directory.appending(path: fileName + suffix)
+            guard fileManager.fileExists(atPath: source.path) else { continue }
+            let target = directory.appending(path: originalName + suffix)
+            try? fileManager.moveItem(at: source, to: target)
+        }
     }
 
     // MARK: - Prévisualisations

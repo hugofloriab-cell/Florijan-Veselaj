@@ -71,6 +71,18 @@ enum AppFormatters {
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
     }
 
+    /// Ex. « 2026-08-24-0217 » — horodatage à la minute, pour nommer un
+    /// fichier sans jamais écraser celui de la veille ni celui d'il y a
+    /// une heure.
+    static func fileTimestamp(_ date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
+        return String(
+            format: "%04d-%02d-%02d-%02d%02d",
+            parts.year ?? 0, parts.month ?? 0, parts.day ?? 0,
+            parts.hour ?? 0, parts.minute ?? 0
+        )
+    }
+
     /// Ex. « août 2026 » — titre des exports mensuels.
     static func monthTitle(_ date: Date) -> String {
         date.formatted(.dateTime.month(.wide).year().locale(locale))
