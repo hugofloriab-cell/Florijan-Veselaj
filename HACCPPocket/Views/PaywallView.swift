@@ -38,6 +38,7 @@ struct PaywallView: View {
                     legal
                 }
                 .padding(20)
+                .readableWidth()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("HACCP Pocket Pro")

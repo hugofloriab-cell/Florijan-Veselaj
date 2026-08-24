@@ -24,6 +24,22 @@ enum DS {
 
     static let gutter: CGFloat = 12
     static let sectionSpacing: CGFloat = 22
+
+    /// Largeur maximale d'une colonne de texte. Au-delà, l'œil perd la ligne
+    /// en revenant à la marge gauche : c'est ce qui rend illisible un écran
+    /// d'iPhone étiré sur toute la largeur d'un iPad.
+    static let readableWidth: CGFloat = 780
+}
+
+// MARK: - Largeur de lecture
+
+extension View {
+    /// Borne le contenu à une largeur lisible et le centre. Sans effet sur un
+    /// iPhone, dont l'écran est déjà plus étroit que la borne.
+    func readableWidth(_ maxWidth: CGFloat = DS.readableWidth) -> some View {
+        frame(maxWidth: maxWidth)
+            .frame(maxWidth: .infinity)
+    }
 }
 
 // MARK: - Surface

@@ -51,6 +51,9 @@ struct OnboardingView: View {
 
                 footer
             }
+            // La première configuration s'affiche en plein écran : sur un iPad,
+            // sans borne, le texte traverserait toute la dalle.
+            .readableWidth()
             .navigationTitle(step.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

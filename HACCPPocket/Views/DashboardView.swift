@@ -68,8 +68,7 @@ struct DashboardView: View {
                 .padding(.bottom, 28)
                 // Sur un grand écran, une colonne de texte pleine largeur
                 // devient illisible : on la borne et on la centre.
-                .frame(maxWidth: 780)
-                .frame(maxWidth: .infinity)
+                .readableWidth()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Aujourd'hui")
