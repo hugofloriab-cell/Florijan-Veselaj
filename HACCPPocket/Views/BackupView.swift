@@ -53,6 +53,9 @@ struct BackupView: View {
     @Query private var hygieneChecks: [ShiftHygieneCheck]
     @Query private var medicalRecords: [MedicalFitnessRecord]
     @Query private var cleaningProducts: [CleaningProduct]
+    @Query private var documents: [RegulatoryDocument]
+    @Query private var maintenance: [EquipmentMaintenance]
+    @Query private var recalls: [ProductRecall]
 
     @AppStorage("haccp.backup.lastExportedAt") private var lastExportTimestamp: Double = 0
     @AppStorage("haccp.backup.includePhotos") private var includePhotos = true
@@ -167,6 +170,9 @@ struct BackupView: View {
         total += hygieneChecks.count
         total += medicalRecords.count
         total += cleaningProducts.count
+        total += documents.count
+        total += maintenance.count
+        total += recalls.count
         return total
     }
 

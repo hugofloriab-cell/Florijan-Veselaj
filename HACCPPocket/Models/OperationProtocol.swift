@@ -751,6 +751,62 @@ extension OperationProtocol {
         commonMistake: "Croire que la formation du gérant dispense d'instruire l'équipe. Ce sont deux obligations distinctes, et c'est la seconde qu'on oublie de tracer."
     )
 
+    // MARK: Retrait et rappel
+
+    static let productRecall = OperationProtocol(
+        id: "protocol.recall",
+        title: "Retrait ou rappel d'un produit",
+        subtitle: "Les six gestes des premières heures",
+        systemImage: "exclamationmark.octagon",
+        steps: [
+            ProtocolStep(
+                id: "recall.1",
+                title: "Isolez le lot immédiatement",
+                detail: "Sortez-le du circuit, mettez-le à part, étiquetez-le « NE PAS UTILISER ». Avant toute autre démarche : pendant que vous téléphonez, quelqu'un peut l'attraper.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "recall.2",
+                title: "Cherchez partout, pas seulement en réserve",
+                detail: "Frigos, congélateurs, préparations en cours, plats déjà cuisinés contenant l'ingrédient, plats témoins. Un lot rappelé se cache souvent dans une sauce faite la veille.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "recall.3",
+                title: "Déterminez si le produit a été servi",
+                detail: "C'est cette réponse qui fait la différence entre un retrait et un rappel. Retrait : le produit est encore chez vous. Rappel : il est parti chez le consommateur.",
+                note: RegulatoryNote(
+                    title: "Retrait ou rappel ?",
+                    explanation: "Le retrait consiste à empêcher la distribution d'un produit encore sous votre contrôle. Le rappel va plus loin : il vise à récupérer un produit déjà remis au consommateur, et impose de l'informer. Les deux relèvent de la même obligation de fond — un exploitant qui a des raisons de penser qu'une denrée est dangereuse doit engager immédiatement les procédures de retrait et en informer les autorités.",
+                    origin: .regulation("Règlement (CE) n° 178/2002, article 19")
+                )
+            ),
+            ProtocolStep(
+                id: "recall.4",
+                title: "Remontez au fournisseur, par écrit",
+                detail: "Demandez la fiche d'alerte, la procédure de retour et le sort réservé au lot. Un échange écrit vaut mieux qu'un appel dont il ne reste rien.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "recall.5",
+                title: "Déclarez à la DDPP si le produit a été servi",
+                detail: "La direction départementale de la protection des populations de votre département. Notez la date, l'heure et l'interlocuteur.",
+                note: RegulatoryNote(
+                    title: "Le délai qui compte",
+                    explanation: "Le texte parle d'action immédiate, sans fixer d'heures. Dans les faits, c'est le délai entre le moment où vous avez su et le moment où vous avez agi qui sera examiné. Un registre qui montre l'isolement dans l'heure et la déclaration dans la journée est une défense ; un registre muet ne l'est pas.",
+                    origin: .regulation("Règlement (CE) n° 178/2002, article 19")
+                )
+            ),
+            ProtocolStep(
+                id: "recall.6",
+                title: "Détruisez ou retournez, avec une preuve",
+                detail: "Bon de retour signé, bordereau de destruction, ou photo du produit rendu impropre à la consommation. Sans preuve, la destruction n'a pas eu lieu.",
+                note: nil
+            )
+        ],
+        commonMistake: "Jeter le lot à la poubelle et passer à autre chose. Le geste est le bon, mais sans trace il ne prouve rien — et il fait perdre l'information sur les quantités, indispensable si l'alerte s'élargit."
+    )
+
     // MARK: Huiles de friture
 
     static let oilCheck = OperationProtocol(

@@ -46,6 +46,9 @@ struct BackupArchive: Codable {
     var hygieneChecks: [HygieneCheckDTO] = []
     var medicalRecords: [MedicalFitnessDTO] = []
     var cleaningProducts: [CleaningProductDTO] = []
+    var documents: [RegulatoryDocumentDTO] = []
+    var maintenance: [MaintenanceDTO] = []
+    var recalls: [ProductRecallDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -73,6 +76,9 @@ struct BackupArchive: Codable {
         total += hygieneChecks.count
         total += medicalRecords.count
         total += cleaningProducts.count
+        total += documents.count
+        total += maintenance.count
+        total += recalls.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -363,6 +369,60 @@ struct CleaningProductDTO: Codable {
     var updatedAt: Date
 }
 
+struct RegulatoryDocumentDTO: Codable {
+    var title: String
+    var categoryRawValue: String
+    var issuer: String
+    var issuedAt: Date
+    var expiresAt: Date?
+    var reference: String
+    var fileData: Data?
+    var notes: String
+    var createdAt: Date
+    var updatedAt: Date
+}
+
+struct MaintenanceDTO: Codable {
+    var equipmentName: String
+    var kindRawValue: String
+    var occurredAt: Date
+    var provider: String
+    var observation: String
+    var actionTaken: String
+    var calibrationReference: String
+    var expectedValue: Double?
+    var measuredValue: Double?
+    var nextDueDate: Date?
+    var isResolved: Bool
+    var documentData: Data?
+    var operatorName: String
+    var notes: String
+    var createdAt: Date
+}
+
+struct ProductRecallDTO: Codable {
+    var productName: String
+    var brand: String
+    var affectedBatches: String
+    var supplier: String
+    var noticeReference: String
+    var reason: String
+    var scopeRawValue: String
+    var noticedAt: Date
+    var isolatedAt: Date?
+    var quantityHeld: String
+    var outcomeRawValue: String
+    var proofData: Data?
+    var wasServed: Bool
+    var customersInformed: Bool
+    var authorityInformed: Bool
+    var authorityInformedAt: Date?
+    var operatorName: String
+    var notes: String
+    var closedAt: Date?
+    var createdAt: Date
+}
+
 // MARK: - Erreurs
 
 enum BackupError: LocalizedError {
@@ -456,6 +516,12 @@ enum BackupService {
             .map { medicalDTO(for: $0, includePhotos: includePhotos) }
         archive.cleaningProducts = try context.fetch(FetchDescriptor<CleaningProduct>())
             .map { cleaningProductDTO(for: $0, includePhotos: includePhotos) }
+        archive.documents = try context.fetch(FetchDescriptor<RegulatoryDocument>())
+            .map { documentDTO(for: $0, includePhotos: includePhotos) }
+        archive.maintenance = try context.fetch(FetchDescriptor<EquipmentMaintenance>())
+            .map { maintenanceDTO(for: $0, includePhotos: includePhotos) }
+        archive.recalls = try context.fetch(FetchDescriptor<ProductRecall>())
+            .map { recallDTO(for: $0, includePhotos: includePhotos) }
 
         return archive
     }
@@ -796,6 +862,66 @@ enum BackupService {
         )
     }
 
+    private static func documentDTO(for document: RegulatoryDocument, includePhotos: Bool) -> RegulatoryDocumentDTO {
+        RegulatoryDocumentDTO(
+            title: document.title,
+            categoryRawValue: document.categoryRawValue,
+            issuer: document.issuer,
+            issuedAt: document.issuedAt,
+            expiresAt: document.expiresAt,
+            reference: document.reference,
+            fileData: photo(document.fileData, includePhotos: includePhotos),
+            notes: document.notes,
+            createdAt: document.createdAt,
+            updatedAt: document.updatedAt
+        )
+    }
+
+    private static func maintenanceDTO(for record: EquipmentMaintenance, includePhotos: Bool) -> MaintenanceDTO {
+        MaintenanceDTO(
+            equipmentName: record.equipmentName,
+            kindRawValue: record.kindRawValue,
+            occurredAt: record.occurredAt,
+            provider: record.provider,
+            observation: record.observation,
+            actionTaken: record.actionTaken,
+            calibrationReference: record.calibrationReference,
+            expectedValue: record.expectedValue,
+            measuredValue: record.measuredValue,
+            nextDueDate: record.nextDueDate,
+            isResolved: record.isResolved,
+            documentData: photo(record.documentData, includePhotos: includePhotos),
+            operatorName: record.operatorName,
+            notes: record.notes,
+            createdAt: record.createdAt
+        )
+    }
+
+    private static func recallDTO(for recall: ProductRecall, includePhotos: Bool) -> ProductRecallDTO {
+        ProductRecallDTO(
+            productName: recall.productName,
+            brand: recall.brand,
+            affectedBatches: recall.affectedBatches,
+            supplier: recall.supplier,
+            noticeReference: recall.noticeReference,
+            reason: recall.reason,
+            scopeRawValue: recall.scopeRawValue,
+            noticedAt: recall.noticedAt,
+            isolatedAt: recall.isolatedAt,
+            quantityHeld: recall.quantityHeld,
+            outcomeRawValue: recall.outcomeRawValue,
+            proofData: photo(recall.proofData, includePhotos: includePhotos),
+            wasServed: recall.wasServed,
+            customersInformed: recall.customersInformed,
+            authorityInformed: recall.authorityInformed,
+            authorityInformedAt: recall.authorityInformedAt,
+            operatorName: recall.operatorName,
+            notes: recall.notes,
+            closedAt: recall.closedAt,
+            createdAt: recall.createdAt
+        )
+    }
+
     // MARK: Lecture d'un fichier
 
     /// Décode une archive sans rien modifier : l'utilisateur doit pouvoir
@@ -853,6 +979,9 @@ enum BackupService {
         restoreHygieneChecks(archive.hygieneChecks, into: context)
         restoreMedicalRecords(archive.medicalRecords, into: context)
         restoreCleaningProducts(archive.cleaningProducts, into: context)
+        restoreDocuments(archive.documents, into: context)
+        restoreMaintenance(archive.maintenance, into: context)
+        restoreRecalls(archive.recalls, into: context)
 
         try context.save()
         return archive.totalRecords
@@ -1264,6 +1393,75 @@ enum BackupService {
         }
     }
 
+    private static func restoreDocuments(_ items: [RegulatoryDocumentDTO], into context: ModelContext) {
+        for dto in items {
+            let document = RegulatoryDocument(
+                title: dto.title,
+                category: DocumentCategory(rawValue: dto.categoryRawValue) ?? .other,
+                issuer: dto.issuer,
+                issuedAt: dto.issuedAt,
+                expiresAt: dto.expiresAt,
+                reference: dto.reference,
+                fileData: dto.fileData,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            document.updatedAt = dto.updatedAt
+            context.insert(document)
+        }
+    }
+
+    private static func restoreMaintenance(_ items: [MaintenanceDTO], into context: ModelContext) {
+        for dto in items {
+            let record = EquipmentMaintenance(
+                equipmentName: dto.equipmentName,
+                kind: MaintenanceKind(rawValue: dto.kindRawValue) ?? .preventive,
+                occurredAt: dto.occurredAt,
+                provider: dto.provider,
+                observation: dto.observation,
+                actionTaken: dto.actionTaken,
+                calibrationReference: dto.calibrationReference,
+                expectedValue: dto.expectedValue,
+                measuredValue: dto.measuredValue,
+                nextDueDate: dto.nextDueDate,
+                isResolved: dto.isResolved,
+                documentData: dto.documentData,
+                operatorName: dto.operatorName,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            context.insert(record)
+        }
+    }
+
+    private static func restoreRecalls(_ items: [ProductRecallDTO], into context: ModelContext) {
+        for dto in items {
+            let recall = ProductRecall(
+                productName: dto.productName,
+                brand: dto.brand,
+                affectedBatches: dto.affectedBatches,
+                supplier: dto.supplier,
+                noticeReference: dto.noticeReference,
+                reason: dto.reason,
+                scope: RecallScope(rawValue: dto.scopeRawValue) ?? .withdrawal,
+                noticedAt: dto.noticedAt,
+                quantityHeld: dto.quantityHeld,
+                outcome: RecallOutcome(rawValue: dto.outcomeRawValue) ?? .pending,
+                wasServed: dto.wasServed,
+                operatorName: dto.operatorName,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            recall.isolatedAt = dto.isolatedAt
+            recall.proofData = dto.proofData
+            recall.customersInformed = dto.customersInformed
+            recall.authorityInformed = dto.authorityInformed
+            recall.authorityInformedAt = dto.authorityInformedAt
+            recall.closedAt = dto.closedAt
+            context.insert(recall)
+        }
+    }
+
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,
     /// points de contrôle) partent par cascade, mais on les supprime aussi
     /// explicitement pour ne rien laisser derrière en cas d'orphelin.
@@ -1288,6 +1486,9 @@ enum BackupService {
         try delete(ShiftHygieneCheck.self, in: context)
         try delete(MedicalFitnessRecord.self, in: context)
         try delete(CleaningProduct.self, in: context)
+        try delete(RegulatoryDocument.self, in: context)
+        try delete(EquipmentMaintenance.self, in: context)
+        try delete(ProductRecall.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

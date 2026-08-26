@@ -24,6 +24,9 @@ struct RegistersHubView: View {
     @Query private var hygieneChecks: [ShiftHygieneCheck]
     @Query private var medicalRecords: [MedicalFitnessRecord]
     @Query private var cleaningProducts: [CleaningProduct]
+    @Query private var documents: [RegulatoryDocument]
+    @Query private var maintenance: [EquipmentMaintenance]
+    @Query private var recalls: [ProductRecall]
 
     /// Opérations thermiques encore ouvertes : c'est l'information la plus
     /// urgente de cet écran, un refroidissement oublié devient non conforme.
@@ -65,6 +68,18 @@ struct RegistersHubView: View {
     private var hygieneCheckedToday: Bool {
         let calendar = Calendar.current
         return hygieneChecks.contains { calendar.isDateInToday($0.checkedAt) }
+    }
+
+    private var documentsToHandle: Int {
+        documents.filter(\.needsAction).count
+    }
+
+    private var maintenanceToHandle: Int {
+        maintenance.filter(\.needsAction).count
+    }
+
+    private var openRecalls: Int {
+        recalls.filter { !$0.isClosed }.count
     }
 
     private var oilToChange: Int {
@@ -240,6 +255,47 @@ struct RegistersHubView: View {
                         systemImage: "graduationcap",
                         badge: expiringTrainings > 0 ? "\(expiringTrainings) à renouveler" : nil,
                         badgeColor: .orange
+                    )
+                }
+            }
+
+            Section("Documents et incidents") {
+                NavigationLink {
+                    DocumentArchiveListView()
+                } label: {
+                    registerRow(
+                        "Documents réglementaires",
+                        detail: "Plan de maîtrise sanitaire, contrats, attestations",
+                        systemImage: "folder.badge.person.crop",
+                        count: documents.count,
+                        badge: documentsToHandle > 0 ? "\(documentsToHandle) à traiter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    MaintenanceListView()
+                } label: {
+                    registerRow(
+                        "Carnet d'entretien",
+                        detail: "Pannes, entretiens, étalonnage des sondes",
+                        systemImage: "wrench.and.screwdriver",
+                        count: maintenance.count,
+                        badge: maintenanceToHandle > 0 ? "\(maintenanceToHandle) à traiter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    ProductRecallListView()
+                } label: {
+                    registerRow(
+                        "Retrait et rappel",
+                        detail: "Lots contaminés signalés par un fournisseur",
+                        systemImage: "exclamationmark.octagon",
+                        count: recalls.count,
+                        badge: openRecalls > 0 ? "\(openRecalls) en cours" : nil,
+                        badgeColor: .red
                     )
                 }
             }

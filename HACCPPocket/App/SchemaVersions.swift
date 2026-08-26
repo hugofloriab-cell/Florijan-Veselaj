@@ -259,6 +259,45 @@ enum HACCPSchemaV4: VersionedSchema {
     }
 }
 
+// MARK: - Version 5
+
+/// Ajoute l'archive documentaire, le carnet d'entretien et le registre des
+/// retraits-rappels. Trois modèles nouveaux, rien de modifié.
+enum HACCPSchemaV5: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(5, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Establishment.self,
+            Equipment.self,
+            TemperatureReading.self,
+            TrackedProduct.self,
+            DeliveryCheck.self,
+            CleaningTask.self,
+            CleaningRecord.self,
+            ThermalProcessRecord.self,
+            ThermalCheckpoint.self,
+            OilCheckRecord.self,
+            PestControlVisit.self,
+            StaffTraining.self,
+            Dish.self,
+            ThawingRecord.self,
+            FoodSample.self,
+            SanitizingFreezeRecord.self,
+            BeefOriginRecord.self,
+            ShiftHygieneCheck.self,
+            MedicalFitnessRecord.self,
+            CleaningProduct.self,
+            RegulatoryDocument.self,
+            EquipmentMaintenance.self,
+            ProductRecall.self
+        ]
+    }
+}
+
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -268,11 +307,11 @@ enum HACCPSchemaV4: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -294,5 +333,11 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
     static let v3ToV4 = MigrationStage.lightweight(
         fromVersion: HACCPSchemaV3.self,
         toVersion: HACCPSchemaV4.self
+    )
+
+    /// V4 → V5 : trois modèles ajoutés, rien de modifié.
+    static let v4ToV5 = MigrationStage.lightweight(
+        fromVersion: HACCPSchemaV4.self,
+        toVersion: HACCPSchemaV5.self
     )
 }
