@@ -42,16 +42,21 @@ enum IntegrityVerdict: Sendable, Equatable {
     }
 
     var detail: String {
+        // Chaque cas rend explicitement sa valeur : un `switch` utilisé comme
+        // expression n'accepte pas qu'un seul de ses cas contienne plusieurs
+        // instructions.
         switch self {
         case .intact:
-            "Aucun enregistrement de cette période n'a été modifié depuis la clôture."
+            return "Aucun enregistrement de cette période n'a été modifié depuis la clôture."
+
         case .altered(let expected, let actual):
             if expected == actual {
                 return "Le nombre d'enregistrements n'a pas changé, mais leur contenu si. Une ou plusieurs valeurs ont été corrigées après la clôture."
             }
             return "Le scellé couvrait \(expected) enregistrement(s), il en reste \(actual). Des lignes ont été ajoutées ou supprimées après la clôture."
+
         case .brokenChain:
-            "Le scellé du mois précédent est absent ou ne correspond pas. La suite des clôtures n'est plus continue."
+            return "Le scellé du mois précédent est absent ou ne correspond pas. La suite des clôtures n'est plus continue."
         }
     }
 
