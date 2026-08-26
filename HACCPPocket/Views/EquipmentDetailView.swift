@@ -66,14 +66,14 @@ struct EquipmentDetailView: View {
             }
         }
         .sheet(item: $entryTarget) { target in
-            TemperatureEntryView(
+            GuidedTemperatureInputView(
                 equipment: target.equipment,
                 moment: target.moment,
                 context: modelContext
             )
         }
         .sheet(item: $editedReading) { reading in
-            TemperatureEntryView(
+            GuidedTemperatureInputView(
                 equipment: equipment,
                 moment: reading.moment,
                 reading: reading,

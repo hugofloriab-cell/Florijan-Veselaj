@@ -111,7 +111,7 @@ struct TemperatureListView: View {
                 PaywallView()
             }
             .sheet(item: $entryTarget) { target in
-                TemperatureEntryView(
+                GuidedTemperatureInputView(
                     equipment: target.equipment,
                     moment: target.moment,
                     context: modelContext

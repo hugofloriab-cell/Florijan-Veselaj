@@ -86,6 +86,14 @@ final class TemperatureLogViewModel {
         return acceptedRange.contains(value)
     }
 
+    /// Lecture nuancée du relevé : conforme, conforme mais à la limite, ou
+    /// hors plage. Le cas « à la limite » n'existe pas dans les textes, mais
+    /// c'est celui qui permet d'agir la veille de la non-conformité.
+    var verdict: ReadingVerdict? {
+        guard let value else { return nil }
+        return ReadingVerdict.evaluate(value, in: acceptedRange)
+    }
+
     /// Écart par rapport à la plage, 0 si conforme.
     var deviation: Double? {
         guard let value else { return nil }

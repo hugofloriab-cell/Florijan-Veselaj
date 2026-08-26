@@ -77,7 +77,7 @@ struct DashboardView: View {
                 ProductFormView(product: product, context: modelContext)
             }
             .sheet(item: $entryTarget) { target in
-                TemperatureEntryView(
+                GuidedTemperatureInputView(
                     equipment: target.equipment,
                     moment: target.moment,
                     context: modelContext

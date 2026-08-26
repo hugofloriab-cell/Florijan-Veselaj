@@ -72,6 +72,8 @@ struct EquipmentEditorView: View {
                     TextField("Emplacement (facultatif)", text: $location)
                 }
 
+                standardsSection
+
                 Section {
                     HStack {
                         Text("Minimum")
@@ -122,6 +124,75 @@ struct EquipmentEditorView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Normes réglementaires
+
+    /// Les normes applicables à ce type d'enceinte.
+    private var availableStandards: [ColdChainStandard] {
+        ColdChainStandard.allCases.filter { $0.applicableTypes.contains(type) }
+    }
+
+    /// La norme dont la plage correspond exactement à celle saisie.
+    private var selectedStandard: ColdChainStandard? {
+        guard let minValue, let maxValue else { return nil }
+        let lower = Swift.min(minValue, maxValue)
+        let upper = Swift.max(minValue, maxValue)
+        return availableStandards.first {
+            $0.range.lowerBound == lower && $0.range.upperBound == upper
+        }
+    }
+
+    /// Choisir ce que l'enceinte contient plutôt que saisir deux nombres :
+    /// un cuisinier sait ce qu'il range dans son frigo, il n'a pas à savoir
+    /// que la viande hachée se conserve à +2 °C.
+    @ViewBuilder
+    private var standardsSection: some View {
+        if !availableStandards.isEmpty {
+            Section {
+                ForEach(availableStandards) { standard in
+                    Button {
+                        apply(standard)
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: standard.systemImage)
+                                .foregroundStyle(.brand)
+                                .frame(width: 24)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(standard.label)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundStyle(.primary)
+                                    .multilineTextAlignment(.leading)
+                                Text(AppFormatters.range(standard.range))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Spacer(minLength: 8)
+
+                            RegulatoryBadge(note: standard.note)
+
+                            if selectedStandard == standard {
+                                Image(systemName: "checkmark")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.brand)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+            } header: {
+                Text("Que contient cette enceinte ?")
+            } footer: {
+                Text("Appuyez sur une denrée pour appliquer sa température réglementaire. Vous pouvez toujours ajuster la plage à la main juste en dessous — et une consigne du fabricant plus stricte l'emporte toujours.")
+            }
+        }
+    }
+
+    private func apply(_ standard: ColdChainStandard) {
+        minText = EquipmentEditorView.format(standard.range.lowerBound)
+        maxText = EquipmentEditorView.format(standard.range.upperBound)
     }
 
     // MARK: - Actions
