@@ -255,6 +255,10 @@ struct ThermalProcessFormView: View {
                     Text(kind.requirement)
                 }
 
+                Section {
+                    ProtocolLink(procedure: kind == .cooling ? .rapidCooling : .reheating)
+                }
+
                 Section("Départ") {
                     HStack {
                         Text("Température à cœur")

@@ -108,6 +108,9 @@ struct CleaningPlanView: View {
                         placeholder: "Qui réalise le nettoyage ?"
                     )
                 }
+
+                ProtocolLink(procedure: .cleaning)
+
                 Toggle("Afficher les opérations déjà faites", isOn: Bindable(viewModel).showsCompletedTasks)
             } footer: {
                 Text("Le nom saisi ici est enregistré avec chaque opération cochée.")

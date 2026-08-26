@@ -33,6 +33,7 @@ struct ProductFormView: View {
             Form {
                 prefillBanner
                 identificationSection
+                categorySection
                 storageSection
                 datesSection
                 labelSection
@@ -101,6 +102,60 @@ struct ProductFormView: View {
         }
     }
 
+    /// Choisir une famille plutôt que saisir un nombre de jours : le
+    /// cuisinier sait ce qu'il vient d'ouvrir, il n'a pas à connaître la
+    /// durée d'usage de chaque denrée ni à compter sur ses doigts.
+    private var categorySection: some View {
+        Section {
+            ForEach(FoodCategory.allCases) { category in
+                Button {
+                    viewModel.apply(category)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: category.systemImage)
+                            .foregroundStyle(.brand)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(category.label)
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.primary)
+                                .multilineTextAlignment(.leading)
+                            Text(limitPreview(for: category))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        RegulatoryBadge(note: category.note)
+
+                        if viewModel.category == category {
+                            Image(systemName: "checkmark")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.brand)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        } header: {
+            Text("Qu'avez-vous ouvert ?")
+        } footer: {
+            Text("Facultatif : appuyez sur une famille et la durée de vie se règle toute seule. Ces durées sont des usages professionnels, pas un tableau réglementaire — ajustez-les si votre plan de maîtrise sanitaire dit autre chose.")
+        }
+    }
+
+    /// La date exacte, calculée tout de suite : plus de « J+3 » à traduire
+    /// mentalement en jour de la semaine.
+    private func limitPreview(for category: FoodCategory) -> String {
+        let limit = TrackedProduct.defaultLimitDate(
+            openedAt: viewModel.openedAt,
+            days: category.shelfLifeDays
+        )
+        return "J+\(category.shelfLifeDays) — à retirer le \(AppFormatters.shortDate(limit))"
+    }
+
     private var datesSection: some View {
         Section {
             DatePicker("Ouvert le", selection: Bindable(viewModel).openedAt, in: ...Date.now)
@@ -136,6 +191,11 @@ struct ProductFormView: View {
                 Label(
                     "La DLC du fournisseur est plus courte que la règle des \(viewModel.shelfLifeDays) jours : c'est elle qui s'applique.",
                     systemImage: "info.circle"
+                )
+            } else if viewModel.hasCustomShelfLife, let category = viewModel.category {
+                Label(
+                    "Durée modifiée à la main : \(category.label) suggérait \(category.shelfLifeDays) jour(s). C'est vous qui décidez, mais gardez de quoi le justifier.",
+                    systemImage: "pencil.circle"
                 )
             } else {
                 Text("La date de retrait est calculée à partir de l'ouverture. On ne prolonge jamais un produit au-delà de la DLC du fournisseur.")

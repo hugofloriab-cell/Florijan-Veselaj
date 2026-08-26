@@ -55,6 +55,10 @@ final class ProductFormViewModel {
     /// allergènes des plats qui utilisent ce produit.
     var allergens: Set<Allergen>
 
+    /// Famille d'aliment choisie. `nil` tant que l'utilisateur saisit la durée
+    /// à la main : on ne prétend pas deviner ce qu'il a en main.
+    var category: FoodCategory?
+
     /// Permet de forcer une DLC secondaire différente du calcul automatique.
     var overridesSecondaryLimit: Bool
     var customSecondaryLimitDate: Date
@@ -89,6 +93,7 @@ final class ProductFormViewModel {
             self.notes = product.notes
             self.labelPhotoData = product.labelPhotoData
             self.allergens = product.allergens
+            self.category = nil
             self.hasSupplierExpiry = product.supplierExpiryDate != nil
             self.supplierExpiryDate = product.supplierExpiryDate ?? .now
 
@@ -113,6 +118,7 @@ final class ProductFormViewModel {
             self.notes = ""
             self.labelPhotoData = nil
             self.allergens = []
+            self.category = nil
             self.hasSupplierExpiry = false
             self.supplierExpiryDate = .now
             self.overridesSecondaryLimit = false
@@ -145,6 +151,27 @@ final class ProductFormViewModel {
     }
 
     var isEditing: Bool { existingProduct != nil }
+
+    // MARK: - Famille d'aliment
+
+    /// Applique la durée d'usage de la famille choisie, et la zone de
+    /// stockage qui va avec si l'utilisateur n'y a pas déjà touché.
+    func apply(_ category: FoodCategory) {
+        self.category = category
+        shelfLifeDays = category.shelfLifeDays
+        overridesSecondaryLimit = false
+
+        if !isEditing {
+            storage = category.suggestedStorage
+        }
+    }
+
+    /// L'utilisateur a modifié la durée après avoir choisi une famille : la
+    /// proposition ne correspond plus à ce qu'il a saisi.
+    var hasCustomShelfLife: Bool {
+        guard let category else { return false }
+        return shelfLifeDays != category.shelfLifeDays
+    }
 
     var title: String { isEditing ? "Modifier le produit" : "Nouveau produit entamé" }
 

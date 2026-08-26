@@ -22,6 +22,7 @@ struct DeliveryFormView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section { ProtocolLink(procedure: .delivery) }
                 supplierSection
                 temperatureSection
                 controlsSection

@@ -178,6 +178,10 @@ struct OilCheckFormView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    ProtocolLink(procedure: .oilCheck)
+                }
+
                 Section("Friteuse") {
                     TextField("Nom ou emplacement", text: $fryerName)
                     DatePicker("Contrôlé le", selection: $checkedAt, in: ...Date.now)
