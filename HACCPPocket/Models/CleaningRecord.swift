@@ -26,6 +26,11 @@ final class CleaningRecord {
     /// Photo facultative de la zone nettoyée.
     @Attribute(.externalStorage) var photoData: Data?
 
+    /// Émargement de la personne ayant réalisé l'opération. Ce n'est pas une
+    /// signature électronique au sens juridique : c'est l'équivalent de la
+    /// colonne d'un registre papier, avec l'horodatage en plus.
+    @Attribute(.externalStorage) var signatureData: Data?
+
     var task: CleaningTask?
 
     init(
@@ -55,6 +60,8 @@ extension CleaningRecord {
     }
 
     /// Un enregistrement sans opérateur est incomplet pour la traçabilité.
+    var hasSignature: Bool { signatureData != nil }
+
     var isTraceable: Bool {
         !operatorName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

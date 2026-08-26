@@ -27,6 +27,7 @@ struct CleaningPlanView: View {
     @State private var isCreatingTask = false
     @State private var taskPendingDeletion: CleaningTask?
     @State private var photoTask: CleaningTask?
+    @State private var signatureTask: CleaningTask?
 
     var body: some View {
         NavigationStack {
@@ -88,6 +89,15 @@ struct CleaningPlanView: View {
                     photoTask = nil
                 }
             }
+            .sheet(item: $signatureTask) { task in
+                CleaningSignatureSheet(
+                    task: task,
+                    signerName: viewModel?.operatorName ?? ""
+                ) { data in
+                    viewModel?.complete(task, signatureData: data)
+                    signatureTask = nil
+                }
+            }
             .task {
                 if viewModel == nil {
                     viewModel = CleaningPlanViewModel(context: modelContext)
@@ -128,6 +138,14 @@ struct CleaningPlanView: View {
                                     Label("Photo", systemImage: "camera")
                                 }
                                 .tint(.indigo)
+
+                                Button {
+                                    guard subscription.canWrite else { showsPaywall = true; return }
+                                    signatureTask = task
+                                } label: {
+                                    Label("Signer", systemImage: "signature")
+                                }
+                                .tint(.brand)
                             }
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
@@ -298,6 +316,10 @@ struct CleaningTaskDetailView: View {
                                         .frame(height: 120)
                                         .clipShape(RoundedRectangle(cornerRadius: 8))
                                 }
+
+                                if let signature = record.signatureData {
+                                    SignatureView(data: signature, height: 60)
+                                }
                             }
                         }
                     }
@@ -308,6 +330,63 @@ struct CleaningTaskDetailView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fermer") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+
+// MARK: - Émargement d'une opération
+
+/// Feuille de signature ouverte depuis le plan de nettoyage. Pointer une
+/// opération et la signer sont deux gestes en un seul écran.
+private struct CleaningSignatureSheet: View {
+
+    @Environment(\.dismiss) private var dismiss
+
+    let task: CleaningTask
+    let signerName: String
+    let onSign: (Data?) -> Void
+
+    @State private var signatureData: Data?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(task.title)
+                            .font(.subheadline.weight(.medium))
+                        if !task.zone.isEmpty {
+                            Text(task.zone)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+
+                Section {
+                    SignatureField(signatureData: $signatureData, signerName: signerName)
+                } header: {
+                    Text("Émargement")
+                } footer: {
+                    Text("Signer valide l'opération et l'enregistre au registre, horodatée. Ce n'est pas une signature électronique au sens juridique : c'est l'équivalent de la colonne d'un registre papier.")
+                }
+            }
+            .navigationTitle("Signer l'opération")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Valider") {
+                        onSign(signatureData)
+                        dismiss()
+                    }
+                    .disabled(signatureData == nil)
                 }
             }
         }

@@ -93,6 +93,7 @@ final class CleaningPlanViewModel {
         comment: String = "",
         productUsed: String? = nil,
         photoData: Data? = nil,
+        signatureData: Data? = nil,
         at date: Date = .now
     ) -> Bool {
         let record = CleaningRecord(
@@ -103,6 +104,7 @@ final class CleaningPlanViewModel {
             comment: comment,
             photoData: photoData
         )
+        record.signatureData = signatureData
         modelContext.insert(record)
         return persist()
     }

@@ -21,6 +21,9 @@ struct RegistersHubView: View {
     @Query private var samples: [FoodSample]
     @Query private var sanitizing: [SanitizingFreezeRecord]
     @Query private var beefOrigins: [BeefOriginRecord]
+    @Query private var hygieneChecks: [ShiftHygieneCheck]
+    @Query private var medicalRecords: [MedicalFitnessRecord]
+    @Query private var cleaningProducts: [CleaningProduct]
 
     /// Opérations thermiques encore ouvertes : c'est l'information la plus
     /// urgente de cet écran, un refroidissement oublié devient non conforme.
@@ -55,6 +58,15 @@ struct RegistersHubView: View {
         beefOrigins.filter { !$0.isComplete }.count
     }
 
+    private var medicalToHandle: Int {
+        medicalRecords.filter(\.needsAction).count
+    }
+
+    private var hygieneCheckedToday: Bool {
+        let calendar = Calendar.current
+        return hygieneChecks.contains { calendar.isDateInToday($0.checkedAt) }
+    }
+
     private var oilToChange: Int {
         oilChecks.filter(\.needsAction).count
     }
@@ -84,6 +96,17 @@ struct RegistersHubView: View {
                         systemImage: "thermometer.variable",
                         badge: runningProcesses > 0 ? "\(runningProcesses) en cours" : nil,
                         badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    CleaningProductListView()
+                } label: {
+                    registerRow(
+                        "Produits d'entretien",
+                        detail: "Dosages, temps de contact, fiches de sécurité",
+                        systemImage: "bubbles.and.sparkles",
+                        count: cleaningProducts.count
                     )
                 }
 
@@ -163,6 +186,33 @@ struct RegistersHubView: View {
                             : "\(dishes.count) plat(s) à la carte",
                         systemImage: "fork.knife",
                         badge: incompleteDishes > 0 ? "\(incompleteDishes) à compléter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+            }
+
+            Section("Personnel") {
+                NavigationLink {
+                    ShiftHygieneListView()
+                } label: {
+                    registerRow(
+                        "Prise de poste",
+                        detail: "Mains, tenue, bijoux, symptômes",
+                        systemImage: "hands.and.sparkles",
+                        badge: hygieneCheckedToday ? nil : "Pas de contrôle aujourd'hui",
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    MedicalFitnessListView()
+                } label: {
+                    registerRow(
+                        "Suivi médical",
+                        detail: "Attestations et avis d'aptitude",
+                        systemImage: "stethoscope",
+                        count: medicalRecords.count,
+                        badge: medicalToHandle > 0 ? "\(medicalToHandle) à traiter" : nil,
                         badgeColor: .orange
                     )
                 }

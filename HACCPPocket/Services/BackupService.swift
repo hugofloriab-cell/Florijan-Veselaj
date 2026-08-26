@@ -43,6 +43,9 @@ struct BackupArchive: Codable {
     var foodSamples: [FoodSampleDTO] = []
     var sanitizingFreezes: [SanitizingDTO] = []
     var beefOrigins: [BeefOriginDTO] = []
+    var hygieneChecks: [HygieneCheckDTO] = []
+    var medicalRecords: [MedicalFitnessDTO] = []
+    var cleaningProducts: [CleaningProductDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -67,6 +70,9 @@ struct BackupArchive: Codable {
         total += foodSamples.count
         total += sanitizingFreezes.count
         total += beefOrigins.count
+        total += hygieneChecks.count
+        total += medicalRecords.count
+        total += cleaningProducts.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -162,6 +168,7 @@ struct CleaningRecordDTO: Codable {
     var productUsed: String
     var comment: String
     var photoData: Data?
+    var signatureData: Data?
 }
 
 struct CleaningTaskDTO: Codable {
@@ -313,6 +320,49 @@ struct BeefOriginDTO: Codable {
     var createdAt: Date
 }
 
+struct HygieneCheckDTO: Codable {
+    var personName: String
+    var shiftLabel: String
+    var checkedAt: Date
+    var passedRawValues: [String]
+    var failedRawValues: [String]
+    var correctiveAction: String
+    var signatureData: Data?
+    var checkedBy: String
+    var comment: String
+    var createdAt: Date
+}
+
+struct MedicalFitnessDTO: Codable {
+    var personName: String
+    var jobTitle: String
+    var occupationalHealthService: String
+    var examinedAt: Date
+    var nextVisitDate: Date?
+    var verdictRawValue: String
+    var restrictions: String
+    var documentData: Data?
+    var comment: String
+    var createdAt: Date
+}
+
+struct CleaningProductDTO: Codable {
+    var name: String
+    var supplier: String
+    var kindRawValue: String
+    var dilution: String
+    var contactTimeSeconds: Int
+    var requiresRinsing: Bool
+    var usage: String
+    var hazards: String
+    var standard: String
+    var safetyDataSheet: Data?
+    var isActive: Bool
+    var comment: String
+    var createdAt: Date
+    var updatedAt: Date
+}
+
 // MARK: - Erreurs
 
 enum BackupError: LocalizedError {
@@ -400,6 +450,12 @@ enum BackupService {
             .map { sanitizingDTO(for: $0) }
         archive.beefOrigins = try context.fetch(FetchDescriptor<BeefOriginRecord>())
             .map { beefOriginDTO(for: $0, includePhotos: includePhotos) }
+        archive.hygieneChecks = try context.fetch(FetchDescriptor<ShiftHygieneCheck>())
+            .map { hygieneCheckDTO(for: $0, includePhotos: includePhotos) }
+        archive.medicalRecords = try context.fetch(FetchDescriptor<MedicalFitnessRecord>())
+            .map { medicalDTO(for: $0, includePhotos: includePhotos) }
+        archive.cleaningProducts = try context.fetch(FetchDescriptor<CleaningProduct>())
+            .map { cleaningProductDTO(for: $0, includePhotos: includePhotos) }
 
         return archive
     }
@@ -503,7 +559,8 @@ enum BackupService {
             operatorName: record.operatorName,
             productUsed: record.productUsed,
             comment: record.comment,
-            photoData: photo(record.photoData, includePhotos: includePhotos)
+            photoData: photo(record.photoData, includePhotos: includePhotos),
+            signatureData: photo(record.signatureData, includePhotos: includePhotos)
         )
     }
 
@@ -690,6 +747,55 @@ enum BackupService {
         )
     }
 
+    private static func hygieneCheckDTO(for check: ShiftHygieneCheck, includePhotos: Bool) -> HygieneCheckDTO {
+        HygieneCheckDTO(
+            personName: check.personName,
+            shiftLabel: check.shiftLabel,
+            checkedAt: check.checkedAt,
+            passedRawValues: check.passedRawValues,
+            failedRawValues: check.failedRawValues,
+            correctiveAction: check.correctiveAction,
+            signatureData: photo(check.signatureData, includePhotos: includePhotos),
+            checkedBy: check.checkedBy,
+            comment: check.comment,
+            createdAt: check.createdAt
+        )
+    }
+
+    private static func medicalDTO(for record: MedicalFitnessRecord, includePhotos: Bool) -> MedicalFitnessDTO {
+        MedicalFitnessDTO(
+            personName: record.personName,
+            jobTitle: record.jobTitle,
+            occupationalHealthService: record.occupationalHealthService,
+            examinedAt: record.examinedAt,
+            nextVisitDate: record.nextVisitDate,
+            verdictRawValue: record.verdictRawValue,
+            restrictions: record.restrictions,
+            documentData: photo(record.documentData, includePhotos: includePhotos),
+            comment: record.comment,
+            createdAt: record.createdAt
+        )
+    }
+
+    private static func cleaningProductDTO(for product: CleaningProduct, includePhotos: Bool) -> CleaningProductDTO {
+        CleaningProductDTO(
+            name: product.name,
+            supplier: product.supplier,
+            kindRawValue: product.kindRawValue,
+            dilution: product.dilution,
+            contactTimeSeconds: product.contactTimeSeconds,
+            requiresRinsing: product.requiresRinsing,
+            usage: product.usage,
+            hazards: product.hazards,
+            standard: product.standard,
+            safetyDataSheet: photo(product.safetyDataSheet, includePhotos: includePhotos),
+            isActive: product.isActive,
+            comment: product.comment,
+            createdAt: product.createdAt,
+            updatedAt: product.updatedAt
+        )
+    }
+
     // MARK: Lecture d'un fichier
 
     /// Décode une archive sans rien modifier : l'utilisateur doit pouvoir
@@ -744,6 +850,9 @@ enum BackupService {
         restoreFoodSamples(archive.foodSamples, into: context)
         restoreSanitizingFreezes(archive.sanitizingFreezes, into: context)
         restoreBeefOrigins(archive.beefOrigins, into: context)
+        restoreHygieneChecks(archive.hygieneChecks, into: context)
+        restoreMedicalRecords(archive.medicalRecords, into: context)
+        restoreCleaningProducts(archive.cleaningProducts, into: context)
 
         try context.save()
         return archive.totalRecords
@@ -897,6 +1006,7 @@ enum BackupService {
                 comment: dto.comment,
                 photoData: dto.photoData
             )
+            record.signatureData = dto.signatureData
             context.insert(record)
         }
     }
@@ -1095,6 +1205,65 @@ enum BackupService {
         }
     }
 
+    private static func restoreHygieneChecks(_ items: [HygieneCheckDTO], into context: ModelContext) {
+        for dto in items {
+            let check = ShiftHygieneCheck(
+                personName: dto.personName,
+                shiftLabel: dto.shiftLabel,
+                checkedAt: dto.checkedAt,
+                correctiveAction: dto.correctiveAction,
+                signatureData: dto.signatureData,
+                checkedBy: dto.checkedBy,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            // Valeurs brutes recopiées telles quelles.
+            check.passedRawValues = dto.passedRawValues
+            check.failedRawValues = dto.failedRawValues
+            context.insert(check)
+        }
+    }
+
+    private static func restoreMedicalRecords(_ items: [MedicalFitnessDTO], into context: ModelContext) {
+        for dto in items {
+            let record = MedicalFitnessRecord(
+                personName: dto.personName,
+                jobTitle: dto.jobTitle,
+                occupationalHealthService: dto.occupationalHealthService,
+                examinedAt: dto.examinedAt,
+                nextVisitDate: dto.nextVisitDate,
+                verdict: FitnessVerdict(rawValue: dto.verdictRawValue) ?? .fit,
+                restrictions: dto.restrictions,
+                documentData: dto.documentData,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            context.insert(record)
+        }
+    }
+
+    private static func restoreCleaningProducts(_ items: [CleaningProductDTO], into context: ModelContext) {
+        for dto in items {
+            let product = CleaningProduct(
+                name: dto.name,
+                supplier: dto.supplier,
+                kind: CleaningProductKind(rawValue: dto.kindRawValue) ?? .detergent,
+                dilution: dto.dilution,
+                contactTimeSeconds: dto.contactTimeSeconds,
+                requiresRinsing: dto.requiresRinsing,
+                usage: dto.usage,
+                hazards: dto.hazards,
+                standard: dto.standard,
+                safetyDataSheet: dto.safetyDataSheet,
+                isActive: dto.isActive,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            product.updatedAt = dto.updatedAt
+            context.insert(product)
+        }
+    }
+
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,
     /// points de contrôle) partent par cascade, mais on les supprime aussi
     /// explicitement pour ne rien laisser derrière en cas d'orphelin.
@@ -1116,6 +1285,9 @@ enum BackupService {
         try delete(FoodSample.self, in: context)
         try delete(SanitizingFreezeRecord.self, in: context)
         try delete(BeefOriginRecord.self, in: context)
+        try delete(ShiftHygieneCheck.self, in: context)
+        try delete(MedicalFitnessRecord.self, in: context)
+        try delete(CleaningProduct.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

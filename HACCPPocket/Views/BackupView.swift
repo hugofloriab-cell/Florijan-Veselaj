@@ -50,6 +50,9 @@ struct BackupView: View {
     @Query private var foodSamples: [FoodSample]
     @Query private var sanitizingFreezes: [SanitizingFreezeRecord]
     @Query private var beefOrigins: [BeefOriginRecord]
+    @Query private var hygieneChecks: [ShiftHygieneCheck]
+    @Query private var medicalRecords: [MedicalFitnessRecord]
+    @Query private var cleaningProducts: [CleaningProduct]
 
     @AppStorage("haccp.backup.lastExportedAt") private var lastExportTimestamp: Double = 0
     @AppStorage("haccp.backup.includePhotos") private var includePhotos = true
@@ -161,6 +164,9 @@ struct BackupView: View {
         total += foodSamples.count
         total += sanitizingFreezes.count
         total += beefOrigins.count
+        total += hygieneChecks.count
+        total += medicalRecords.count
+        total += cleaningProducts.count
         return total
     }
 
