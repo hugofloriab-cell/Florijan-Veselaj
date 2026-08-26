@@ -28,6 +28,8 @@ struct CleaningPlanView: View {
     @State private var taskPendingDeletion: CleaningTask?
     @State private var photoTask: CleaningTask?
     @State private var signatureTask: CleaningTask?
+    @State private var celebration: UUID?
+    @State private var celebrationMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -85,16 +87,21 @@ struct CleaningPlanView: View {
                     title: "Photo du nettoyage",
                     message: "La photo est jointe à l'enregistrement de l'opération et figure dans vos preuves d'exécution."
                 ) { data in
-                    viewModel?.complete(task, photoData: data)
+                    if viewModel?.complete(task, photoData: data) == true {
+                        celebrate(viewModel)
+                    }
                     photoTask = nil
                 }
             }
+            .successBurst(trigger: celebration, message: celebrationMessage)
             .sheet(item: $signatureTask) { task in
                 CleaningSignatureSheet(
                     task: task,
                     signerName: viewModel?.operatorName ?? ""
                 ) { data in
-                    viewModel?.complete(task, signatureData: data)
+                    if viewModel?.complete(task, signatureData: data) == true {
+                        celebrate(viewModel)
+                    }
                     signatureTask = nil
                 }
             }
@@ -104,6 +111,22 @@ struct CleaningPlanView: View {
                 }
             }
         }
+    }
+
+    /// Le message change selon ce qu'il reste à faire : « il en reste deux »
+    /// motive bien plus qu'un « enregistré » identique à chaque fois.
+    private func celebrate(_ viewModel: CleaningPlanViewModel?) {
+        guard let viewModel else { return }
+
+        let remaining = viewModel.remainingCount(from: tasks)
+
+        switch remaining {
+        case 0:  celebrationMessage = "Plan de nettoyage terminé"
+        case 1:  celebrationMessage = "Encore une opération"
+        default: celebrationMessage = "Encore \(remaining) opérations"
+        }
+
+        celebration = UUID()
     }
 
     private func content(viewModel: CleaningPlanViewModel) -> some View {
@@ -191,8 +214,8 @@ struct CleaningPlanView: View {
                 guard subscription.canWrite else { showsPaywall = true; return }
                 if isDone {
                     viewModel.undoCompletion(for: task)
-                } else {
-                    viewModel.complete(task)
+                } else if viewModel.complete(task) {
+                    celebrate(viewModel)
                 }
             } label: {
                 Image(systemName: isDone ? "checkmark.circle.fill" : "circle")

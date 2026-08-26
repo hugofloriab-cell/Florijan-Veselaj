@@ -31,6 +31,76 @@ enum DS {
     static let readableWidth: CGFloat = 780
 }
 
+// MARK: - Couleurs des registres
+
+extension AppRouter.Destination {
+
+    /// Une couleur par destination : sur une grille de raccourcis, c'est la
+    /// couleur qu'on reconnaît avant de lire le libellé.
+    var tint: Color {
+        switch self {
+        case .today:        .brand
+        case .temperatures: .blue
+        case .products:     .orange
+        case .cleaning:     .green
+        case .registers:    .indigo
+        case .menu:         .pink
+        case .history:      .teal
+        case .report:       .purple
+        case .settings:     .gray
+        }
+    }
+}
+
+// MARK: - Pavé de raccourci
+
+/// Tuile compacte, plus petite que `MetricTile` : elle ne porte pas de
+/// chiffre, seulement une destination.
+struct ShortcutTile: View {
+
+    let title: String
+    let systemImage: String
+    var tint: Color = .brand
+    /// Pastille de rappel, quand quelque chose attend à l'arrivée.
+    var badgeCount: Int = 0
+
+    var body: some View {
+        VStack(spacing: 7) {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 42, height: 42)
+                    .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                if badgeCount > 0 {
+                    Text("\(min(badgeCount, 99))")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 2)
+                        .background(Color.red, in: Capsule())
+                        .offset(x: 7, y: -5)
+                }
+            }
+
+            Text(title)
+                .font(.caption2.weight(.medium))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
+        .frame(height: 92)
+        .frame(maxWidth: .infinity)
+        .cardSurface()
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - Largeur de lecture
 
 extension View {

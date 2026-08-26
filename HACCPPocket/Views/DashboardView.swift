@@ -40,6 +40,15 @@ struct DashboardView: View {
     /// sans code conditionnel.
     private let columns = [GridItem(.adaptive(minimum: 158), spacing: DS.gutter)]
 
+    /// Grille des raccourcis : des pavés nettement plus petits que les
+    /// tuiles de synthèse, pour qu'on distingue au premier coup d'œil ce qui
+    /// informe de ce qui emmène ailleurs.
+    private let shortcutColumns = [GridItem(.adaptive(minimum: 92), spacing: 10)]
+
+    /// Change à chaque tâche terminée, ce qui relance l'animation.
+    @State private var celebration: UUID?
+    @State private var celebrationMessage: String?
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -58,6 +67,7 @@ struct DashboardView: View {
                     }
 
                     tilesSection
+                    shortcutsSection
                     alertsSection
                     pendingReadingsSection
                     urgentProductsSection
@@ -71,6 +81,7 @@ struct DashboardView: View {
                 .readableWidth()
             }
             .background(Color(.systemGroupedBackground))
+            .successBurst(trigger: celebration, message: celebrationMessage)
             .navigationTitle("Aujourd'hui")
             .sheet(isPresented: $showsPaywall) { PaywallView() }
             .sheet(item: $editedProduct) { product in
@@ -300,6 +311,76 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Raccourcis
+
+    private var shortcutsSection: some View {
+        VStack(alignment: .leading, spacing: DS.gutter) {
+            SectionTitle(text: "Accès rapide")
+
+            LazyVGrid(columns: shortcutColumns, spacing: 10) {
+                // Les trois premiers sont des onglets : on bascule plutôt
+                // que d'empiler un écran par-dessus l'accueil.
+                tabShortcut(.temperatures, title: "Températures", systemImage: "thermometer.medium",
+                            badge: dashboard.pendingReadings.count)
+                tabShortcut(.products, title: "Produits", systemImage: "shippingbox",
+                            badge: dashboard.expiredProducts.count)
+                tabShortcut(.cleaning, title: "Nettoyage", systemImage: "sparkles",
+                            badge: dashboard.dueCleaningTasks.count)
+
+                pushShortcut("Réception", systemImage: "truck.box", tint: .teal) {
+                    DeliveryListView()
+                }
+                pushShortcut("Registres", systemImage: "folder", tint: .indigo) {
+                    RegistersHubView()
+                }
+                pushShortcut("Ma carte", systemImage: "fork.knife", tint: .pink) {
+                    MenuListView()
+                }
+                pushShortcut("Historique", systemImage: "clock.arrow.circlepath", tint: .cyan) {
+                    HistoryView()
+                }
+                pushShortcut("Registre mensuel", systemImage: "doc.text", tint: .purple) {
+                    ReportView()
+                }
+            }
+        }
+    }
+
+    private func tabShortcut(
+        _ destination: AppRouter.Destination,
+        title: String,
+        systemImage: String,
+        badge: Int = 0
+    ) -> some View {
+        Button {
+            router.show(destination)
+        } label: {
+            ShortcutTile(
+                title: title,
+                systemImage: systemImage,
+                tint: destination.tint,
+                badgeCount: badge
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Les écrans de registre n'apportent pas leur propre pile de
+    /// navigation : ils s'empilent proprement sur l'accueil.
+    private func pushShortcut<Destination: View>(
+        _ title: String,
+        systemImage: String,
+        tint: Color,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        NavigationLink {
+            destination()
+        } label: {
+            ShortcutTile(title: title, systemImage: systemImage, tint: tint)
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Registres
 
     private var registersSection: some View {
@@ -360,7 +441,27 @@ struct DashboardView: View {
             showsPaywall = true
             return
         }
-        cleaningViewModel?.complete(task)
+
+        guard cleaningViewModel?.complete(task) == true else { return }
+
+        celebrationMessage = remainingCleaningMessage()
+        celebration = UUID()
+    }
+
+    /// Le message change selon ce qu'il reste : « il en reste deux » motive
+    /// bien mieux qu'un « enregistré » identique à chaque fois.
+    ///
+    /// Le décompte passe par le ViewModel de nettoyage plutôt que par le
+    /// tableau de bord : celui-ci est reconstruit à partir des `@Query`, qui
+    /// ne se sont pas encore rafraîchies à cet instant.
+    private func remainingCleaningMessage() -> String {
+        let remaining = cleaningViewModel?.remainingCount(from: cleaningTasks) ?? 0
+
+        switch remaining {
+        case 0:  return "Plan de nettoyage terminé"
+        case 1:  return "Encore une opération"
+        default: return "Encore \(remaining) opérations"
+        }
     }
 }
 
