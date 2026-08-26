@@ -211,6 +211,8 @@ struct ShiftHygieneEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section { ProtocolLink(procedure: .handWashing) }
+
                 Section("Personne contrôlée") {
                     OperatorField(name: $personName, placeholder: "Nom")
                     TextField("Service (matin, midi, soir…)", text: $shiftLabel)

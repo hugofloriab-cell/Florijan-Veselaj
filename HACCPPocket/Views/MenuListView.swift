@@ -34,6 +34,8 @@ struct MenuListView: View {
 
     var body: some View {
         List {
+            Section { ProtocolLink(procedure: .allergens) }
+
             if dishes.isEmpty {
                 emptyState
             } else {

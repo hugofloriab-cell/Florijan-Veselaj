@@ -36,6 +36,8 @@ struct PestControlListView: View {
 
     var body: some View {
         List {
+            Section { ProtocolLink(procedure: .pestControl) }
+
             if let nextVisit, let date = nextVisit.nextVisitDate {
                 Section {
                     HStack(spacing: 12) {

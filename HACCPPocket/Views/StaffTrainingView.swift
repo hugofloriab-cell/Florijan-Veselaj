@@ -35,6 +35,8 @@ struct StaffTrainingListView: View {
 
     var body: some View {
         List {
+            Section { ProtocolLink(procedure: .staffTraining) }
+
             if !expiring.isEmpty {
                 Section {
                     ForEach(expiring) { training in

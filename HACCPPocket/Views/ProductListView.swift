@@ -135,6 +135,8 @@ struct ProductListView: View {
 
     private func content(viewModel: ProductTrackingViewModel) -> some View {
         List {
+            Section { ProtocolLink(procedure: .productLabelling) }
+
             Section {
                 Picker("Filtre", selection: Bindable(viewModel).filter) {
                     ForEach(ProductTrackingViewModel.Filter.allCases) { filter in

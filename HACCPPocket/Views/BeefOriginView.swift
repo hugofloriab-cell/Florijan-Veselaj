@@ -29,6 +29,8 @@ struct BeefOriginListView: View {
 
     var body: some View {
         List {
+            Section { ProtocolLink(procedure: .beefOrigin) }
+
             if records.isEmpty {
                 Section {
                     ContentUnavailableView {

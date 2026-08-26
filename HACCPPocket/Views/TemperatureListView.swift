@@ -28,6 +28,8 @@ struct TemperatureListView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section { ProtocolLink(procedure: .temperatureReading) }
+
                 ForEach(visibleEquipments) { equipment in
                     VStack(alignment: .leading, spacing: 8) {
                         NavigationLink {

@@ -326,6 +326,8 @@ struct GuidedTemperatureInputView: View {
             .padding(.vertical, 2)
 
             LabeledContent("Plage attendue", value: viewModel.equipment.formattedRange)
+
+            ProtocolLink(procedure: .temperatureReading)
         } header: {
             Text("Relevé")
         }

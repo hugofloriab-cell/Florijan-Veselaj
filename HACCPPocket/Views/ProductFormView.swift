@@ -33,6 +33,7 @@ struct ProductFormView: View {
             Form {
                 prefillBanner
                 identificationSection
+                Section { ProtocolLink(procedure: .productLabelling) }
                 categorySection
                 storageSection
                 datesSection

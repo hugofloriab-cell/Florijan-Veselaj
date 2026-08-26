@@ -23,6 +23,8 @@ struct DeliveryListView: View {
 
     var body: some View {
         List {
+            Section { ProtocolLink(procedure: .delivery) }
+
             ForEach(deliveries) { delivery in
                 Button {
                     editedDelivery = delivery
