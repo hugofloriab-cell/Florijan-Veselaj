@@ -13,24 +13,15 @@ import SwiftData
 @main
 struct HACCPPocketApp: App {
 
-    private let container: ModelContainer
-
-    /// État de l'ouverture du stockage. Une base illisible ne fait plus
-    /// planter le lancement : elle est mise de côté et l'utilisateur est
-    /// prévenu depuis les réglages.
-    private let storeOutcome: AppSchema.StoreOutcome
-
     @State private var preferences: UserPreferences
     @State private var notificationService: NotificationService
     @State private var subscription: SubscriptionManager
     @State private var router = AppRouter()
     @State private var inspector = InspectorAccess.shared
+    @State private var directory = EstablishmentDirectory.shared
+    @State private var roles = RoleSession.shared
 
     init() {
-        let store = AppSchema.openStore()
-        container = store.container
-        storeOutcome = store.outcome
-
         _preferences = State(initialValue: UserPreferences.shared)
         _notificationService = State(initialValue: NotificationService.shared)
         _subscription = State(initialValue: SubscriptionManager.shared)
@@ -38,14 +29,17 @@ struct HACCPPocketApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            // Le conteneur SwiftData est ouvert par `AppRootView` : il change
+            // avec l'établissement actif.
+            AppRootView()
                 .environment(\.locale, AppFormatters.locale)
                 .environment(preferences)
                 .environment(notificationService)
                 .environment(subscription)
                 .environment(router)
                 .environment(inspector)
-                .environment(\.storeOutcome, storeOutcome)
+                .environment(directory)
+                .environment(roles)
                 .task {
                     // Les rappels sont reprogrammés à chaque lancement : ils
                     // suivent ainsi les réglages sans code de synchronisation.
@@ -55,7 +49,6 @@ struct HACCPPocketApp: App {
                     await subscription.configure()
                 }
         }
-        .modelContainer(container)
         #if os(macOS)
         .defaultSize(width: 1_000, height: 700)
         #endif

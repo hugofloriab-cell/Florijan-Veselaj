@@ -22,6 +22,8 @@ struct SettingsView: View {
     @Environment(NotificationService.self) private var notificationService
     @Environment(SubscriptionManager.self) private var subscription
     @Environment(InspectorAccess.self) private var inspector
+    @Environment(EstablishmentDirectory.self) private var directory
+    @Environment(RoleSession.self) private var roles
 
     @Query private var establishments: [Establishment]
 
@@ -98,6 +100,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 subscriptionSection
+                siteAndRoleSection
                 establishmentSection
                 logoSection
                 operatorSection
@@ -122,6 +125,58 @@ struct SettingsView: View {
             .task(id: schedulingSignature) {
                 await notificationService.applySchedule(from: preferences)
             }
+        }
+    }
+
+    // MARK: - Établissement actif et profil
+
+    private var siteAndRoleSection: some View {
+        Section {
+            NavigationLink {
+                SiteSwitcherView()
+            } label: {
+                HStack(spacing: 12) {
+                    RowIcon(systemImage: "building.2", tint: .brand)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Établissement")
+                            .font(.subheadline.weight(.medium))
+                        Text(directory.activeSite.displayName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if directory.hasMultipleSites {
+                        Text("\(directory.sites.count)")
+                            .font(.subheadline.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+
+            NavigationLink {
+                RoleSwitcherView()
+            } label: {
+                HStack(spacing: 12) {
+                    RowIcon(systemImage: roles.role.systemImage, tint: .brand)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Profil")
+                            .font(.subheadline.weight(.medium))
+                        Text(roles.role.label)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+                .padding(.vertical, 2)
+            }
+        } header: {
+            Text("Cet appareil")
+        } footer: {
+            Text(directory.hasMultipleSites
+                 ? "Tout ce que vous saisissez est enregistré dans le registre de \(directory.activeSite.displayName)."
+                 : "Vous pouvez gérer plusieurs établissements : chacun aura son propre registre.")
         }
     }
 
@@ -301,16 +356,24 @@ struct SettingsView: View {
                 Label("Historique complet", systemImage: "clock.arrow.circlepath")
             }
 
-            NavigationLink {
-                IntegrityListView()
-            } label: {
-                Label("Intégrité et clôtures", systemImage: "checkmark.seal")
-            }
+            // Clôtures et sauvegarde touchent l'ensemble du registre : elles
+            // restent au gérant.
+            if roles.role.canAdminister {
+                NavigationLink {
+                    IntegrityListView()
+                } label: {
+                    Label("Intégrité et clôtures", systemImage: "checkmark.seal")
+                }
 
-            NavigationLink {
-                BackupView()
-            } label: {
-                Label("Sauvegarde et restauration", systemImage: "externaldrive")
+                NavigationLink {
+                    BackupView()
+                } label: {
+                    Label("Sauvegarde et restauration", systemImage: "externaldrive")
+                }
+            } else {
+                Label("Clôtures et sauvegarde réservées au profil Gérant", systemImage: "lock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         } header: {
             Text("Mes données")
@@ -455,52 +518,55 @@ struct SettingsView: View {
 
     // MARK: - Mode inspecteur
 
+    @ViewBuilder
     private var inspectorSection: some View {
-        Section {
-            HStack {
-                SecureField(
-                    inspector.hasCode ? "Modifier le code" : "Définir un code (4 chiffres minimum)",
-                    text: $inspectorCode
-                )
-                .keyboardType(.numberPad)
+        if roles.role.canAdminister {
+            Section {
+                HStack {
+                    SecureField(
+                        inspector.hasCode ? "Modifier le code" : "Définir un code (4 chiffres minimum)",
+                        text: $inspectorCode
+                    )
+                    .keyboardType(.numberPad)
+
+                    Button {
+                        inspector.setCode(inspectorCode)
+                        inspectorCode = ""
+                        codeSaved = true
+                    } label: {
+                        Text("Définir")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.brand)
+                    .disabled(inspectorCode.trimmingCharacters(in: .whitespaces).count < 4)
+                }
+
+                if codeSaved {
+                    Label("Code enregistré", systemImage: "checkmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                }
 
                 Button {
-                    inspector.setCode(inspectorCode)
-                    inspectorCode = ""
-                    codeSaved = true
+                    showsInspectorConfirmation = true
                 } label: {
-                    Text("Définir")
-                        .font(.caption.weight(.semibold))
+                    Label("Passer en mode consultation", systemImage: "lock.fill")
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.brand)
-                .disabled(inspectorCode.trimmingCharacters(in: .whitespaces).count < 4)
+                .disabled(!inspector.hasCode)
+            } header: {
+                Text("Mode inspecteur")
+            } footer: {
+                Text(inspector.hasCode
+                     ? "L'application est remplacée par une consultation en lecture seule. Rien n'y est modifiable : il n'y a aucun bouton d'écriture, pas seulement des boutons désactivés. Le code vous permet de reprendre la main."
+                     : "Définissez d'abord un code de sortie. Sans lui, n'importe qui pourrait rendre la main sans vous.")
             }
-
-            if codeSaved {
-                Label("Code enregistré", systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(.green)
+            .alert("Passer en mode consultation ?", isPresented: $showsInspectorConfirmation) {
+                Button("Passer en consultation") { inspector.activate() }
+                Button("Annuler", role: .cancel) { }
+            } message: {
+                Text("Vous pourrez reprendre la main avec votre code. Gardez-le en tête : il n'est enregistré nulle part en clair.")
             }
-
-            Button {
-                showsInspectorConfirmation = true
-            } label: {
-                Label("Passer en mode consultation", systemImage: "lock.fill")
-            }
-            .disabled(!inspector.hasCode)
-        } header: {
-            Text("Mode inspecteur")
-        } footer: {
-            Text(inspector.hasCode
-                 ? "L'application est remplacée par une consultation en lecture seule. Rien n'y est modifiable : il n'y a aucun bouton d'écriture, pas seulement des boutons désactivés. Le code vous permet de reprendre la main."
-                 : "Définissez d'abord un code de sortie. Sans lui, n'importe qui pourrait rendre la main sans vous.")
-        }
-        .alert("Passer en mode consultation ?", isPresented: $showsInspectorConfirmation) {
-            Button("Passer en consultation") { inspector.activate() }
-            Button("Annuler", role: .cancel) { }
-        } message: {
-            Text("Vous pourrez reprendre la main avec votre code. Gardez-le en tête : il n'est enregistré nulle part en clair.")
         }
     }
 
@@ -549,4 +615,6 @@ struct SettingsView: View {
         .environment(SubscriptionManager.shared)
         .environment(NotificationService.shared)
         .environment(InspectorAccess.shared)
+        .environment(EstablishmentDirectory.shared)
+        .environment(RoleSession.shared)
 }

@@ -177,4 +177,6 @@ struct RootView: View {
         .environment(SubscriptionManager.shared)
         .environment(AppRouter())
         .environment(InspectorAccess.shared)
+        .environment(EstablishmentDirectory.shared)
+        .environment(RoleSession.shared)
 }

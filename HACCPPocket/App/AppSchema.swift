@@ -63,12 +63,20 @@ enum AppSchema {
 
     // MARK: - Emplacement du store
 
+    /// Fichier de base actuellement ouvert.
+    ///
+    /// Chaque établissement possède le sien : basculer d'un établissement à
+    /// l'autre revient à ouvrir un autre registre, sans qu'aucune donnée ne
+    /// puisse se croiser. La valeur est posée avant l'ouverture, par la vue
+    /// racine, à partir de l'annuaire des établissements.
+    static var activeStoreName: String = EstablishmentDirectory.legacyStoreName
+
     /// Configuration de production. On la construit à un seul endroit pour que
     /// la procédure de secours vise exactement le fichier qu'ouvre SwiftData,
     /// sans avoir à deviner son emplacement.
     private static var productionConfiguration: ModelConfiguration {
         ModelConfiguration(
-            "HACCPPocket",
+            activeStoreName,
             schema: schema,
             cloudKitDatabase: usesCloudSync ? .automatic : .none
         )
@@ -118,6 +126,12 @@ enum AppSchema {
     /// abîmée. Une base illisible est mise de côté — jamais supprimée — pour
     /// qu'elle reste récupérable, et l'application se relance sur une base
     /// vierge plutôt que de boucler sur un crash au lancement.
+    @MainActor
+    static func openStore(for site: SiteReference) -> StoreResult {
+        activeStoreName = site.storeName
+        return openStore()
+    }
+
     @MainActor
     static func openStore() -> StoreResult {
 
@@ -177,7 +191,7 @@ enum AppSchema {
 
     /// Préfixe des bases écartées. Volontairement lisible : un utilisateur
     /// doit pouvoir reconnaître ce fichier s'il tombe dessus.
-    private static let archivePrefix = "HACCPPocket-illisible-"
+    private static var archivePrefix: String { "\(activeStoreName)-illisible-" }
 
     /// Renomme la base défaillante avec un horodatage à la minute et renvoie
     /// sa nouvelle adresse. Rien n'est supprimé, et rien n'est écrasé : deux
