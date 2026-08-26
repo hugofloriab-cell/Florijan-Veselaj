@@ -49,6 +49,9 @@ struct BackupArchive: Codable {
     var documents: [RegulatoryDocumentDTO] = []
     var maintenance: [MaintenanceDTO] = []
     var recalls: [ProductRecallDTO] = []
+    var analyses: [LabAnalysisDTO] = []
+    var waterControls: [WaterControlDTO] = []
+    var oilCollections: [WasteOilDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -79,6 +82,9 @@ struct BackupArchive: Codable {
         total += documents.count
         total += maintenance.count
         total += recalls.count
+        total += analyses.count
+        total += waterControls.count
+        total += oilCollections.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -423,6 +429,53 @@ struct ProductRecallDTO: Codable {
     var createdAt: Date
 }
 
+struct LabAnalysisDTO: Codable {
+    var sampleName: String
+    var kindRawValue: String
+    var location: String
+    var sampledAt: Date
+    var laboratory: String
+    var reportReference: String
+    var resultRawValue: String
+    var resultReceivedAt: Date?
+    var findings: String
+    var correctiveAction: String
+    var reportData: Data?
+    var nextDueDate: Date?
+    var operatorName: String
+    var notes: String
+    var createdAt: Date
+}
+
+struct WaterControlDTO: Codable {
+    var kindRawValue: String
+    var location: String
+    var performedAt: Date
+    var measuredValue: Double?
+    var isPrivateSupply: Bool
+    var isCompliant: Bool
+    var correctiveAction: String
+    var nextDueDate: Date?
+    var documentData: Data?
+    var operatorName: String
+    var notes: String
+    var createdAt: Date
+}
+
+struct WasteOilDTO: Codable {
+    var collectedAt: Date
+    var collector: String
+    var collectorApproval: String
+    var documentReference: String
+    var quantity: Double
+    var unitRawValue: String
+    var containerCount: Int
+    var documentData: Data?
+    var operatorName: String
+    var notes: String
+    var createdAt: Date
+}
+
 // MARK: - Erreurs
 
 enum BackupError: LocalizedError {
@@ -522,6 +575,12 @@ enum BackupService {
             .map { maintenanceDTO(for: $0, includePhotos: includePhotos) }
         archive.recalls = try context.fetch(FetchDescriptor<ProductRecall>())
             .map { recallDTO(for: $0, includePhotos: includePhotos) }
+        archive.analyses = try context.fetch(FetchDescriptor<LabAnalysis>())
+            .map { analysisDTO(for: $0, includePhotos: includePhotos) }
+        archive.waterControls = try context.fetch(FetchDescriptor<WaterControl>())
+            .map { waterDTO(for: $0, includePhotos: includePhotos) }
+        archive.oilCollections = try context.fetch(FetchDescriptor<WasteOilCollection>())
+            .map { wasteOilDTO(for: $0, includePhotos: includePhotos) }
 
         return archive
     }
@@ -922,6 +981,59 @@ enum BackupService {
         )
     }
 
+    private static func analysisDTO(for analysis: LabAnalysis, includePhotos: Bool) -> LabAnalysisDTO {
+        LabAnalysisDTO(
+            sampleName: analysis.sampleName,
+            kindRawValue: analysis.kindRawValue,
+            location: analysis.location,
+            sampledAt: analysis.sampledAt,
+            laboratory: analysis.laboratory,
+            reportReference: analysis.reportReference,
+            resultRawValue: analysis.resultRawValue,
+            resultReceivedAt: analysis.resultReceivedAt,
+            findings: analysis.findings,
+            correctiveAction: analysis.correctiveAction,
+            reportData: photo(analysis.reportData, includePhotos: includePhotos),
+            nextDueDate: analysis.nextDueDate,
+            operatorName: analysis.operatorName,
+            notes: analysis.notes,
+            createdAt: analysis.createdAt
+        )
+    }
+
+    private static func waterDTO(for control: WaterControl, includePhotos: Bool) -> WaterControlDTO {
+        WaterControlDTO(
+            kindRawValue: control.kindRawValue,
+            location: control.location,
+            performedAt: control.performedAt,
+            measuredValue: control.measuredValue,
+            isPrivateSupply: control.isPrivateSupply,
+            isCompliant: control.isCompliant,
+            correctiveAction: control.correctiveAction,
+            nextDueDate: control.nextDueDate,
+            documentData: photo(control.documentData, includePhotos: includePhotos),
+            operatorName: control.operatorName,
+            notes: control.notes,
+            createdAt: control.createdAt
+        )
+    }
+
+    private static func wasteOilDTO(for collection: WasteOilCollection, includePhotos: Bool) -> WasteOilDTO {
+        WasteOilDTO(
+            collectedAt: collection.collectedAt,
+            collector: collection.collector,
+            collectorApproval: collection.collectorApproval,
+            documentReference: collection.documentReference,
+            quantity: collection.quantity,
+            unitRawValue: collection.unitRawValue,
+            containerCount: collection.containerCount,
+            documentData: photo(collection.documentData, includePhotos: includePhotos),
+            operatorName: collection.operatorName,
+            notes: collection.notes,
+            createdAt: collection.createdAt
+        )
+    }
+
     // MARK: Lecture d'un fichier
 
     /// Décode une archive sans rien modifier : l'utilisateur doit pouvoir
@@ -982,6 +1094,9 @@ enum BackupService {
         restoreDocuments(archive.documents, into: context)
         restoreMaintenance(archive.maintenance, into: context)
         restoreRecalls(archive.recalls, into: context)
+        restoreAnalyses(archive.analyses, into: context)
+        restoreWaterControls(archive.waterControls, into: context)
+        restoreOilCollections(archive.oilCollections, into: context)
 
         try context.save()
         return archive.totalRecords
@@ -1462,6 +1577,68 @@ enum BackupService {
         }
     }
 
+    private static func restoreAnalyses(_ items: [LabAnalysisDTO], into context: ModelContext) {
+        for dto in items {
+            let analysis = LabAnalysis(
+                sampleName: dto.sampleName,
+                kind: AnalysisKind(rawValue: dto.kindRawValue) ?? .other,
+                location: dto.location,
+                sampledAt: dto.sampledAt,
+                laboratory: dto.laboratory,
+                reportReference: dto.reportReference,
+                result: AnalysisResult(rawValue: dto.resultRawValue) ?? .pending,
+                resultReceivedAt: dto.resultReceivedAt,
+                findings: dto.findings,
+                correctiveAction: dto.correctiveAction,
+                reportData: dto.reportData,
+                nextDueDate: dto.nextDueDate,
+                operatorName: dto.operatorName,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            context.insert(analysis)
+        }
+    }
+
+    private static func restoreWaterControls(_ items: [WaterControlDTO], into context: ModelContext) {
+        for dto in items {
+            let control = WaterControl(
+                kind: WaterCheckKind(rawValue: dto.kindRawValue) ?? .other,
+                location: dto.location,
+                performedAt: dto.performedAt,
+                measuredValue: dto.measuredValue,
+                isPrivateSupply: dto.isPrivateSupply,
+                isCompliant: dto.isCompliant,
+                correctiveAction: dto.correctiveAction,
+                nextDueDate: dto.nextDueDate,
+                documentData: dto.documentData,
+                operatorName: dto.operatorName,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            context.insert(control)
+        }
+    }
+
+    private static func restoreOilCollections(_ items: [WasteOilDTO], into context: ModelContext) {
+        for dto in items {
+            let collection = WasteOilCollection(
+                collectedAt: dto.collectedAt,
+                collector: dto.collector,
+                collectorApproval: dto.collectorApproval,
+                documentReference: dto.documentReference,
+                quantity: dto.quantity,
+                unit: WasteOilUnit(rawValue: dto.unitRawValue) ?? .litres,
+                containerCount: dto.containerCount,
+                documentData: dto.documentData,
+                operatorName: dto.operatorName,
+                notes: dto.notes,
+                createdAt: dto.createdAt
+            )
+            context.insert(collection)
+        }
+    }
+
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,
     /// points de contrôle) partent par cascade, mais on les supprime aussi
     /// explicitement pour ne rien laisser derrière en cas d'orphelin.
@@ -1489,6 +1666,9 @@ enum BackupService {
         try delete(RegulatoryDocument.self, in: context)
         try delete(EquipmentMaintenance.self, in: context)
         try delete(ProductRecall.self, in: context)
+        try delete(LabAnalysis.self, in: context)
+        try delete(WaterControl.self, in: context)
+        try delete(WasteOilCollection.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

@@ -27,6 +27,9 @@ struct RegistersHubView: View {
     @Query private var documents: [RegulatoryDocument]
     @Query private var maintenance: [EquipmentMaintenance]
     @Query private var recalls: [ProductRecall]
+    @Query private var analyses: [LabAnalysis]
+    @Query private var waterControls: [WaterControl]
+    @Query private var oilCollections: [WasteOilCollection]
 
     /// Opérations thermiques encore ouvertes : c'est l'information la plus
     /// urgente de cet écran, un refroidissement oublié devient non conforme.
@@ -80,6 +83,18 @@ struct RegistersHubView: View {
 
     private var openRecalls: Int {
         recalls.filter { !$0.isClosed }.count
+    }
+
+    private var analysesToHandle: Int {
+        analyses.filter(\.needsAction).count
+    }
+
+    private var waterToHandle: Int {
+        waterControls.filter(\.needsAction).count
+    }
+
+    private var missingSlips: Int {
+        oilCollections.filter(\.isIncomplete).count
     }
 
     private var oilToChange: Int {
@@ -282,6 +297,45 @@ struct RegistersHubView: View {
                         systemImage: "wrench.and.screwdriver",
                         count: maintenance.count,
                         badge: maintenanceToHandle > 0 ? "\(maintenanceToHandle) à traiter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    LabAnalysisListView()
+                } label: {
+                    registerRow(
+                        "Analyses de laboratoire",
+                        detail: "Surfaces, denrées, eau",
+                        systemImage: "flask",
+                        count: analyses.count,
+                        badge: analysesToHandle > 0 ? "\(analysesToHandle) à traiter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    WaterControlListView()
+                } label: {
+                    registerRow(
+                        "Eau et réseau intérieur",
+                        detail: "Chlore, purges, filtres, adoucisseur",
+                        systemImage: "drop",
+                        count: waterControls.count,
+                        badge: waterToHandle > 0 ? "\(waterToHandle) à traiter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
+                NavigationLink {
+                    WasteOilListView()
+                } label: {
+                    registerRow(
+                        "Huiles usagées",
+                        detail: "Bordereaux de collecte",
+                        systemImage: "arrow.3.trianglepath",
+                        count: oilCollections.count,
+                        badge: missingSlips > 0 ? "\(missingSlips) sans bordereau" : nil,
                         badgeColor: .orange
                     )
                 }

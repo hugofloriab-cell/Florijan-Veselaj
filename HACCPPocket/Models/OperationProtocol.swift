@@ -751,6 +751,98 @@ extension OperationProtocol {
         commonMistake: "Croire que la formation du gérant dispense d'instruire l'équipe. Ce sont deux obligations distinctes, et c'est la seconde qu'on oublie de tracer."
     )
 
+    // MARK: Prélèvement de surface
+
+    static let surfaceSampling = OperationProtocol(
+        id: "protocol.sampling",
+        title: "Prélèvement de surface",
+        subtitle: "Après nettoyage : c'est lui qu'on évalue",
+        systemImage: "square.grid.3x3",
+        steps: [
+            ProtocolStep(
+                id: "sampling.1",
+                title: "Prélevez après nettoyage et désinfection",
+                detail: "Sur une surface sèche et prête à l'emploi. Prélever sur une planche sale ne mesure rien : c'est l'efficacité du nettoyage que l'analyse évalue, pas la saleté.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sampling.2",
+                title: "Choisissez les endroits qui posent problème",
+                detail: "Trancheuse, joints, poignées de chambre froide, planches entaillées, robots. Prélever au milieu d'un plan de travail neuf donnera toujours un bon résultat, et n'apprendra rien.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sampling.3",
+                title: "Respectez la surface indiquée par le kit",
+                detail: "En général dix centimètres sur dix. Un résultat s'exprime par unité de surface : changer la surface change le résultat.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sampling.4",
+                title: "Identifiez et acheminez au froid",
+                detail: "Nom du point, date, heure. Le délai et la température de transport font partie de la validité de l'analyse.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sampling.5",
+                title: "Un mauvais résultat appelle une suite écrite",
+                detail: "Revoir le protocole, la dilution, le temps de contact, ou remplacer un matériel devenu impossible à nettoyer. Puis re-prélever pour vérifier.",
+                note: RegulatoryNote(
+                    title: "À quelle fréquence analyser ?",
+                    explanation: "Aucun texte n'impose de périodicité à un restaurant. Le règlement 2073/2005 fixe les seuils, pas les fréquences : c'est à vous de prévoir dans votre plan de maîtrise sanitaire les analyses que vous jugez nécessaires, et de pouvoir justifier ce choix. Ne jamais rien analyser, en revanche, revient à ne pas pouvoir démontrer que vos procédures fonctionnent.",
+                    origin: .practice
+                )
+            )
+        ],
+        commonMistake: "Prélever toujours au même endroit facile, pour avoir de bons résultats. L'analyse devient un rituel décoratif au lieu d'un outil de contrôle."
+    )
+
+    // MARK: Huiles usagées
+
+    static let wasteOil = OperationProtocol(
+        id: "protocol.wasteoil",
+        title: "Huiles usagées",
+        subtitle: "Un déchet, pas un rebut",
+        systemImage: "arrow.3.trianglepath",
+        steps: [
+            ProtocolStep(
+                id: "wasteoil.1",
+                title: "Ne jetez jamais à l'évier",
+                detail: "L'huile fige dans les canalisations, bouche le réseau et perturbe le traitement des eaux usées. C'est interdit, et c'est aussi le meilleur moyen de payer un débouchage.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "wasteoil.2",
+                title: "Stockez à froid, dans des bidons fermés",
+                detail: "Contenants dédiés, étiquetés, dans un local à l'abri. L'huile chaude déforme les bidons et attire les nuisibles.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "wasteoil.3",
+                title: "Faites enlever par un collecteur",
+                detail: "La collecte est généralement gratuite : l'huile usagée est valorisée. Demandez le numéro d'agrément du collecteur avant le premier enlèvement.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "wasteoil.4",
+                title: "Conservez chaque bordereau",
+                detail: "Date, quantité, collecteur, numéro de bon. C'est cette suite de documents qui constitue votre registre des déchets.",
+                note: RegulatoryNote(
+                    title: "Le registre des déchets",
+                    explanation: "Tout producteur de déchets tient un registre chronologique de leur production, de leur expédition et de leur traitement, et le conserve au moins trois ans. Pour un restaurant, la suite des bons d'enlèvement d'huiles en constitue l'essentiel.",
+                    origin: .regulation("Code de l'environnement, article R. 541-43")
+                )
+            ),
+            ProtocolStep(
+                id: "wasteoil.5",
+                title: "Confrontez les volumes à votre registre de friture",
+                detail: "Des bains changés toutes les semaines et aucun enlèvement depuis six mois : la contradiction se voit tout de suite, et elle se verra aussi de l'autre côté.",
+                note: nil
+            )
+        ],
+        commonMistake: "Laisser partir l'huile avec « quelqu'un qui passe » sans bordereau ni agrément. Sans document, vous restez responsable du devenir du déchet."
+    )
+
     // MARK: Retrait et rappel
 
     static let productRecall = OperationProtocol(

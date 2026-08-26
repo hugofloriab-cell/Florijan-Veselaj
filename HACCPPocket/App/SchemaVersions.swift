@@ -298,6 +298,25 @@ enum HACCPSchemaV5: VersionedSchema {
     }
 }
 
+// MARK: - Version 6
+
+/// Ajoute les analyses de laboratoire, les contrôles du réseau d'eau et les
+/// bordereaux de collecte des huiles usagées.
+enum HACCPSchemaV6: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(6, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        HACCPSchemaV5.models + [
+            LabAnalysis.self,
+            WaterControl.self,
+            WasteOilCollection.self
+        ]
+    }
+}
+
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -307,11 +326,11 @@ enum HACCPSchemaV5: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -339,5 +358,11 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
     static let v4ToV5 = MigrationStage.lightweight(
         fromVersion: HACCPSchemaV4.self,
         toVersion: HACCPSchemaV5.self
+    )
+
+    /// V5 → V6 : trois modèles ajoutés, rien de modifié.
+    static let v5ToV6 = MigrationStage.lightweight(
+        fromVersion: HACCPSchemaV5.self,
+        toVersion: HACCPSchemaV6.self
     )
 }
