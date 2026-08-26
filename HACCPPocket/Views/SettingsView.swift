@@ -21,6 +21,7 @@ struct SettingsView: View {
     @Environment(UserPreferences.self) private var preferences
     @Environment(NotificationService.self) private var notificationService
     @Environment(SubscriptionManager.self) private var subscription
+    @Environment(InspectorAccess.self) private var inspector
 
     @Query private var establishments: [Establishment]
 
@@ -29,6 +30,9 @@ struct SettingsView: View {
     @State private var showsTestAlert = false
     @State private var testScheduled = false
     @State private var newTeamMember = ""
+    @State private var inspectorCode = ""
+    @State private var codeSaved = false
+    @State private var showsInspectorConfirmation = false
 
     private var establishment: Establishment? { establishments.first }
 
@@ -100,6 +104,7 @@ struct SettingsView: View {
                 teamSection
                 remindersSection
                 dataSection
+                inspectorSection
                 aboutSection
             }
             .navigationTitle("Réglages")
@@ -297,6 +302,12 @@ struct SettingsView: View {
             }
 
             NavigationLink {
+                IntegrityListView()
+            } label: {
+                Label("Intégrité et clôtures", systemImage: "checkmark.seal")
+            }
+
+            NavigationLink {
                 BackupView()
             } label: {
                 Label("Sauvegarde et restauration", systemImage: "externaldrive")
@@ -442,6 +453,57 @@ struct SettingsView: View {
         #endif
     }
 
+    // MARK: - Mode inspecteur
+
+    private var inspectorSection: some View {
+        Section {
+            HStack {
+                SecureField(
+                    inspector.hasCode ? "Modifier le code" : "Définir un code (4 chiffres minimum)",
+                    text: $inspectorCode
+                )
+                .keyboardType(.numberPad)
+
+                Button {
+                    inspector.setCode(inspectorCode)
+                    inspectorCode = ""
+                    codeSaved = true
+                } label: {
+                    Text("Définir")
+                        .font(.caption.weight(.semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.brand)
+                .disabled(inspectorCode.trimmingCharacters(in: .whitespaces).count < 4)
+            }
+
+            if codeSaved {
+                Label("Code enregistré", systemImage: "checkmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+
+            Button {
+                showsInspectorConfirmation = true
+            } label: {
+                Label("Passer en mode consultation", systemImage: "lock.fill")
+            }
+            .disabled(!inspector.hasCode)
+        } header: {
+            Text("Mode inspecteur")
+        } footer: {
+            Text(inspector.hasCode
+                 ? "L'application est remplacée par une consultation en lecture seule. Rien n'y est modifiable : il n'y a aucun bouton d'écriture, pas seulement des boutons désactivés. Le code vous permet de reprendre la main."
+                 : "Définissez d'abord un code de sortie. Sans lui, n'importe qui pourrait rendre la main sans vous.")
+        }
+        .alert("Passer en mode consultation ?", isPresented: $showsInspectorConfirmation) {
+            Button("Passer en consultation") { inspector.activate() }
+            Button("Annuler", role: .cancel) { }
+        } message: {
+            Text("Vous pourrez reprendre la main avec votre code. Gardez-le en tête : il n'est enregistré nulle part en clair.")
+        }
+    }
+
     // MARK: - À propos
 
     private var aboutSection: some View {
@@ -486,4 +548,5 @@ struct SettingsView: View {
         .environment(UserPreferences.shared)
         .environment(SubscriptionManager.shared)
         .environment(NotificationService.shared)
+        .environment(InspectorAccess.shared)
 }

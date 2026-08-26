@@ -59,6 +59,7 @@ struct BackupView: View {
     @Query private var analyses: [LabAnalysis]
     @Query private var waterControls: [WaterControl]
     @Query private var oilCollections: [WasteOilCollection]
+    @Query private var seals: [IntegritySeal]
 
     @AppStorage("haccp.backup.lastExportedAt") private var lastExportTimestamp: Double = 0
     @AppStorage("haccp.backup.includePhotos") private var includePhotos = true
@@ -179,6 +180,7 @@ struct BackupView: View {
         total += analyses.count
         total += waterControls.count
         total += oilCollections.count
+        total += seals.count
         return total
     }
 

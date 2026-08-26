@@ -24,6 +24,7 @@ struct HACCPPocketApp: App {
     @State private var notificationService: NotificationService
     @State private var subscription: SubscriptionManager
     @State private var router = AppRouter()
+    @State private var inspector = InspectorAccess.shared
 
     init() {
         let store = AppSchema.openStore()
@@ -43,6 +44,7 @@ struct HACCPPocketApp: App {
                 .environment(notificationService)
                 .environment(subscription)
                 .environment(router)
+                .environment(inspector)
                 .environment(\.storeOutcome, storeOutcome)
                 .task {
                     // Les rappels sont reprogrammés à chaque lancement : ils

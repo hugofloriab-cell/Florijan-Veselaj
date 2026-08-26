@@ -52,6 +52,7 @@ struct BackupArchive: Codable {
     var analyses: [LabAnalysisDTO] = []
     var waterControls: [WaterControlDTO] = []
     var oilCollections: [WasteOilDTO] = []
+    var seals: [IntegritySealDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -85,6 +86,7 @@ struct BackupArchive: Codable {
         total += analyses.count
         total += waterControls.count
         total += oilCollections.count
+        total += seals.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -476,6 +478,17 @@ struct WasteOilDTO: Codable {
     var createdAt: Date
 }
 
+struct IntegritySealDTO: Codable {
+    var periodStart: Date
+    var sealedAt: Date
+    var digest: String
+    var previousDigest: String
+    var recordCount: Int
+    var sequence: Int
+    var sealedBy: String
+    var createdAt: Date
+}
+
 // MARK: - Erreurs
 
 enum BackupError: LocalizedError {
@@ -581,6 +594,8 @@ enum BackupService {
             .map { waterDTO(for: $0, includePhotos: includePhotos) }
         archive.oilCollections = try context.fetch(FetchDescriptor<WasteOilCollection>())
             .map { wasteOilDTO(for: $0, includePhotos: includePhotos) }
+        archive.seals = try context.fetch(FetchDescriptor<IntegritySeal>())
+            .map { sealDTO(for: $0) }
 
         return archive
     }
@@ -1034,6 +1049,19 @@ enum BackupService {
         )
     }
 
+    private static func sealDTO(for seal: IntegritySeal) -> IntegritySealDTO {
+        IntegritySealDTO(
+            periodStart: seal.periodStart,
+            sealedAt: seal.sealedAt,
+            digest: seal.digest,
+            previousDigest: seal.previousDigest,
+            recordCount: seal.recordCount,
+            sequence: seal.sequence,
+            sealedBy: seal.sealedBy,
+            createdAt: seal.createdAt
+        )
+    }
+
     // MARK: Lecture d'un fichier
 
     /// Décode une archive sans rien modifier : l'utilisateur doit pouvoir
@@ -1097,6 +1125,7 @@ enum BackupService {
         restoreAnalyses(archive.analyses, into: context)
         restoreWaterControls(archive.waterControls, into: context)
         restoreOilCollections(archive.oilCollections, into: context)
+        restoreSeals(archive.seals, into: context)
 
         try context.save()
         return archive.totalRecords
@@ -1639,6 +1668,22 @@ enum BackupService {
         }
     }
 
+    private static func restoreSeals(_ items: [IntegritySealDTO], into context: ModelContext) {
+        for dto in items {
+            let seal = IntegritySeal(
+                periodStart: dto.periodStart,
+                sealedAt: dto.sealedAt,
+                digest: dto.digest,
+                previousDigest: dto.previousDigest,
+                recordCount: dto.recordCount,
+                sequence: dto.sequence,
+                sealedBy: dto.sealedBy,
+                createdAt: dto.createdAt
+            )
+            context.insert(seal)
+        }
+    }
+
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,
     /// points de contrôle) partent par cascade, mais on les supprime aussi
     /// explicitement pour ne rien laisser derrière en cas d'orphelin.
@@ -1669,6 +1714,7 @@ enum BackupService {
         try delete(LabAnalysis.self, in: context)
         try delete(WaterControl.self, in: context)
         try delete(WasteOilCollection.self, in: context)
+        try delete(IntegritySeal.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

@@ -20,6 +20,7 @@ import UIKit
 struct RootView: View {
 
     @Environment(AppRouter.self) private var router
+    @Environment(InspectorAccess.self) private var inspector
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// La première configuration ne s'affiche qu'une fois.
@@ -29,7 +30,12 @@ struct RootView: View {
 
     var body: some View {
         Group {
-            if usesSidebar {
+            if inspector.isActive {
+                // Le verrouillage ne consiste pas à désactiver des boutons :
+                // l'application est remplacée par une consultation, où il n'y
+                // en a aucun.
+                InspectorModeView()
+            } else if usesSidebar {
                 splitLayout
             } else {
                 tabLayout
@@ -170,4 +176,5 @@ struct RootView: View {
         .environment(NotificationService.shared)
         .environment(SubscriptionManager.shared)
         .environment(AppRouter())
+        .environment(InspectorAccess.shared)
 }

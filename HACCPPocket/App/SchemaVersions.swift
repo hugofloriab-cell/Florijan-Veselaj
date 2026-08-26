@@ -317,6 +317,20 @@ enum HACCPSchemaV6: VersionedSchema {
     }
 }
 
+// MARK: - Version 7
+
+/// Ajoute les scellés mensuels d'intégrité.
+enum HACCPSchemaV7: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(7, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        HACCPSchemaV6.models + [IntegritySeal.self]
+    }
+}
+
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -326,11 +340,11 @@ enum HACCPSchemaV6: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -364,5 +378,11 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
     static let v5ToV6 = MigrationStage.lightweight(
         fromVersion: HACCPSchemaV5.self,
         toVersion: HACCPSchemaV6.self
+    )
+
+    /// V6 → V7 : un modèle ajouté, rien de modifié.
+    static let v6ToV7 = MigrationStage.lightweight(
+        fromVersion: HACCPSchemaV6.self,
+        toVersion: HACCPSchemaV7.self
     )
 }
