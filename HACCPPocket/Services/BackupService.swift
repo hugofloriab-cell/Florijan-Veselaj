@@ -39,6 +39,10 @@ struct BackupArchive: Codable {
     var pestVisits: [PestDTO] = []
     var trainings: [TrainingDTO] = []
     var dishes: [DishDTO] = []
+    var thawings: [ThawingDTO] = []
+    var foodSamples: [FoodSampleDTO] = []
+    var sanitizingFreezes: [SanitizingDTO] = []
+    var beefOrigins: [BeefOriginDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -59,6 +63,10 @@ struct BackupArchive: Codable {
         total += pestVisits.count
         total += trainings.count
         total += dishes.count
+        total += thawings.count
+        total += foodSamples.count
+        total += sanitizingFreezes.count
+        total += beefOrigins.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -242,6 +250,69 @@ struct DishDTO: Codable {
     var updatedAt: Date
 }
 
+struct ThawingDTO: Codable {
+    var productName: String
+    var batchNumber: String
+    var location: String
+    var methodRawValue: String
+    var startedAt: Date
+    var finishedAt: Date?
+    var originalExpiryDate: Date?
+    var shelfLifeDays: Int
+    var quantity: String
+    var operatorName: String
+    var comment: String
+    var createdAt: Date
+}
+
+struct FoodSampleDTO: Codable {
+    var dishName: String
+    var serviceLabel: String
+    var collectedAt: Date
+    var lastServedAt: Date
+    var quantityGrams: Int
+    var coverCount: Int
+    var storageLocation: String
+    var operatorName: String
+    var comment: String
+    var discardedAt: Date?
+    var createdAt: Date
+}
+
+struct SanitizingDTO: Codable {
+    var productName: String
+    var batchNumber: String
+    var supplier: String
+    var intendedUse: String
+    var scheduleRawValue: String
+    var startedAt: Date
+    var finishedAt: Date?
+    var coreTemperature: Double?
+    var equipmentName: String
+    var quantity: String
+    var operatorName: String
+    var comment: String
+    var isCompliant: Bool
+    var createdAt: Date
+}
+
+struct BeefOriginDTO: Codable {
+    var cutName: String
+    var batchNumber: String
+    var supplier: String
+    var birthCountry: String
+    var rearingCountry: String
+    var slaughterCountry: String
+    var slaughterhouseApproval: String
+    var cuttingPlantApproval: String
+    var receivedAt: Date
+    var quantity: String
+    var labelPhotoData: Data?
+    var operatorName: String
+    var comment: String
+    var createdAt: Date
+}
+
 // MARK: - Erreurs
 
 enum BackupError: LocalizedError {
@@ -321,6 +392,14 @@ enum BackupService {
             .map { trainingDTO(for: $0, includePhotos: includePhotos) }
         archive.dishes = try context.fetch(FetchDescriptor<Dish>())
             .map { dishDTO(for: $0) }
+        archive.thawings = try context.fetch(FetchDescriptor<ThawingRecord>())
+            .map { thawingDTO(for: $0) }
+        archive.foodSamples = try context.fetch(FetchDescriptor<FoodSample>())
+            .map { foodSampleDTO(for: $0) }
+        archive.sanitizingFreezes = try context.fetch(FetchDescriptor<SanitizingFreezeRecord>())
+            .map { sanitizingDTO(for: $0) }
+        archive.beefOrigins = try context.fetch(FetchDescriptor<BeefOriginRecord>())
+            .map { beefOriginDTO(for: $0, includePhotos: includePhotos) }
 
         return archive
     }
@@ -540,6 +619,77 @@ enum BackupService {
         return "HACCP-Pocket-Sauvegarde-\(stamp)\(suffix).json"
     }
 
+    private static func thawingDTO(for record: ThawingRecord) -> ThawingDTO {
+        ThawingDTO(
+            productName: record.productName,
+            batchNumber: record.batchNumber,
+            location: record.location,
+            methodRawValue: record.methodRawValue,
+            startedAt: record.startedAt,
+            finishedAt: record.finishedAt,
+            originalExpiryDate: record.originalExpiryDate,
+            shelfLifeDays: record.shelfLifeDays,
+            quantity: record.quantity,
+            operatorName: record.operatorName,
+            comment: record.comment,
+            createdAt: record.createdAt
+        )
+    }
+
+    private static func foodSampleDTO(for sample: FoodSample) -> FoodSampleDTO {
+        FoodSampleDTO(
+            dishName: sample.dishName,
+            serviceLabel: sample.serviceLabel,
+            collectedAt: sample.collectedAt,
+            lastServedAt: sample.lastServedAt,
+            quantityGrams: sample.quantityGrams,
+            coverCount: sample.coverCount,
+            storageLocation: sample.storageLocation,
+            operatorName: sample.operatorName,
+            comment: sample.comment,
+            discardedAt: sample.discardedAt,
+            createdAt: sample.createdAt
+        )
+    }
+
+    private static func sanitizingDTO(for record: SanitizingFreezeRecord) -> SanitizingDTO {
+        SanitizingDTO(
+            productName: record.productName,
+            batchNumber: record.batchNumber,
+            supplier: record.supplier,
+            intendedUse: record.intendedUse,
+            scheduleRawValue: record.scheduleRawValue,
+            startedAt: record.startedAt,
+            finishedAt: record.finishedAt,
+            coreTemperature: record.coreTemperature,
+            equipmentName: record.equipmentName,
+            quantity: record.quantity,
+            operatorName: record.operatorName,
+            comment: record.comment,
+            isCompliant: record.isCompliant,
+            createdAt: record.createdAt
+        )
+    }
+
+    private static func beefOriginDTO(for record: BeefOriginRecord, includePhotos: Bool) -> BeefOriginDTO {
+        BeefOriginDTO(
+            cutName: record.cutName,
+            batchNumber: record.batchNumber,
+            supplier: record.supplier,
+            birthCountry: record.birthCountry,
+            rearingCountry: record.rearingCountry,
+            slaughterCountry: record.slaughterCountry,
+            slaughterhouseApproval: record.slaughterhouseApproval,
+            cuttingPlantApproval: record.cuttingPlantApproval,
+            receivedAt: record.receivedAt,
+            quantity: record.quantity,
+            labelPhotoData: photo(record.labelPhotoData, includePhotos: includePhotos),
+            operatorName: record.operatorName,
+            comment: record.comment,
+            createdAt: record.createdAt
+        )
+    }
+
     // MARK: Lecture d'un fichier
 
     /// Décode une archive sans rien modifier : l'utilisateur doit pouvoir
@@ -590,6 +740,10 @@ enum BackupService {
         restorePestVisits(archive.pestVisits, into: context)
         restoreTrainings(archive.trainings, into: context)
         restoreDishes(archive.dishes, into: context)
+        restoreThawings(archive.thawings, into: context)
+        restoreFoodSamples(archive.foodSamples, into: context)
+        restoreSanitizingFreezes(archive.sanitizingFreezes, into: context)
+        restoreBeefOrigins(archive.beefOrigins, into: context)
 
         try context.save()
         return archive.totalRecords
@@ -858,6 +1012,89 @@ enum BackupService {
         }
     }
 
+    private static func restoreThawings(_ items: [ThawingDTO], into context: ModelContext) {
+        for dto in items {
+            let record = ThawingRecord(
+                productName: dto.productName,
+                batchNumber: dto.batchNumber,
+                location: dto.location,
+                method: ThawingMethod(rawValue: dto.methodRawValue) ?? .coldRoom,
+                startedAt: dto.startedAt,
+                originalExpiryDate: dto.originalExpiryDate,
+                shelfLifeDays: dto.shelfLifeDays,
+                quantity: dto.quantity,
+                operatorName: dto.operatorName,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            record.finishedAt = dto.finishedAt
+            context.insert(record)
+        }
+    }
+
+    private static func restoreFoodSamples(_ items: [FoodSampleDTO], into context: ModelContext) {
+        for dto in items {
+            let sample = FoodSample(
+                dishName: dto.dishName,
+                serviceLabel: dto.serviceLabel,
+                collectedAt: dto.collectedAt,
+                lastServedAt: dto.lastServedAt,
+                quantityGrams: dto.quantityGrams,
+                coverCount: dto.coverCount,
+                storageLocation: dto.storageLocation,
+                operatorName: dto.operatorName,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            sample.discardedAt = dto.discardedAt
+            context.insert(sample)
+        }
+    }
+
+    private static func restoreSanitizingFreezes(_ items: [SanitizingDTO], into context: ModelContext) {
+        for dto in items {
+            let record = SanitizingFreezeRecord(
+                productName: dto.productName,
+                batchNumber: dto.batchNumber,
+                supplier: dto.supplier,
+                intendedUse: dto.intendedUse,
+                schedule: SanitizingSchedule(rawValue: dto.scheduleRawValue) ?? .minus20,
+                startedAt: dto.startedAt,
+                equipmentName: dto.equipmentName,
+                quantity: dto.quantity,
+                operatorName: dto.operatorName,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            record.finishedAt = dto.finishedAt
+            record.coreTemperature = dto.coreTemperature
+            record.isCompliant = dto.isCompliant
+            context.insert(record)
+        }
+    }
+
+    private static func restoreBeefOrigins(_ items: [BeefOriginDTO], into context: ModelContext) {
+        for dto in items {
+            let record = BeefOriginRecord(
+                cutName: dto.cutName,
+                batchNumber: dto.batchNumber,
+                supplier: dto.supplier,
+                birthCountry: dto.birthCountry,
+                rearingCountry: dto.rearingCountry,
+                slaughterCountry: dto.slaughterCountry,
+                slaughterhouseApproval: dto.slaughterhouseApproval,
+                cuttingPlantApproval: dto.cuttingPlantApproval,
+                receivedAt: dto.receivedAt,
+                quantity: dto.quantity,
+                labelPhotoData: dto.labelPhotoData,
+                operatorName: dto.operatorName,
+                comment: dto.comment,
+                createdAt: dto.createdAt
+            )
+            context.insert(record)
+        }
+    }
+
     /// Vide la base. Les objets enfants (relevés, enregistrements de nettoyage,
     /// points de contrôle) partent par cascade, mais on les supprime aussi
     /// explicitement pour ne rien laisser derrière en cas d'orphelin.
@@ -875,6 +1112,10 @@ enum BackupService {
         try delete(PestControlVisit.self, in: context)
         try delete(StaffTraining.self, in: context)
         try delete(Dish.self, in: context)
+        try delete(ThawingRecord.self, in: context)
+        try delete(FoodSample.self, in: context)
+        try delete(SanitizingFreezeRecord.self, in: context)
+        try delete(BeefOriginRecord.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()

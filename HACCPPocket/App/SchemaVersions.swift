@@ -57,9 +57,9 @@
 //       une valeur par défaut ou qui est optionnelle, supprimer une propriété,
 //       ajouter ou retirer un index.
 //
-//         static let v2ToV3 = MigrationStage.lightweight(
-//             fromVersion: HACCPSchemaV2.self,
-//             toVersion: HACCPSchemaV3.self
+//         static let v3ToV4 = MigrationStage.lightweight(
+//             fromVersion: HACCPSchemaV3.self,
+//             toVersion: HACCPSchemaV4.self
 //         )
 //
 //     • Changement LOURD (`.custom`) — il faut écrire la transformation.
@@ -67,12 +67,12 @@
 //       obligatoire une propriété qui était optionnelle, découper ou fusionner
 //       un modèle. Sans ça, les valeurs existantes sont perdues.
 //
-//         static let v2ToV3 = MigrationStage.custom(
-//             fromVersion: HACCPSchemaV2.self,
-//             toVersion: HACCPSchemaV3.self,
+//         static let v3ToV4 = MigrationStage.custom(
+//             fromVersion: HACCPSchemaV3.self,
+//             toVersion: HACCPSchemaV4.self,
 //             willMigrate: nil,
 //             didMigrate: { context in
-//                 // Ici, les objets sont déjà au format V3 mais les nouvelles
+//                 // Ici, les objets sont déjà au format V4 mais les nouvelles
 //                 // propriétés sont vides : c'est le moment de les remplir à
 //                 // partir des anciennes valeurs.
 //                 let equipments = try context.fetch(FetchDescriptor<Equipment>())
@@ -184,6 +184,42 @@ enum HACCPSchemaV2: VersionedSchema {
     }
 }
 
+// MARK: - Version 3
+
+/// Ajoute les registres opérationnels manquants : décongélation, plats
+/// témoins, traitement assainissant du poisson cru et origine de la viande
+/// bovine.
+///
+/// Quatre modèles nouveaux, aucun modèle modifié : la migration reste légère.
+enum HACCPSchemaV3: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(3, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        [
+            Establishment.self,
+            Equipment.self,
+            TemperatureReading.self,
+            TrackedProduct.self,
+            DeliveryCheck.self,
+            CleaningTask.self,
+            CleaningRecord.self,
+            ThermalProcessRecord.self,
+            ThermalCheckpoint.self,
+            OilCheckRecord.self,
+            PestControlVisit.self,
+            StaffTraining.self,
+            Dish.self,
+            ThawingRecord.self,
+            FoodSample.self,
+            SanitizingFreezeRecord.self,
+            BeefOriginRecord.self
+        ]
+    }
+}
+
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -193,11 +229,11 @@ enum HACCPSchemaV2: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2]
+        [v1ToV2, v2ToV3]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -206,5 +242,11 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
     static let v1ToV2 = MigrationStage.lightweight(
         fromVersion: HACCPSchemaV1.self,
         toVersion: HACCPSchemaV2.self
+    )
+
+    /// V2 → V3 : quatre modèles ajoutés, rien de modifié.
+    static let v2ToV3 = MigrationStage.lightweight(
+        fromVersion: HACCPSchemaV2.self,
+        toVersion: HACCPSchemaV3.self
     )
 }

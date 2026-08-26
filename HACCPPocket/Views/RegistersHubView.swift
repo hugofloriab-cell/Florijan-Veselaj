@@ -17,6 +17,10 @@ struct RegistersHubView: View {
     @Query private var trainings: [StaffTraining]
     @Query private var deliveries: [DeliveryCheck]
     @Query private var dishes: [Dish]
+    @Query private var thawings: [ThawingRecord]
+    @Query private var samples: [FoodSample]
+    @Query private var sanitizing: [SanitizingFreezeRecord]
+    @Query private var beefOrigins: [BeefOriginRecord]
 
     /// Opérations thermiques encore ouvertes : c'est l'information la plus
     /// urgente de cet écran, un refroidissement oublié devient non conforme.
@@ -35,6 +39,20 @@ struct RegistersHubView: View {
     /// Plats dont la fiche allergènes n'a jamais été remplie.
     private var incompleteDishes: Int {
         dishes.filter { $0.isAvailable && $0.needsAllergenReview }.count
+    }
+
+    /// Échantillons dont le délai est écoulé : ils encombrent le frigo sans
+    /// plus rien prouver.
+    private var samplesToDiscard: Int {
+        samples.filter(\.needsAction).count
+    }
+
+    private var thawingsExpired: Int {
+        thawings.filter { $0.isExpired() }.count
+    }
+
+    private var incompleteBeef: Int {
+        beefOrigins.filter { !$0.isComplete }.count
     }
 
     private var oilToChange: Int {
@@ -82,7 +100,59 @@ struct RegistersHubView: View {
                 }
             }
 
+            Section("Préparations") {
+                NavigationLink {
+                    ThawingListView()
+                } label: {
+                    registerRow(
+                        "Décongélation",
+                        detail: "DLC résiduelle après décongélation",
+                        systemImage: "snowflake.slash",
+                        count: thawings.count,
+                        badge: thawingsExpired > 0 ? "\(thawingsExpired) à retirer" : nil,
+                        badgeColor: .red
+                    )
+                }
+
+                NavigationLink {
+                    SanitizingFreezeListView()
+                } label: {
+                    registerRow(
+                        "Poisson servi cru",
+                        detail: "Traitement assainissant −20 °C / 24 h",
+                        systemImage: "fish",
+                        count: sanitizing.count
+                    )
+                }
+
+                NavigationLink {
+                    FoodSampleListView()
+                } label: {
+                    registerRow(
+                        "Plats témoins",
+                        detail: "Prélèvements conservés 5 jours",
+                        systemImage: "takeoutbag.and.cup.and.straw",
+                        count: samples.count,
+                        badge: samplesToDiscard > 0 ? "\(samplesToDiscard) à éliminer" : nil,
+                        badgeColor: .orange
+                    )
+                }
+            }
+
             Section("Information du consommateur") {
+                NavigationLink {
+                    BeefOriginListView()
+                } label: {
+                    registerRow(
+                        "Origine viande bovine",
+                        detail: "Naissance, élevage, abattage",
+                        systemImage: "text.badge.checkmark",
+                        count: beefOrigins.count,
+                        badge: incompleteBeef > 0 ? "\(incompleteBeef) à compléter" : nil,
+                        badgeColor: .orange
+                    )
+                }
+
                 NavigationLink {
                     MenuListView()
                 } label: {

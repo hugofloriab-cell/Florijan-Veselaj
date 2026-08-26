@@ -209,6 +209,142 @@ extension OperationProtocol {
         commonMistake: "Remettre en température au bain-marie doux pendant une heure et demie. La préparation passe tout ce temps dans la zone de danger avant d'en sortir."
     )
 
+    // MARK: Décongélation
+
+    static let thawing = OperationProtocol(
+        id: "protocol.thawing",
+        title: "Décongélation",
+        subtitle: "En enceinte froide, jamais sur le plan de travail",
+        systemImage: "snowflake.slash",
+        steps: [
+            ProtocolStep(
+                id: "thawing.1",
+                title: "En enceinte froide, à +3 °C",
+                detail: "Comptez 24 heures pour 2 kg. Anticipez : une décongélation ne se rattrape pas au dernier moment.",
+                note: RegulatoryNote(
+                    title: "Pourquoi jamais à l'air libre ?",
+                    explanation: "À température ambiante, la surface du produit atteint la zone de danger et y reste des heures pendant que le cœur est encore gelé. Les bactéries s'y multiplient sans que rien ne se voie : le produit paraît intact, sa charge bactérienne ne l'est plus.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "thawing.2",
+                title: "Sur grille, avec un bac de récupération",
+                detail: "L'exsudat qui s'écoule est chargé en bactéries. Il ne doit toucher ni le produit lui-même, ni ce qui est rangé en dessous.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "thawing.3",
+                title: "En bas de l'enceinte, jamais au-dessus d'un produit prêt",
+                detail: "Un produit en décongélation se range sous les produits cuits ou prêts à consommer, jamais au-dessus.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "thawing.4",
+                title: "Étiquetez avec la nouvelle date de retrait",
+                detail: "La DLC d'origine ne s'applique plus. Un produit décongelé se consomme sous 24 heures pour une viande ou un poisson.",
+                note: RegulatoryNote(
+                    title: "Pourquoi la DLC d'origine ne vaut plus rien",
+                    explanation: "La DLC imprimée vaut pour le produit conservé congelé. La décongélation libère l'eau du produit et réveille les bactéries : le compteur repart, bien plus vite qu'avant congélation.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "thawing.5",
+                title: "Ne recongelez jamais",
+                detail: "Un produit décongelé se cuit ou se jette. Recongeler fige la population bactérienne sans la détruire.",
+                note: nil
+            )
+        ],
+        commonMistake: "Sortir la pièce le matin pour le service du soir, posée sur le plan de travail « pour aller plus vite ». C'est le geste qui produit le plus d'intoxications en restauration."
+    )
+
+    // MARK: Traitement assainissant
+
+    static let sanitizingFreeze = OperationProtocol(
+        id: "protocol.sanitizing",
+        title: "Traitement assainissant du poisson",
+        subtitle: "−20 °C pendant 24 h avant toute consommation crue",
+        systemImage: "fish",
+        steps: [
+            ProtocolStep(
+                id: "sanitizing.1",
+                title: "Identifiez ce qui est concerné",
+                detail: "Tout poisson destiné à être servi cru ou peu cuit : tartare, carpaccio, sushi, ceviche, marinade, fumage à froid, hareng au sel.",
+                note: RegulatoryNote(
+                    title: "Pourquoi ce traitement ?",
+                    explanation: "Il détruit les larves d'anisakis, un parasite présent dans de nombreux poissons de mer. Vivantes, elles provoquent des douleurs abdominales violentes et des réactions allergiques. Ni le sel, ni le citron, ni le vinaigre ne les tuent.",
+                    origin: .regulation("Règlement (CE) n° 853/2004, annexe III, section VIII")
+                )
+            ),
+            ProtocolStep(
+                id: "sanitizing.2",
+                title: "Appliquez le barème, à cœur",
+                detail: "−20 °C pendant au moins 24 heures, ou −35 °C pendant au moins 15 heures. La température se mesure au cœur du produit, pas dans l'air de l'enceinte.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sanitizing.3",
+                title: "Lancez le chronomètre et ne le clôturez pas trop tôt",
+                detail: "Le barème court à partir du moment où le cœur atteint la température, pas de la mise au congélateur.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sanitizing.4",
+                title: "Consignez le lot",
+                detail: "Produit, lot, fournisseur, destination, durée et température atteinte. C'est le premier document demandé dès qu'un établissement affiche du poisson cru.",
+                note: nil
+            )
+        ],
+        commonMistake: "Croire que le poisson livré surgelé dispense du traitement. Il en dispense seulement si le fournisseur atteste par écrit que le barème assainissant a été appliqué — sinon, c'est à vous de le faire."
+    )
+
+    // MARK: Plats témoins
+
+    static let foodSample = OperationProtocol(
+        id: "protocol.sample",
+        title: "Plats témoins",
+        subtitle: "100 g par plat, conservés 5 jours à +0/+3 °C",
+        systemImage: "takeoutbag.and.cup.and.straw",
+        steps: [
+            ProtocolStep(
+                id: "sample.1",
+                title: "Prélevez au moment du service",
+                detail: "Environ 100 g de chaque plat servi, prélevés dans ce qui part réellement en salle — pas dans la casserole restée en cuisine.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sample.2",
+                title: "Conditionnez et identifiez",
+                detail: "Sachet ou barquette à usage unique, fermé hermétiquement. Étiquette : nom du plat, date et service.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sample.3",
+                title: "Conservez à +0/+3 °C, séparément",
+                detail: "Dans un bac dédié, à l'écart des denrées en cours d'utilisation, pour que personne ne les consomme par erreur.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "sample.4",
+                title: "Gardez cinq jours après la dernière présentation",
+                detail: "Le délai court à partir du dernier service du plat, pas de sa fabrication.",
+                note: RegulatoryNote(
+                    title: "À quoi ça sert vraiment ?",
+                    explanation: "À rien, tant que tout va bien. Le jour où un convive se déclare malade, c'est la seule pièce qui permet d'analyser ce qui a réellement été servi. Sans plat témoin, l'établissement est présumé responsable : il n'a aucun moyen de démontrer que son plat était conforme.",
+                    origin: .regulation("Arrêté du 21 décembre 2009, article 32")
+                )
+            ),
+            ProtocolStep(
+                id: "sample.5",
+                title: "Éliminez au terme du délai",
+                detail: "Un échantillon périmé ne prouve plus rien et prend la place des suivants.",
+                note: nil
+            )
+        ],
+        commonMistake: "Prélever avant le service, dans la préparation d'origine. Le plat témoin doit refléter ce que le client a mangé, dressage compris."
+    )
+
     // MARK: Nettoyage
 
     static let cleaning = OperationProtocol(

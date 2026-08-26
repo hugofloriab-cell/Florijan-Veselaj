@@ -46,6 +46,10 @@ struct BackupView: View {
     @Query private var pestVisits: [PestControlVisit]
     @Query private var trainings: [StaffTraining]
     @Query private var dishes: [Dish]
+    @Query private var thawings: [ThawingRecord]
+    @Query private var foodSamples: [FoodSample]
+    @Query private var sanitizingFreezes: [SanitizingFreezeRecord]
+    @Query private var beefOrigins: [BeefOriginRecord]
 
     @AppStorage("haccp.backup.lastExportedAt") private var lastExportTimestamp: Double = 0
     @AppStorage("haccp.backup.includePhotos") private var includePhotos = true
@@ -153,6 +157,10 @@ struct BackupView: View {
         total += pestVisits.count
         total += trainings.count
         total += dishes.count
+        total += thawings.count
+        total += foodSamples.count
+        total += sanitizingFreezes.count
+        total += beefOrigins.count
         return total
     }
 
