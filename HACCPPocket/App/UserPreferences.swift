@@ -65,7 +65,6 @@ final class UserPreferences {
         static let reminders = "haccp.reminders.v2"
         static let knownOperators = "haccp.operators.v1"
         static let contactEmail = "haccp.contactEmail"
-        static let hasCompletedOnboarding = "haccp.onboarding.done.v1"
     }
 
     private let defaults: UserDefaults
@@ -108,11 +107,6 @@ final class UserPreferences {
         didSet { defaults.set(contactEmail, forKey: Key.contactEmail) }
     }
 
-    /// L'écran de première ouverture a-t-il été passé ?
-    var hasCompletedOnboarding: Bool {
-        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
-    }
-
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -122,7 +116,6 @@ final class UserPreferences {
 
         self.knownOperators = defaults.stringArray(forKey: Key.knownOperators) ?? []
         self.contactEmail = defaults.string(forKey: Key.contactEmail) ?? ""
-        self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
 
         if let data = defaults.data(forKey: Key.reminders),
            let decoded = try? JSONDecoder().decode([ReminderSlot].self, from: data) {

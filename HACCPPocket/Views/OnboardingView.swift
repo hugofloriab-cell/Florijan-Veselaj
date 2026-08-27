@@ -2,28 +2,8 @@
 //  OnboardingView.swift
 //  HACCPPocket
 //
-//  Première ouverture : de quoi l'application a besoin pour servir à quelque
-//  chose dès le premier relevé.
-//
-//  ─────────────────────────────────────────────────────────────────────────
-//  CE QUE CET ÉCRAN N'EST PAS
-//  ─────────────────────────────────────────────────────────────────────────
-//
-//  Ce n'est pas une page de connexion, et il ne faut pas le présenter comme
-//  telle. Vérifier qu'une adresse électronique appartient bien à celui qui la
-//  saisit suppose d'envoyer un message et d'en attendre la réponse, donc un
-//  serveur, donc un abonnement mensuel. L'application a été construite sans
-//  serveur, délibérément, et personne n'a envie de payer tous les mois pour
-//  une case à cocher.
-//
-//  Ce que cet écran fait réellement : il recueille l'identité de
-//  l'établissement, le nom du responsable et une adresse de contact, il les
-//  écrit dans les réglages, et il s'efface. Tout y reste modifiable ensuite.
-//
-//  Pourquoi malgré tout le montrer d'emblée : sans nom d'établissement, les
-//  documents produits — registre mensuel, fiche allergènes, affichage des
-//  viandes — sortent anonymes et ne valent rien en contrôle. Les demander au
-//  premier lancement évite de les découvrir manquants le jour de l'inspection.
+//  Première configuration. Sans elle, un nouvel utilisateur atterrissait sur
+//  un « 0 / 6 » sans savoir ce qu'on attendait de lui.
 //
 
 import SwiftUI
@@ -32,299 +12,322 @@ import SwiftData
 struct OnboardingView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @Environment(UserPreferences.self) private var preferences
+    @Environment(NotificationService.self) private var notificationService
 
     @Query private var establishments: [Establishment]
-
-    @State private var step: Step = .welcome
-
-    @State private var establishmentName = ""
-    @State private var address = ""
-    @State private var siret = ""
-    @State private var managerName = ""
-    @State private var contactEmail = ""
-    @State private var operatorName = ""
-
-    @FocusState private var focusedField: Field?
+    @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
 
     private enum Step: Int, CaseIterable {
         case welcome
         case establishment
-        case people
-        case ready
+        case equipments
+        case reminders
+
+        var title: String {
+            switch self {
+            case .welcome:       "Bienvenue"
+            case .establishment: "Votre établissement"
+            case .equipments:    "Vos enceintes"
+            case .reminders:     "Vos rappels"
+            }
+        }
     }
 
-    private enum Field: Hashable {
-        case name, address, siret, manager, email, operatorName
-    }
+    @State private var step: Step = .welcome
+    @State private var isCreatingEquipment = false
+    @State private var editedEquipment: Equipment?
 
     var body: some View {
         NavigationStack {
-            Group {
-                switch step {
-                case .welcome:       welcomeStep
-                case .establishment: establishmentStep
-                case .people:        peopleStep
-                case .ready:         readyStep
+            VStack(spacing: 0) {
+                ProgressView(value: Double(step.rawValue + 1), total: Double(Step.allCases.count))
+                    .tint(.brand)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                content
+
+                footer
+            }
+            // La première configuration s'affiche en plein écran : sur un iPad,
+            // sans borne, le texte traverserait toute la dalle.
+            .readableWidth()
+            .navigationTitle(step.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    if step != .welcome {
+                        Button("Passer") { finish() }
+                    }
                 }
             }
-            .background(Color(.systemGroupedBackground))
-            .toolbar {
-                if step != .welcome {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Retour") { goBack() }
-                    }
-                }
-                // Passer reste possible à chaque étape : forcer une saisie au
-                // premier lancement, c'est perdre l'utilisateur avant qu'il
-                // ait vu à quoi sert l'application.
-                if step != .ready {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button("Passer") { finish() }
-                            .foregroundStyle(.secondary)
-                    }
+            .sheet(isPresented: $isCreatingEquipment) {
+                EquipmentEditorView(equipment: nil, sortIndex: equipments.count)
+            }
+            .sheet(item: $editedEquipment) { equipment in
+                EquipmentEditorView(equipment: equipment)
+            }
+            .task {
+                if establishments.isEmpty {
+                    modelContext.insert(Establishment())
+                    try? modelContext.save()
                 }
             }
         }
         .interactiveDismissDisabled()
-        .onAppear(perform: loadExisting)
     }
 
     // MARK: - Étapes
 
+    @ViewBuilder
+    private var content: some View {
+        switch step {
+        case .welcome:      welcomeStep
+        case .establishment: establishmentStep
+        case .equipments:   equipmentsStep
+        case .reminders:    remindersStep
+        }
+    }
+
     private var welcomeStep: some View {
-        VStack(spacing: 20) {
-            Spacer(minLength: 0)
-
-            BrandLogo(size: 84)
-
-            Text("Bienvenue dans \(BrandAssets.productName)")
-                .font(.title2.weight(.bold))
-                .multilineTextAlignment(.center)
-
-            Text("Votre plan de maîtrise sanitaire, dans votre poche. Températures, nettoyage, réceptions, traçabilité : tout se note en quelques gestes, et le registre mensuel se produit tout seul.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Label(
-                "Tout reste sur votre appareil. Aucune donnée n'est envoyée sur Internet.",
-                systemImage: "lock.shield"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(.top, 4)
-
-            Spacer(minLength: 0)
-
-            Button {
-                advance()
-            } label: {
-                Text("Commencer")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                BrandLogo(size: 92)
                     .frame(maxWidth: .infinity)
+                    .padding(.top, 20)
+
+                Text("Votre registre sanitaire, dans votre poche")
+                    .font(.title2.weight(.bold))
+
+                Text("HACCP Pocket remplace le classeur papier : relevés de températures, produits entamés, contrôles à réception et plan de nettoyage. En fin de mois, un PDF prêt à présenter lors d'un contrôle.")
+                    .foregroundStyle(.secondary)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    bullet("Tout reste sur votre appareil", "lock.shield.fill",
+                           "Aucun compte à créer, aucune donnée envoyée sur Internet.")
+                    bullet("Trois minutes par jour", "clock.fill",
+                           "Deux relevés, quelques cases à cocher.")
+                    bullet("Prêt pour le contrôle", "doc.text.fill",
+                           "Le registre mensuel se génère en un geste.")
+                }
+                .padding(.top, 4)
+
+                Text("Configurons l'essentiel : cela prend une minute.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+            .padding(20)
         }
-        .padding(28)
-        .readableWidth()
     }
 
+    private func bullet(_ title: String, _ systemImage: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.title3)
+                .foregroundStyle(.brand)
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.subheadline.weight(.semibold))
+                Text(detail).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
     private var establishmentStep: some View {
-        Form {
-            Section {
-                TextField("Nom de l'établissement", text: $establishmentName)
-                    .focused($focusedField, equals: .name)
-                    .textInputAutocapitalization(.words)
-
-                TextField("Adresse", text: $address, axis: .vertical)
-                    .focused($focusedField, equals: .address)
-                    .lineLimit(1...3)
-
-                TextField("SIRET (facultatif)", text: $siret)
-                    .focused($focusedField, equals: .siret)
-                    .keyboardType(.numberPad)
-            } header: {
-                Text("Votre entreprise")
-            } footer: {
-                Text("Ces informations apparaissent en tête de chaque document produit : registre mensuel, fiche allergènes, affichage de l'origine des viandes. Sans elles, ces documents sortent anonymes et ne valent rien en contrôle.")
-            }
-
-            Section {
-                Button {
-                    advance()
-                } label: {
-                    Text("Continuer")
-                        .frame(maxWidth: .infinity)
+        if let establishment = establishments.first {
+            Form {
+                Section {
+                    TextField("Raison sociale", text: Bindable(establishment).name)
+                    TextField("Adresse", text: Bindable(establishment).address, axis: .vertical)
+                        .lineLimit(2...4)
+                    TextField("Responsable du plan sanitaire", text: Bindable(establishment).managerName)
+                } footer: {
+                    Text("Ces informations forment l'en-tête du registre mensuel. Vous pourrez les compléter plus tard dans les réglages.")
                 }
-                .buttonStyle(.borderedProminent)
-                .listRowBackground(Color.clear)
+
+                Section {
+                    TextField("Votre nom", text: Bindable(preferences).operatorName)
+                } header: {
+                    Text("Qui saisit les relevés ?")
+                } footer: {
+                    Text("Pré-rempli dans chaque formulaire. La traçabilité impose de savoir qui a fait quoi.")
+                }
+
+                Section {
+                    TextField("Adresse électronique", text: Bindable(preferences).contactEmail)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Contact")
+                } footer: {
+                    // Présenter cette adresse comme un identifiant de
+                    // connexion serait un mensonge : vérifier qu'elle
+                    // appartient bien à celui qui la saisit demande d'envoyer
+                    // un message et d'en attendre la réponse, donc un serveur,
+                    // donc un abonnement mensuel. L'application n'en a pas,
+                    // c'est le choix de départ, et l'écran le dit.
+                    Text("Ce n'est pas un compte : l'application fonctionne sans connexion et sans serveur, et rien ne vous sera demandé pour l'ouvrir. Cette adresse sert à retrouver votre abonnement si vous changez de téléphone, à pré-remplir vos déclarations de panne, et à nous joindre.")
+                }
             }
         }
-        .navigationTitle("Votre entreprise")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { focusedField = .name }
     }
 
-    private var peopleStep: some View {
+    private var equipmentsStep: some View {
         Form {
             Section {
-                TextField("Nom du responsable", text: $managerName)
-                    .focused($focusedField, equals: .manager)
-                    .textInputAutocapitalization(.words)
-            } header: {
-                Text("Responsable")
-            } footer: {
-                Text("Le nom qui figure au bas des documents, en face de la signature.")
-            }
-
-            Section {
-                TextField("Votre prénom", text: $operatorName)
-                    .focused($focusedField, equals: .operatorName)
-                    .textInputAutocapitalization(.words)
-            } header: {
-                Text("Qui utilise l'application")
-            } footer: {
-                Text("Pré-rempli à chaque relevé. Vous ajouterez le reste de l'équipe dans les réglages : la traçabilité impose de savoir qui a fait quoi.")
-            }
-
-            Section {
-                TextField("Adresse électronique", text: $contactEmail)
-                    .focused($focusedField, equals: .email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            } header: {
-                Text("Contact")
-            } footer: {
-                // Dit sans détour : c'est une adresse de contact, pas un
-                // compte. Laisser croire à une connexion serait mentir.
-                Text("Ce n'est pas un compte : l'application fonctionne sans connexion et sans serveur, et rien ne vous sera demandé pour l'ouvrir. Cette adresse sert à retrouver votre abonnement si vous changez de téléphone, et à nous joindre en cas de problème.")
-            }
-
-            Section {
-                Button {
-                    advance()
-                } label: {
-                    Text("Continuer")
-                        .frame(maxWidth: .infinity)
+                ForEach(equipments) { equipment in
+                    Button {
+                        editedEquipment = equipment
+                    } label: {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Label(equipment.name, systemImage: equipment.type.systemImage)
+                                    .foregroundStyle(.primary)
+                                Text(equipment.formattedRange)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            modelContext.delete(equipment)
+                            try? modelContext.save()
+                        } label: {
+                            Label("Supprimer", systemImage: "trash")
+                        }
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .listRowBackground(Color.clear)
+
+                Button {
+                    isCreatingEquipment = true
+                } label: {
+                    Label("Ajouter une enceinte", systemImage: "plus")
+                }
+            } header: {
+                Text("Enceintes à surveiller")
+            } footer: {
+                Text("Touchez une enceinte pour la renommer ou ajuster sa plage de température. Balayez-la vers la gauche pour la supprimer. C'est sur cette liste que se basent les relevés quotidiens.")
             }
         }
-        .navigationTitle("Vous")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { focusedField = .manager }
     }
 
-    private var readyStep: some View {
-        VStack(spacing: 18) {
-            Spacer(minLength: 0)
+    private var remindersStep: some View {
+        Form {
+            Section {
+                ForEach(preferences.reminders) { reminder in
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            TextField("Intitulé", text: labelBinding(for: reminder))
+                                .font(.subheadline.weight(.medium))
+                            Toggle("", isOn: enabledBinding(for: reminder))
+                                .labelsHidden()
+                        }
+                        DatePicker("Heure", selection: timeBinding(for: reminder), displayedComponents: .hourAndMinute)
+                            .disabled(!reminder.isEnabled)
+                    }
+                    .padding(.vertical, 2)
+                }
+                .onDelete { preferences.removeReminders(at: $0) }
 
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.green)
-
-            Text("Tout est prêt")
-                .font(.title2.weight(.bold))
-
-            Text("L'application est livrée avec un plan de nettoyage, des enceintes et des rappels par défaut. Modifiez-les à votre installation : ce sont des points de départ, pas des obligations.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Label(
-                "Tout ce que vous venez de saisir se retrouve dans Réglages, et s'y modifie à tout moment.",
-                systemImage: "gearshape"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
-
-            Button {
-                finish()
-            } label: {
-                Text("Ouvrir mon registre")
-                    .frame(maxWidth: .infinity)
+                Button {
+                    preferences.addReminder()
+                } label: {
+                    Label("Ajouter un rappel", systemImage: "plus")
+                }
+            } header: {
+                Text("Ne rien oublier")
+            } footer: {
+                Text("Ouverture, coupure, réception, fermeture : créez autant de rappels que votre service en demande. Un oubli de relevé est une ligne vide dans le registre.")
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
+
+            if !notificationService.isAuthorized {
+                Section {
+                    Button {
+                        Task { await notificationService.requestAuthorization() }
+                    } label: {
+                        Label("Autoriser les notifications", systemImage: "bell.badge")
+                    }
+                } footer: {
+                    Text("Sans cette autorisation, aucun rappel ne partira.")
+                }
+            }
         }
-        .padding(28)
-        .readableWidth()
+    }
+
+    // MARK: Liaisons vers les rappels
+
+    private func labelBinding(for reminder: ReminderSlot) -> Binding<String> {
+        Binding(
+            get: { reminder.label },
+            set: { newValue in
+                var updated = reminder
+                updated.label = newValue
+                preferences.update(updated)
+            }
+        )
+    }
+
+    private func enabledBinding(for reminder: ReminderSlot) -> Binding<Bool> {
+        Binding(
+            get: { reminder.isEnabled },
+            set: { newValue in
+                var updated = reminder
+                updated.isEnabled = newValue
+                preferences.update(updated)
+            }
+        )
+    }
+
+    private func timeBinding(for reminder: ReminderSlot) -> Binding<Date> {
+        Binding(
+            get: { preferences.time(for: reminder) },
+            set: { preferences.setTime($0, for: reminder) }
+        )
     }
 
     // MARK: - Navigation
 
-    private func advance() {
-        focusedField = nil
-        guard let next = Step(rawValue: step.rawValue + 1) else { return }
-        withAnimation { step = next }
-    }
+    private var footer: some View {
+        HStack(spacing: 12) {
+            if step != .welcome {
+                Button("Précédent") {
+                    if let previous = Step(rawValue: step.rawValue - 1) {
+                        withAnimation { step = previous }
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
 
-    private func goBack() {
-        focusedField = nil
-        guard let previous = Step(rawValue: step.rawValue - 1) else { return }
-        withAnimation { step = previous }
-    }
-
-    // MARK: - Persistance
-
-    /// Reprend ce qui existe déjà : l'écran peut être rouvert depuis les
-    /// réglages, et il ne doit pas présenter des champs vides à quelqu'un qui
-    /// a déjà tout renseigné.
-    private func loadExisting() {
-        if let establishment = establishments.first {
-            if establishmentName.isEmpty { establishmentName = establishment.name }
-            if address.isEmpty { address = establishment.address }
-            if siret.isEmpty { siret = establishment.siret }
-            if managerName.isEmpty { managerName = establishment.managerName }
+            Button(step == Step.allCases.last ? "Terminer" : "Continuer") {
+                if let next = Step(rawValue: step.rawValue + 1) {
+                    withAnimation { step = next }
+                } else {
+                    finish()
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.brand)
+            .frame(maxWidth: .infinity)
         }
-        if operatorName.isEmpty { operatorName = preferences.operatorName }
-        if contactEmail.isEmpty { contactEmail = preferences.contactEmail }
+        .padding(16)
+        .background(.bar)
     }
 
     private func finish() {
-        focusedField = nil
-        persist()
-        preferences.hasCompletedOnboarding = true
-    }
-
-    private func persist() {
-        let trimmedName = establishmentName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedManager = managerName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedOperator = operatorName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedEmail = contactEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // Rien de saisi : on ne crée pas une fiche établissement vide qui
-        // ferait croire à un réglage fait.
-        if !trimmedName.isEmpty || !trimmedManager.isEmpty || !address.isEmpty {
-            let establishment = establishments.first ?? {
-                let created = Establishment()
-                modelContext.insert(created)
-                return created
-            }()
-
-            establishment.name = trimmedName
-            establishment.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
-            establishment.siret = siret.trimmingCharacters(in: .whitespacesAndNewlines)
-            establishment.managerName = trimmedManager
-            establishment.updatedAt = .now
-
-            try? modelContext.save()
-        }
-
-        if !trimmedOperator.isEmpty {
-            preferences.operatorName = trimmedOperator
-            preferences.rememberOperator(trimmedOperator)
-        }
-
-        preferences.contactEmail = trimmedEmail
+        establishments.first?.touch()
+        try? modelContext.save()
+        Task { await notificationService.applySchedule(from: preferences) }
+        dismiss()
     }
 }

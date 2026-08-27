@@ -3,8 +3,7 @@
 //  HACCPPocket
 //
 //  Racine réelle de l'application : elle ouvre le registre de l'établissement
-//  actif, le rouvre à chaque bascule, et présente l'écran de première
-//  ouverture tant qu'il n'a pas été passé.
+//  actif et le rouvre à chaque bascule.
 //
 //  Le conteneur SwiftData vit ici plutôt que dans la scène, parce qu'il doit
 //  pouvoir être remplacé : changer d'établissement, c'est ouvrir un autre
@@ -18,7 +17,6 @@ import SwiftData
 struct AppRootView: View {
 
     @Environment(EstablishmentDirectory.self) private var directory
-    @Environment(UserPreferences.self) private var preferences
 
     @State private var store: AppSchema.StoreResult?
     @State private var loadedSiteID: UUID?
@@ -30,12 +28,6 @@ struct AppRootView: View {
                     .modelContainer(store.container)
                     .environment(\.storeOutcome, store.outcome)
                     .id(directory.activeSiteID)
-                    // Présenté par-dessus le registre déjà ouvert : l'écran
-                    // écrit dans la base, il lui faut donc le conteneur.
-                    .fullScreenCover(isPresented: onboardingBinding) {
-                        OnboardingView()
-                            .modelContainer(store.container)
-                    }
             } else {
                 loadingView
             }
@@ -55,19 +47,6 @@ struct AppRootView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
-    }
-
-    /// L'écran de première ouverture s'affiche tant qu'il n'a pas été passé.
-    /// Il ne se referme que depuis l'intérieur : le fermer par glissement
-    /// laisserait l'application sans nom d'établissement sans que personne
-    /// l'ait décidé.
-    private var onboardingBinding: Binding<Bool> {
-        Binding(
-            get: { !preferences.hasCompletedOnboarding },
-            set: { shown in
-                if !shown { preferences.hasCompletedOnboarding = true }
-            }
-        )
     }
 
     @MainActor

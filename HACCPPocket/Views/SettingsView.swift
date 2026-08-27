@@ -17,6 +17,10 @@ import UIKit
 
 struct SettingsView: View {
 
+    /// Même clé que celle lue par `RootView` pour décider d'afficher l'écran
+    /// de bienvenue.
+    @AppStorage("haccp.didCompleteOnboarding") private var didCompleteOnboarding = false
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
@@ -235,7 +239,10 @@ struct SettingsView: View {
             .autocorrectionDisabled()
 
             Button {
-                preferences.hasCompletedOnboarding = false
+                // Le même drapeau que celui lu par `RootView` : en créer un
+                // second ferait réapparaître l'écran pour l'un et pas pour
+                // l'autre.
+                didCompleteOnboarding = false
             } label: {
                 Label("Revoir l'écran de bienvenue", systemImage: "sparkles")
             }
