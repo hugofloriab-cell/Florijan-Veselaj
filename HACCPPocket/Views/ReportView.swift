@@ -26,6 +26,7 @@ struct ReportView: View {
     @Query private var pestVisits: [PestControlVisit]
     @Query private var trainings: [StaffTraining]
     @Query private var dishes: [Dish]
+    @Query private var medicalRecords: [MedicalFitnessRecord]
 
     @State private var selectedMonth: Date = .now
     @State private var pdfURL: URL?
@@ -53,7 +54,8 @@ struct ReportView: View {
             oilChecks: oilChecks,
             pestVisits: pestVisits,
             trainings: trainings,
-            dishes: dishes
+            dishes: dishes,
+            medicalRecords: medicalRecords
         )
     }
 

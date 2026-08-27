@@ -25,8 +25,54 @@ struct MedicalFitnessListView: View {
     @State private var editedRecord: MedicalFitnessRecord?
     @State private var showsPaywall = false
 
-    private var attention: [MedicalFitnessRecord] { records.filter(\.needsAction) }
-    private var upToDate: [MedicalFitnessRecord] { records.filter { !$0.needsAction } }
+    /// Une personne de l'équipe et l'ensemble de ses visites.
+    struct TeamMember: Identifiable {
+        let id: String
+        let firstName: String
+        let fullName: String
+        let visits: [MedicalFitnessRecord]
+
+        /// La visite qui décide de l'état affiché : la plus récente.
+        var latest: MedicalFitnessRecord? { visits.first }
+
+        var needsAction: Bool { latest?.needsAction ?? true }
+
+        var statusLabel: String { latest?.statusLabel ?? "Aucune visite" }
+    }
+
+    /// Regroupe les fiches par personne, la plus récente visite en tête.
+    ///
+    /// Assemblé en deux temps plutôt qu'en une expression : un `Dictionary`
+    /// suivi d'un `map` et d'un tri imbriqués est exactement le genre de
+    /// chaîne que le compilateur met une éternité à résoudre.
+    private var team: [TeamMember] {
+        var grouped: [String: [MedicalFitnessRecord]] = [:]
+
+        for record in records {
+            grouped[record.personKey, default: []].append(record)
+        }
+
+        var members: [TeamMember] = []
+
+        for (key, visits) in grouped {
+            let sorted = visits.sorted { $0.examinedAt > $1.examinedAt }
+            guard let reference = sorted.first else { continue }
+
+            members.append(
+                TeamMember(
+                    id: key,
+                    firstName: reference.firstName,
+                    fullName: reference.displayName,
+                    visits: sorted
+                )
+            )
+        }
+
+        return members.sorted { $0.firstName.localizedCaseInsensitiveCompare($1.firstName) == .orderedAscending }
+    }
+
+    private var attention: [TeamMember] { team.filter(\.needsAction) }
+    private var upToDate: [TeamMember] { team.filter { !$0.needsAction } }
 
     var body: some View {
         List {
@@ -55,14 +101,18 @@ struct MedicalFitnessListView: View {
             }
 
             if !attention.isEmpty {
-                Section("À traiter") {
-                    ForEach(attention) { record in row(record) }
+                Section {
+                    ForEach(attention) { member in memberRow(member) }
+                } header: {
+                    Text("À traiter")
+                } footer: {
+                    Text("Visite dépassée, à prévoir, ou avis appelant une décision de votre part.")
                 }
             }
 
             if !upToDate.isEmpty {
                 Section("À jour") {
-                    ForEach(upToDate) { record in row(record) }
+                    ForEach(upToDate) { member in memberRow(member) }
                 }
             }
         }
@@ -84,65 +134,47 @@ struct MedicalFitnessListView: View {
         .sheet(isPresented: $showsPaywall) { PaywallView() }
     }
 
-    private func row(_ record: MedicalFitnessRecord) -> some View {
-        Button {
-            editedRecord = record
+    /// Une personne de l'équipe : prénom en tête, état de son suivi.
+    private func memberRow(_ member: MedicalFitnessListView.TeamMember) -> some View {
+        NavigationLink {
+            MedicalPersonView(
+                firstName: member.firstName,
+                fullName: member.fullName,
+                visits: member.visits
+            )
         } label: {
-            HStack(alignment: .top, spacing: 12) {
-                RowIcon(systemImage: record.verdict.systemImage, tint: tint(for: record))
+            HStack(spacing: 12) {
+                RowIcon(
+                    systemImage: "person.crop.circle",
+                    tint: member.needsAction ? .orange : .brand
+                )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(record.displayName)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
+                    Text(member.firstName)
+                        .font(.subheadline.weight(.semibold))
 
-                    Text(subtitle(for: record))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    if !record.restrictions.isEmpty {
-                        Text(record.restrictions)
+                    if let latest = member.latest {
+                        Text("Dernière visite le \(AppFormatters.shortDate(latest.examinedAt))")
                             .font(.caption)
-                            .foregroundStyle(.orange)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .foregroundStyle(.secondary)
+
+                        if let next = latest.nextVisitDate {
+                            Text("Prochaine le \(AppFormatters.shortDate(next))")
+                                .font(.caption2)
+                                .foregroundStyle(latest.isOverdue() ? Color.orange : Color.secondary)
+                        }
                     }
                 }
 
                 Spacer(minLength: 8)
 
-                VStack(alignment: .trailing, spacing: 4) {
-                    StatusBadge(text: record.statusLabel, color: tint(for: record))
-                    if record.hasDocument {
-                        Image(systemName: "paperclip")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                StatusBadge(
+                    text: member.statusLabel,
+                    color: member.needsAction ? .orange : .green
+                )
             }
             .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) { delete(record) } label: {
-                Label("Supprimer", systemImage: "trash")
-            }
-        }
-    }
-
-    private func subtitle(for record: MedicalFitnessRecord) -> String {
-        var parts: [String] = []
-        if !record.jobTitle.isEmpty { parts.append(record.jobTitle) }
-        parts.append("visite du \(AppFormatters.shortDate(record.examinedAt))")
-        if let next = record.nextVisitDate {
-            parts.append("prochaine le \(AppFormatters.shortDate(next))")
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    private func tint(for record: MedicalFitnessRecord) -> Color {
-        if record.isOverdue() || record.verdict == .unfit { return .red }
-        if record.needsAction { return .orange }
-        return .green
     }
 
     private func create() {
@@ -153,13 +185,166 @@ struct MedicalFitnessListView: View {
         isCreating = true
     }
 
-    private func delete(_ record: MedicalFitnessRecord) {
-        guard subscription.canWrite else {
-            showsPaywall = true
-            return
+}
+
+// MARK: - Le dossier d'une personne
+
+/// Les visites d'un membre de l'équipe.
+///
+/// ─────────────────────────────────────────────────────────────────────────
+/// POURQUOI LE CONTENU EST MASQUÉ PAR DÉFAUT
+/// ─────────────────────────────────────────────────────────────────────────
+///
+/// L'avis d'aptitude et ses restrictions relèvent du suivi médical du
+/// salarié. L'employeur les détient parce qu'il doit les appliquer, pas pour
+/// les afficher. Un écran qui étale « inapte au poste » à côté d'un prénom,
+/// devant qui passe dans la cuisine, transforme un document de travail en
+/// affichage public.
+///
+/// L'écran montre donc par défaut ce qui suffit à gérer : la visite a eu
+/// lieu, à telle date, la suivante est prévue à telle autre. Le contenu ne
+/// s'ouvre que sur un geste délibéré, précédé d'un avertissement.
+struct MedicalPersonView: View {
+
+    @Environment(\.modelContext) private var modelContext
+    @Environment(SubscriptionManager.self) private var subscription
+
+    let firstName: String
+    let fullName: String
+    let visits: [MedicalFitnessRecord]
+
+    @State private var isRevealed = false
+    @State private var editedRecord: MedicalFitnessRecord?
+    @State private var isCreating = false
+    @State private var showsPaywall = false
+
+    var body: some View {
+        List {
+            Section {
+                InfoRow(label: "Nom complet", value: fullName, systemImage: "person.text.rectangle")
+                if let latest = visits.first, !latest.jobTitle.isEmpty {
+                    InfoRow(label: "Poste", value: latest.jobTitle, systemImage: "briefcase")
+                }
+                if let latest = visits.first, !latest.occupationalHealthService.isEmpty {
+                    InfoRow(
+                        label: "Service de santé au travail",
+                        value: latest.occupationalHealthService,
+                        systemImage: "cross.case"
+                    )
+                }
+            }
+
+            confidentialitySection
+
+            Section {
+                ForEach(visits) { visit in
+                    visitRow(visit)
+                }
+            } header: {
+                Text("Visites")
+            } footer: {
+                Text("Le registre mensuel ne reprend que la mention « visite effectuée » ou « non effectuée ». Le contenu de l'avis n'en sort jamais.")
+            }
         }
-        modelContext.delete(record)
-        try? modelContext.save()
+        .navigationTitle(firstName)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    guard subscription.canWrite else { showsPaywall = true; return }
+                    isCreating = true
+                } label: {
+                    Label("Nouvelle visite", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(isPresented: $isCreating) {
+            MedicalFitnessEditorView(record: nil, context: modelContext)
+        }
+        .sheet(item: $editedRecord) { record in
+            MedicalFitnessEditorView(record: record, context: modelContext)
+        }
+        .sheet(isPresented: $showsPaywall) { PaywallView() }
+    }
+
+    private var hasConfidentialContent: Bool {
+        visits.contains(\.hasConfidentialContent)
+    }
+
+    @ViewBuilder
+    private var confidentialitySection: some View {
+        if hasConfidentialContent {
+            Section {
+                Toggle(isOn: $isRevealed) {
+                    Label(
+                        isRevealed ? "Contenu affiché" : "Afficher le contenu du dossier",
+                        systemImage: isRevealed ? "eye" : "eye.slash"
+                    )
+                }
+            } header: {
+                Text("Confidentialité")
+            } footer: {
+                Text("L'avis d'aptitude et ses restrictions éventuelles relèvent du suivi médical de la personne. Ne les affichez que si vous en avez besoin, et jamais devant un tiers qui n'a pas à en connaître — un contrôleur qui les demande doit le formuler explicitement.")
+            }
+        }
+    }
+
+    private func visitRow(_ visit: MedicalFitnessRecord) -> some View {
+        Button {
+            guard subscription.canWrite else { showsPaywall = true; return }
+            editedRecord = visit
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                RowIcon(
+                    systemImage: "calendar",
+                    tint: visit.isOverdue() ? .orange : .brand
+                )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Visite du \(AppFormatters.shortDate(visit.examinedAt))")
+                        .font(.subheadline.weight(.medium))
+
+                    if let next = visit.nextVisitDate {
+                        Text("Prochaine le \(AppFormatters.shortDate(next))")
+                            .font(.caption)
+                            .foregroundStyle(visit.isOverdue() ? Color.orange : Color.secondary)
+                    }
+
+                    // Le contenu, et lui seul, est derrière l'interrupteur.
+                    if isRevealed {
+                        Text(visit.verdict.label)
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(visit.verdict.needsAttention ? Color.orange : Color.green)
+
+                        if !visit.restrictions.isEmpty {
+                            Text(visit.restrictions)
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 8)
+
+                if visit.hasDocument {
+                    Image(systemName: "paperclip")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                guard subscription.canWrite else { showsPaywall = true; return }
+                modelContext.delete(visit)
+                try? modelContext.save()
+            } label: {
+                Label("Supprimer", systemImage: "trash")
+            }
+        }
     }
 }
 

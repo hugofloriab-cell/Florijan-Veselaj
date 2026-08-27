@@ -129,7 +129,53 @@ final class MedicalFitnessRecord {
         personName.isEmpty ? "Personne non nommée" : personName
     }
 
+    /// Prénom seul, pour l'affichage en équipe.
+    ///
+    /// En cuisine on s'appelle par le prénom, et une liste de noms complets
+    /// se lit mal sur un téléphone. Le nom entier reste disponible dans la
+    /// fiche : c'est lui qui compte sur un document.
+    var firstName: String {
+        let trimmed = personName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "Sans nom" }
+        return trimmed.components(separatedBy: " ").first ?? trimmed
+    }
+
+    /// Clé de regroupement : deux fiches d'une même personne doivent se
+    /// rejoindre malgré une majuscule ou un espace de différence.
+    var personKey: String {
+        personName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: AppFormatters.locale)
+            .lowercased()
+    }
+
     var hasDocument: Bool { documentData != nil }
+
+    // MARK: - Confidentialité
+
+    /// Le contenu de l'avis est-il autre chose qu'un simple « apte » ?
+    ///
+    /// ⚠️ Ce qui suit n'est pas un détail d'affichage. L'avis d'aptitude et
+    /// ses éventuelles restrictions relèvent du suivi médical du salarié.
+    /// L'employeur les détient parce qu'il doit les appliquer, mais il n'a
+    /// aucune raison de les afficher, de les imprimer dans un registre, ni de
+    /// les remettre spontanément à qui que ce soit.
+    ///
+    /// Ce que le registre mensuel montre est donc uniquement : visite
+    /// effectuée, ou non. Le reste ne sort que sur demande explicite.
+    var hasConfidentialContent: Bool {
+        hasDocument
+            || !restrictions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            || verdict == .fitWithRestrictions
+            || verdict == .unfit
+    }
+
+    /// Mention portée au registre mensuel. Rien d'autre n'en sort.
+    func registerMention(for period: DateInterval) -> String {
+        period.contains(examinedAt)
+            ? "Visite effectuée le \(AppFormatters.shortDate(examinedAt))"
+            : "Aucune visite sur la période"
+    }
 
     // MARK: - Échéances
 

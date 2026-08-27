@@ -27,6 +27,7 @@ struct MonthlyReport {
     let pestVisits: [PestControlVisit]
     let trainings: [StaffTraining]
     let dishes: [Dish]
+    let medicalRecords: [MedicalFitnessRecord]
     let calendar: Calendar
 
     init(
@@ -41,6 +42,7 @@ struct MonthlyReport {
         pestVisits: [PestControlVisit] = [],
         trainings: [StaffTraining] = [],
         dishes: [Dish] = [],
+        medicalRecords: [MedicalFitnessRecord] = [],
         calendar: Calendar = .current
     ) {
         self.month = month
@@ -54,6 +56,7 @@ struct MonthlyReport {
         self.pestVisits = pestVisits
         self.trainings = trainings
         self.dishes = dishes
+        self.medicalRecords = medicalRecords
         self.calendar = calendar
     }
 
@@ -108,6 +111,51 @@ struct MonthlyReport {
     var complianceRate: Double? {
         guard !allReadings.isEmpty else { return nil }
         return Double(allReadings.filter(\.isCompliant).count) / Double(allReadings.count)
+    }
+
+    // MARK: Suivi médical
+
+    /// L'état du suivi médical, personne par personne.
+    ///
+    /// ⚠️ Ce que cette structure porte est volontairement pauvre : un prénom,
+    /// et une visite faite ou non. L'avis d'aptitude, les restrictions et le
+    /// document du service de santé n'y figurent pas et ne doivent pas y
+    /// figurer — ils relèvent du suivi médical du salarié, pas du registre
+    /// sanitaire de l'établissement.
+    struct MedicalMention {
+        let firstName: String
+        let done: Bool
+        let mention: String
+    }
+
+    var medicalMentions: [MedicalMention] {
+        var grouped: [String: [MedicalFitnessRecord]] = [:]
+
+        for record in medicalRecords {
+            grouped[record.personKey, default: []].append(record)
+        }
+
+        var mentions: [MedicalMention] = []
+
+        for (_, visits) in grouped {
+            let sorted = visits.sorted { $0.examinedAt > $1.examinedAt }
+            guard let reference = sorted.first else { continue }
+
+            let inPeriod = sorted.first { isInPeriod($0.examinedAt) }
+
+            mentions.append(
+                MedicalMention(
+                    firstName: reference.firstName,
+                    done: inPeriod != nil,
+                    mention: inPeriod.map { "Visite effectuée le \(AppFormatters.shortDate($0.examinedAt))" }
+                        ?? "Aucune visite sur la période"
+                )
+            )
+        }
+
+        return mentions.sorted {
+            $0.firstName.localizedCaseInsensitiveCompare($1.firstName) == .orderedAscending
+        }
     }
 
     // MARK: Autres registres
@@ -460,6 +508,33 @@ enum PDFReportService {
                         check.action.label
                     ], widths: widths, color: check.isCompliant ? .black : .systemRed)
                 }
+            }
+
+            // ---- Suivi médical ----
+            //
+            // Une seule colonne au-delà du prénom, et c'est délibéré. Le
+            // registre atteste que le suivi existe ; ce que le médecin a écrit
+            // ne le regarde pas, et l'imprimer ici le rendrait consultable par
+            // quiconque tient le document.
+            sectionTitle("Suivi médical")
+            if report.medicalMentions.isEmpty {
+                text("Aucun suivi enregistré.", color: .darkGray)
+            } else {
+                let widths: [CGFloat] = [150, 365]
+                row(["Personne", "Visite médicale"],
+                    widths: widths, font: Fonts.tableHeader, color: .darkGray)
+
+                for mention in report.medicalMentions {
+                    row([
+                        mention.firstName,
+                        mention.mention
+                    ], widths: widths, color: mention.done ? .black : .darkGray)
+                }
+
+                text(
+                    "Le contenu des avis d'aptitude relève du suivi médical des personnes et ne figure pas dans ce registre. Il est communiqué sur demande explicite.",
+                    color: .darkGray
+                )
             }
 
             // ---- Nuisibles ----
