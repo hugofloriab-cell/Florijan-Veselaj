@@ -405,7 +405,36 @@ dialog{
 dialog::backdrop{background:rgba(10,15,24,.55)}
 .dlg-head{background:var(--navy);color:var(--on-navy);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px}
 .dlg-head h3{font-size:.9rem;letter-spacing:.1em;text-transform:uppercase}
-.dlg-body{padding:20px;display:grid;gap:14px}
+.dlg-body{padding:20px;display:grid;gap:16px;max-height:min(74vh,720px);overflow-y:auto}
+.field{display:grid;gap:8px}
+.field input[type="text"]{
+  width:100%;font-family:inherit;font-size:1rem;color:var(--ink);
+  background:var(--sunken);border:1px solid var(--line);border-radius:3px;
+  padding:11px 12px;min-height:46px;
+}
+.scopes{display:grid;gap:8px}
+.scope{display:flex;gap:12px;align-items:flex-start;cursor:pointer;
+  border:1px solid var(--line);border-radius:3px;padding:12px 14px;background:var(--surface)}
+.scope:hover{border-color:var(--navy-2)}
+.scope input{
+  appearance:none;-webkit-appearance:none;flex:0 0 auto;
+  width:22px;height:22px;margin:2px 0 0;border:2px solid var(--line-strong);border-radius:50%;
+  background:var(--surface);position:relative;cursor:pointer;
+}
+.scope input:checked{border-color:var(--navy-2)}
+.scope input:checked::after{
+  content:"";position:absolute;inset:3px;border-radius:50%;background:var(--navy-2);
+}
+.scope input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.scope:has(input:checked){border-color:var(--navy-2);background:var(--navy-soft)}
+.scope b{display:block;font-size:.97rem;font-weight:700}
+.scope i{display:block;font-style:normal;font-size:.87rem;color:var(--ink-2);margin-top:2px}
+.resetlink{
+  background:none;border:0;padding:6px 0;margin-top:10px;cursor:pointer;
+  font-family:Archivo,sans-serif;font-size:.68rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);text-decoration:underline;text-underline-offset:3px;
+}
+.resetlink:hover{color:var(--red)}
 .dlg-body p{margin:0;color:var(--ink-2);font-size:.94rem}
 .dlg-body textarea{width:100%;min-height:180px;font-family:"IBM Plex Mono",monospace;font-size:.8rem;resize:vertical}
 .dlg-actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -535,6 +564,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     <div class="notes">
       <label class="flabel" for="notes">Observations &amp; anomalies constatées</label>
       <textarea id="notes" placeholder="Rupture de stock, T° non conforme, matériel en panne, produit jeté…"></textarea>
+      <button type="button" class="resetlink" id="reset-btn">Réinitialiser cette fiche</button>
     </div>
   </section>
 
@@ -558,28 +588,47 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
   <span class="saved" id="saved-at">—</span>
   <div class="actions">
     <button type="button" class="btn" id="print-btn">Imprimer / PDF</button>
-    <button type="button" class="btn" id="export-btn">Exporter</button>
-    <button type="button" class="btn" id="reset-btn">Réinitialiser</button>
+    <button type="button" class="btn" id="export-btn">Transmettre</button>
     <button type="button" class="btn primary" id="close-btn">Clôturer la fiche</button>
   </div>
 </div>
 
 <dialog id="export-dlg">
   <div class="dlg-head">
-    <h3>Exporter les fiches</h3>
+    <h3>Transmettre la fiche</h3>
     <button type="button" class="closex" id="dlg-close" aria-label="Fermer">&times;</button>
   </div>
   <div class="dlg-body">
-    <div class="dlg-actions">
-      <button type="button" class="btn" id="mk-csv">Tableau CSV (Excel)</button>
-      <button type="button" class="btn" id="mk-json">Sauvegarde complète (JSON)</button>
+    <div class="field">
+      <label class="flabel" for="recipients">Destinataires (séparés par une virgule)</label>
+      <input type="text" id="recipients" inputmode="email" autocomplete="off"
+             placeholder="direction@hotel.fr, gouvernante@hotel.fr">
     </div>
-    <p id="dlg-note">Choisissez un format : le contenu du fichier s'affiche ci-dessous.</p>
+    <div class="field">
+      <span class="flabel">Contenu à transmettre</span>
+      <div class="scopes">
+        <label class="scope">
+          <input type="radio" name="scope" value="jour" checked>
+          <span><b>Récapitulatif du jour</b><i>Texte lisible : avancement, tâches non validées, anomalies, émargement.</i></span>
+        </label>
+        <label class="scope">
+          <input type="radio" name="scope" value="csv">
+          <span><b>Historique complet (CSV)</b><i>Tableau Excel : une ligne par jour, une colonne par tâche.</i></span>
+        </label>
+        <label class="scope">
+          <input type="radio" name="scope" value="json">
+          <span><b>Sauvegarde complète (JSON)</b><i>Toutes les données, pour archivage ou changement de tablette.</i></span>
+        </label>
+      </div>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn primary" id="share-btn" hidden>Partager…</button>
+      <button type="button" class="btn" id="send-mail">Envoyer par e-mail</button>
+      <button type="button" class="btn" id="dl-file">Enregistrer le fichier</button>
+      <button type="button" class="btn" id="copy-file">Copier</button>
+    </div>
+    <p id="dlg-note"></p>
     <textarea id="dlg-out" readonly spellcheck="false"></textarea>
-    <div class="dlg-actions">
-      <button type="button" class="btn primary" id="dl-file">Enregistrer le fichier</button>
-      <button type="button" class="btn" id="copy-file">Copier le contenu</button>
-    </div>
   </div>
 </dialog>
 
@@ -972,26 +1021,44 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     }, null, 2);
   }
 
-  var current = { name:"", mime:"", text:"" };
-
-  function showExport(kind){
-    if(kind === "csv"){
-      current = { name:"checklist-pdj-"+todayISO()+".csv", mime:"text/csv;charset=utf-8", text:buildCSV() };
+  function buildRecap(f){
+    var done=0, missing=[], L=[];
+    LABELS.forEach(function(l){ if(f.checks[l.id]) done++; else missing.push(l.label); });
+    var pct = TOTAL ? Math.round(done/TOTAL*100) : 0;
+    L.push("CHECK-LIST & HYGIÈNE PETIT DÉJEUNER — HÔTEL IBIS SISTERON");
+    L.push(longDate(f.date));
+    L.push("");
+    L.push("Agent : " + (f.agent || "non renseigné"));
+    L.push("Heure de fin de cleaning : " + (f.endTime || "non renseignée"));
+    L.push("Établissement & plonge conformes : " + (f.conforme || "non renseigné"));
+    L.push("Émargement de l'agent : " + (f.signature ? "signé sur la tablette" : "non signé"));
+    L.push("Avancement : " + done + "/" + TOTAL + " tâches validées (" + pct + " %)");
+    L.push("");
+    L.push("TÂCHES NON VALIDÉES");
+    if(missing.length) missing.forEach(function(m){ L.push("  - " + m); });
+    else L.push("  Aucune : la totalité de la check-list a été validée.");
+    L.push("");
+    L.push("OBSERVATIONS & ANOMALIES");
+    L.push(f.notes && f.notes.trim() ? f.notes.trim() : "  Aucune observation signalée.");
+    L.push("");
+    if(f.closed && f.closedAt){
+      var d = new Date(f.closedAt), p = function(n){ return (n<10?"0":"")+n; };
+      L.push("Fiche clôturée le " + frDate(f.date) + " à " + p(d.getHours()) + ":" + p(d.getMinutes()) + ".");
     } else {
-      current = { name:"checklist-pdj-"+todayISO()+".json", mime:"application/json;charset=utf-8", text:buildJSON() };
+      L.push("Fiche non clôturée au moment de l'envoi.");
     }
-    els.dlgOut.value = current.text;
-    els.dlgNote.textContent = "Fichier prêt : « " + current.name + " » — " + fiches().length + " fiche(s). Enregistrez-le sur la tablette, ou copiez le contenu pour le coller ailleurs.";
+    L.push("Document généré depuis la tablette de la cuisine — aucune impression papier.");
+    return L.join("\n");
   }
+
+  var current = { name:"", mime:"", text:"", kind:"jour" };
 
   /* Enregistrement du fichier : via l'hôte claude.ai quand il est présent
      (page publiée en ligne), sinon par téléchargement direct du navigateur
      (fichier HTML posé sur la tablette). */
   var hostSave = null;
   if(window.claude && typeof window.claude.use === "function"){
-    try{
-      window.claude.use("downloads").then(function(ns){ hostSave = ns; }, function(){});
-    }catch(e){}
+    try{ window.claude.use("downloads").then(function(ns){ hostSave = ns; }, function(){}); }catch(e){}
   }
 
   function browserSave(){
@@ -1004,8 +1071,81 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     toast("Enregistrement de « "+current.name+" » lancé.");
   }
 
+  function scopeValue(){
+    var r = document.querySelector('input[name="scope"]:checked');
+    return r ? r.value : "jour";
+  }
+
+  function buildCurrent(){
+    var kind = scopeValue();
+    if(kind === "csv"){
+      current = { kind:kind, name:"checklist-pdj-historique-"+todayISO()+".csv",
+                  mime:"text/csv;charset=utf-8", text:buildCSV() };
+    } else if(kind === "json"){
+      current = { kind:kind, name:"checklist-pdj-sauvegarde-"+todayISO()+".json",
+                  mime:"application/json;charset=utf-8", text:buildJSON() };
+    } else {
+      current = { kind:kind, name:"recap-pdj-"+state.date+".txt",
+                  mime:"text/plain;charset=utf-8", text:buildRecap(state) };
+    }
+    els.dlgOut.value = current.text;
+    els.dlgNote.textContent = current.kind === "jour"
+      ? "Récapitulatif de la fiche du " + frDate(state.date) + ". L'e-mail part avec ce texte directement dans le corps du message."
+      : "Fichier « " + current.name + " » — " + fiches().length + " fiche(s). Utilisez « Partager » ou « Enregistrer le fichier » pour le joindre à un message.";
+    els.sendMail.textContent = current.kind === "jour" ? "Envoyer par e-mail" : "Rédiger l'e-mail";
+    els.share.hidden = !canShare();
+  }
+
+  function recipients(){
+    return (els.recipients.value || "").split(/[,;\s]+/).filter(function(x){ return x.indexOf("@") > 0; });
+  }
+
+  function subject(){
+    return current.kind === "jour"
+      ? "Check-list petit déjeuner — " + frDate(state.date) + (state.agent ? " — " + state.agent : "")
+      : "Check-list petit déjeuner — historique au " + frDate(todayISO());
+  }
+
+  function sendMail(){
+    var to = recipients();
+    if(!to.length){ els.recipients.focus(); toast("Indiquez au moins une adresse e-mail."); return; }
+    store.set("recipients", els.recipients.value);
+    var body = current.kind === "jour"
+      ? current.text
+      : "Bonjour,\n\nVeuillez trouver l'historique des check-lists petit déjeuner en pièce jointe (fichier « "
+        + current.name + " » enregistré depuis la tablette de la cuisine).\n\nCordialement,";
+    window.location.href = "mailto:" + encodeURIComponent(to.join(",")) +
+      "?subject=" + encodeURIComponent(subject()) + "&body=" + encodeURIComponent(body);
+    toast(current.kind === "jour" ? "Ouverture de la messagerie…" : "Messagerie ouverte — joignez le fichier enregistré.");
+  }
+
+  function canShare(){
+    if(!navigator.share) return false;
+    if(current.kind === "jour") return true;
+    if(!navigator.canShare || typeof File !== "function") return false;
+    try{ return navigator.canShare({ files:[ new File(["x"], current.name, { type:"text/plain" }) ] }); }
+    catch(e){ return false; }
+  }
+
+  function shareOut(){
+    store.set("recipients", els.recipients.value);
+    var payload = { title: subject() };
+    if(current.kind === "jour"){
+      payload.text = current.text;
+    } else {
+      try{
+        payload.files = [ new File([current.text], current.name, { type: current.mime.split(";")[0] }) ];
+        payload.text = "Historique des check-lists petit déjeuner — tablette cuisine.";
+      }catch(e){ payload.text = current.text; }
+    }
+    navigator.share(payload).then(function(){ toast("Fiche transmise."); }, function(err){
+      if(err && err.name === "AbortError") return;
+      toast("Partage indisponible — utilisez « Envoyer par e-mail ».");
+    });
+  }
+
   function download(){
-    if(!current.text){ toast("Choisissez d'abord un format."); return; }
+    if(!current.text){ toast("Choisissez d'abord un contenu."); return; }
     if(hostSave && hostSave.save){
       hostSave.save({ filename:current.name, data:current.text }).then(function(){
         toast("« "+current.name+" » enregistré.");
@@ -1015,31 +1155,31 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
           var alt = current.name.replace(/\.[^.]+$/, "") + ".txt";
           hostSave.save({ filename:alt, data:current.text }).then(function(){
             toast("« "+alt+" » enregistré (renommez-le en .csv pour Excel).");
-          }, function(){ toast("Enregistrement refusé — utilisez « Copier le contenu »."); });
+          }, function(){ toast("Enregistrement refusé — utilisez « Copier »."); });
         } else if(code === "declined"){
           toast("Enregistrement annulé.");
         } else {
-          toast("Enregistrement indisponible ici — utilisez « Copier le contenu ».");
+          toast("Enregistrement indisponible ici — utilisez « Copier ».");
         }
       });
       return;
     }
     try{ browserSave(); }
-    catch(e){ toast("Enregistrement bloqué ici — utilisez « Copier le contenu »."); }
+    catch(e){ toast("Enregistrement bloqué ici — utilisez « Copier »."); }
   }
 
   function copyOut(){
-    if(!current.text){ toast("Choisissez d'abord un format."); return; }
+    if(!current.text){ toast("Choisissez d'abord un contenu."); return; }
     els.dlgOut.focus(); els.dlgOut.select();
-    var done = false;
     if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(current.text).then(function(){ toast("Contenu copié."); }, function(){ legacy(); });
+      navigator.clipboard.writeText(current.text).then(function(){ toast("Contenu copié."); }, legacy);
       return;
     }
     legacy();
     function legacy(){
-      try{ done = document.execCommand("copy"); }catch(e){}
-      toast(done ? "Contenu copié." : "Copie impossible — sélectionnez le texte manuellement.");
+      var ok = false;
+      try{ ok = document.execCommand("copy"); }catch(e){}
+      toast(ok ? "Contenu copié." : "Copie impossible — sélectionnez le texte manuellement.");
     }
   }
 
@@ -1057,6 +1197,15 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     else { document.documentElement.removeAttribute("data-theme"); }
     var dark = t === "dark" || (t !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
     els.theme.textContent = dark ? "Mode clair" : "Mode sombre";
+  }
+
+  function openTransmit(scope){
+    if(typeof scope === "string"){
+      var r = document.querySelector('input[name="scope"][value="'+scope+'"]');
+      if(r) r.checked = true;
+    }
+    buildCurrent();
+    if(els.dlg.showModal) els.dlg.showModal(); else els.dlg.setAttribute("open","");
   }
 
   /* ============ Démarrage ============ */
@@ -1077,7 +1226,10 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       dlg:document.getElementById("export-dlg"),
       dlgOut:document.getElementById("dlg-out"),
       dlgNote:document.getElementById("dlg-note"),
-      dateHuman:document.getElementById("date-human")
+      dateHuman:document.getElementById("date-human"),
+      recipients:document.getElementById("recipients"),
+      sendMail:document.getElementById("send-mail"),
+      share:document.getElementById("share-btn")
     };
 
     render();
@@ -1108,17 +1260,17 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 
     document.getElementById("print-btn").addEventListener("click", function(){ window.print(); });
 
-    document.getElementById("export-btn").addEventListener("click", function(){
-      current = { name:"", mime:"", text:"" };
-      els.dlgOut.value = "";
-      els.dlgNote.textContent = "Choisissez un format : le contenu du fichier s'affiche ci-dessous.";
-      if(els.dlg.showModal) els.dlg.showModal(); else els.dlg.setAttribute("open","");
-    });
+    els.recipients.value = store.get("recipients", "");
+    document.getElementById("export-btn").addEventListener("click", openTransmit);
     document.getElementById("dlg-close").addEventListener("click", function(){
       if(els.dlg.close) els.dlg.close(); else els.dlg.removeAttribute("open");
     });
-    document.getElementById("mk-csv").addEventListener("click", function(){ showExport("csv"); });
-    document.getElementById("mk-json").addEventListener("click", function(){ showExport("json"); });
+    Array.prototype.forEach.call(document.getElementsByName("scope"), function(r){
+      r.addEventListener("change", buildCurrent);
+    });
+    els.recipients.addEventListener("change", function(){ store.set("recipients", els.recipients.value); });
+    els.sendMail.addEventListener("click", sendMail);
+    els.share.addEventListener("click", shareOut);
     document.getElementById("dl-file").addEventListener("click", download);
     document.getElementById("copy-file").addEventListener("click", copyOut);
 
@@ -1140,6 +1292,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       state.closedAt = new Date().toISOString();
       persist();
       toast("Fiche du "+frDate(state.date)+" clôturée et enregistrée.");
+      if(window.confirm("Fiche clôturée. Transmettre le récapitulatif à la direction ?")) openTransmit("jour");
     });
 
     var pref = store.get("theme", "auto");

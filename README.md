@@ -23,6 +23,28 @@ conçue pour la tablette de la cuisine.
 - Export **CSV** (ouvrable dans Excel) et **JSON** (sauvegarde complète), plus impression / PDF.
 - Mode clair et mode sombre (le service commence à 6h00).
 
+## Transmission à la direction
+
+Bouton **Transmettre**. À la clôture d'une fiche, la tablette propose l'envoi directement.
+
+Les destinataires se saisissent une fois et sont mémorisés. Trois contenus possibles :
+
+| Contenu | Ce que reçoit le destinataire |
+| --- | --- |
+| Récapitulatif du jour | Un texte lisible dans le corps de l'e-mail : avancement, **liste des tâches non validées**, anomalies, émargement. |
+| Historique complet (CSV) | Le tableau de toutes les fiches, ouvrable dans Excel. |
+| Sauvegarde complète (JSON) | Toutes les données, pour archivage ou changement de tablette. |
+
+Deux voies d'envoi, selon ce que propose la tablette :
+
+- **Partager…** — ouvre le partage Android : Gmail, Outlook, Drive, WhatsApp.
+  Pour le CSV et le JSON, le fichier part directement en pièce jointe.
+- **Envoyer par e-mail** — ouvre l'application de messagerie avec destinataires,
+  objet et message déjà remplis. Il ne reste qu'à appuyer sur Envoyer.
+
+Aucun serveur, aucun compte à créer : la tablette utilise la messagerie déjà
+installée dessus.
+
 ## Installation sur la tablette
 
 1. Copier `checklist-petit-dejeuner.html` sur la tablette (câble USB, clé USB ou e-mail).
