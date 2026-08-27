@@ -259,7 +259,7 @@ struct InspectorOilList: View {
             InspectorRow(
                 title: check.fryerName,
                 date: check.checkedAt,
-                detail: "\(check.formattedPolarCompounds) · \(check.appearance.label) · \(check.action.label)",
+                detail: "\(check.measurementLabel) · \(check.appearance.label) · \(check.action.label)",
                 badge: check.isCompliant ? "Conforme" : "Non conforme",
                 badgeColor: check.isCompliant ? .green : .red
             )

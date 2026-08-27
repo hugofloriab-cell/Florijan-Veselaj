@@ -185,6 +185,12 @@ struct LabAnalysisEditorView: View {
     @State private var notes: String
     @State private var reportData: Data?
     @State private var reportItem: PhotosPickerItem?
+    @State private var method: AnalysisMethod
+    @State private var incubationStartedAt: Date
+    @State private var hasIncubation: Bool
+    @State private var incubationHours: Int
+    @State private var incubationTemperature: Double
+    @State private var colonyDensity: ColonyDensity?
 
     init(analysis: LabAnalysis?, context: ModelContext) {
         self.analysis = analysis
@@ -210,11 +216,30 @@ struct LabAnalysisEditorView: View {
         _operatorName = State(initialValue: analysis?.operatorName ?? "")
         _notes = State(initialValue: analysis?.notes ?? "")
         _reportData = State(initialValue: analysis?.reportData)
+        _method = State(initialValue: analysis?.method ?? .laboratory)
+        _hasIncubation = State(initialValue: analysis?.incubationStartedAt != nil)
+        _incubationStartedAt = State(initialValue: analysis?.incubationStartedAt ?? .now)
+        _incubationHours = State(initialValue: analysis?.incubationHours ?? 48)
+        _incubationTemperature = State(initialValue: analysis?.incubationTemperature ?? 30)
+        _colonyDensity = State(initialValue: analysis?.colonyDensity)
+    }
+
+    /// Le verdict qui compte réellement.
+    ///
+    /// Sur un tube gélosé, c'est la densité lue qui le fixe, pas le sélecteur
+    /// de résultat — celui-ci n'est affiché que pour un rapport de
+    /// laboratoire. Sans cette distinction, une lecture « tapis de colonies »
+    /// passerait sans exiger d'action corrective.
+    private var effectiveResult: AnalysisResult {
+        switch method {
+        case .laboratory: return result
+        case .agarSlide:  return colonyDensity?.result ?? .pending
+        }
     }
 
     private var canSave: Bool {
         guard !sampleName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
-        if result.requiresAction && correctiveAction.trimmingCharacters(in: .whitespaces).isEmpty {
+        if effectiveResult.requiresAction && correctiveAction.trimmingCharacters(in: .whitespaces).isEmpty {
             return false
         }
         return true
@@ -223,7 +248,21 @@ struct LabAnalysisEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section { ProtocolLink(procedure: .surfaceSampling) }
+                Section {
+                    ProtocolLink(
+                        procedure: method == .agarSlide ? .agarSlideSampling : .surfaceSampling
+                    )
+                }
+
+                Section {
+                    Picker("Méthode", selection: $method) {
+                        ForEach(AnalysisMethod.allCases) { value in
+                            Label(value.label, systemImage: value.systemImage).tag(value)
+                        }
+                    }
+                } footer: {
+                    Text(method.evidenceNote)
+                }
 
                 Section {
                     Picker("Nature", selection: $kind) {
@@ -240,11 +279,17 @@ struct LabAnalysisEditorView: View {
                     Text(kind.detail)
                 }
 
-                Section("Laboratoire") {
-                    TextField("Nom du laboratoire", text: $laboratory)
-                    TextField("Numéro de rapport", text: $reportReference)
+                if method == .laboratory {
+                    Section("Laboratoire") {
+                        TextField("Nom du laboratoire", text: $laboratory)
+                        TextField("Numéro de rapport", text: $reportReference)
+                    }
+                } else {
+                    incubationSection
+                    readingSection
                 }
 
+                if method == .laboratory {
                 Section {
                     Picker("Résultat", selection: $result) {
                         ForEach(AnalysisResult.allCases) { result in
@@ -264,8 +309,9 @@ struct LabAnalysisEditorView: View {
                 } header: {
                     Text("Résultat")
                 }
+                }
 
-                if result.requiresAction {
+                if effectiveResult.requiresAction {
                     Section {
                         TextField(
                             "Ex. protocole revu, dilution corrigée, planche remplacée, nouveau prélèvement le…",
@@ -289,7 +335,9 @@ struct LabAnalysisEditorView: View {
                     Text("La fréquence est celle que vous avez retenue dans votre plan de maîtrise sanitaire. Aucun texte n'en impose une à un restaurant.")
                 }
 
-                reportSection
+                if method == .laboratory {
+                    reportSection
+                }
 
                 Section("Détails") {
                     OperatorField(name: $operatorName)
@@ -347,6 +395,97 @@ struct LabAnalysisEditorView: View {
         }
     }
 
+    // MARK: - Tube gélosé
+
+    private var incubationSection: some View {
+        Section {
+            Toggle("Tube mis à incuber", isOn: $hasIncubation)
+
+            if hasIncubation {
+                DatePicker("Mis à l'étuve le", selection: $incubationStartedAt, in: ...Date.now)
+
+                Stepper(
+                    "Durée : \(incubationHours) h",
+                    value: $incubationHours,
+                    in: 12...120,
+                    step: 12
+                )
+
+                HStack {
+                    Text("Température d'incubation")
+                    Spacer()
+                    Text(AppFormatters.temperature(incubationTemperature))
+                        .foregroundStyle(.secondary)
+                }
+
+                Stepper(
+                    "",
+                    value: $incubationTemperature,
+                    in: 20...45,
+                    step: 1
+                )
+                .labelsHidden()
+
+                if let readyAt = plannedReadingDate {
+                    LabeledContent("Lecture possible le", value: AppFormatters.dateAndTime(readyAt))
+                        .foregroundStyle(isReadable ? Color.brand : Color.secondary)
+                }
+            }
+        } header: {
+            Text("Incubation")
+        } footer: {
+            Text("48 heures à 30 °C conviennent à la plupart des lames pour flore totale, mais vérifiez la notice de votre fournisseur. Sans température stable, deux contrôles ne sont pas comparables — et c'est la comparaison dans le temps qui fait tout l'intérêt de l'auto-contrôle.")
+        }
+    }
+
+    private var plannedReadingDate: Date? {
+        Calendar.current.date(byAdding: .hour, value: incubationHours, to: incubationStartedAt)
+    }
+
+    private var isReadable: Bool {
+        guard let plannedReadingDate else { return false }
+        return Date.now >= plannedReadingDate
+    }
+
+    private var readingSection: some View {
+        Section {
+            Picker("Densité lue", selection: $colonyDensity) {
+                Text("Pas encore lu").tag(ColonyDensity?.none)
+                ForEach(ColonyDensity.allCases) { density in
+                    Label(density.label, systemImage: density.systemImage)
+                        .tag(ColonyDensity?.some(density))
+                }
+            }
+            .pickerStyle(.inline)
+
+            if let colonyDensity {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(colonyDensity.magnitude)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Text(colonyDensity.interpretation)
+                        .font(.caption)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Label(
+                    colonyDensity.result.label,
+                    systemImage: colonyDensity.result.systemImage
+                )
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(colonyDensity.result.requiresAction ? Color.orange : Color.green)
+            }
+        } header: {
+            Text("Lecture")
+        } footer: {
+            if hasIncubation && !isReadable {
+                Text("L'incubation n'est pas terminée. Lire trop tôt fait paraître propre une surface qui ne l'est pas.")
+            } else {
+                Text("Comparez la densité de colonies à l'échelle imprimée sur la boîte, à la lumière du jour. Les colonies continuent de pousser : une lecture tardive fait paraître mauvaise une surface qui était correcte.")
+            }
+        }
+    }
+
     private func loadReport(_ item: PhotosPickerItem?) async {
         guard let item else { return }
         if let data = try? await item.loadTransferable(type: Data.self) {
@@ -361,14 +500,38 @@ struct LabAnalysisEditorView: View {
         target.kind = kind
         target.location = location
         target.sampledAt = sampledAt
-        target.laboratory = laboratory
-        target.reportReference = reportReference
-        target.result = result
-        target.resultReceivedAt = (result != .pending && hasResultDate) ? resultReceivedAt : nil
+        target.method = method
+        target.laboratory = method == .laboratory ? laboratory : ""
+        target.reportReference = method == .laboratory ? reportReference : ""
+
+        if method == .agarSlide {
+            target.incubationStartedAt = hasIncubation ? incubationStartedAt : nil
+            target.incubationHours = incubationHours
+            target.incubationTemperature = incubationTemperature
+            target.colonyDensity = colonyDensity
+
+            // La densité lue décide du verdict : la laisser saisir à la main
+            // à côté produirait deux vérités contradictoires dans le registre.
+            if let colonyDensity {
+                target.result = colonyDensity.result
+                if target.readAt == nil { target.readAt = .now }
+                target.resultReceivedAt = target.readAt
+            } else {
+                target.result = .pending
+                target.readAt = nil
+                target.resultReceivedAt = nil
+            }
+        } else {
+            target.incubationStartedAt = nil
+            target.colonyDensity = nil
+            target.readAt = nil
+            target.result = result
+            target.resultReceivedAt = (result != .pending && hasResultDate) ? resultReceivedAt : nil
+        }
         target.findings = findings
         target.correctiveAction = correctiveAction
         target.nextDueDate = hasNextDue ? nextDueDate : nil
-        target.reportData = reportData
+        target.reportData = method == .laboratory ? reportData : nil
         target.operatorName = operatorName
         target.notes = notes
 

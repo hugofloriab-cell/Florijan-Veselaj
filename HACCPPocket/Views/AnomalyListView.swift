@@ -140,7 +140,7 @@ struct AnomalyListView: View {
                     ForEach(failedOil) { check in
                         row(
                             title: check.fryerName,
-                            subtitle: "\(check.formattedPolarCompounds) · \(check.action.label)",
+                            subtitle: "\(check.measurementLabel) · \(check.action.label)",
                             systemImage: "drop.triangle.fill",
                             tint: .red,
                             date: check.checkedAt

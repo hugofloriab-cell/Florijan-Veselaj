@@ -237,6 +237,8 @@ struct ThermalDTO: Codable {
 struct OilDTO: Codable {
     var checkedAt: Date
     var fryerName: String
+    var methodRawValue: String?
+    var stripResultRawValue: String?
     var polarCompounds: Double?
     var polarCompoundsLimit: Double
     var appearanceRawValue: String
@@ -453,7 +455,13 @@ struct LabAnalysisDTO: Codable {
     var kindRawValue: String
     var location: String
     var sampledAt: Date
+    var methodRawValue: String?
     var laboratory: String
+    var incubationStartedAt: Date?
+    var incubationHours: Int?
+    var incubationTemperature: Double?
+    var readAt: Date?
+    var colonyDensityRawValue: String?
     var reportReference: String
     var resultRawValue: String
     var resultReceivedAt: Date?
@@ -779,6 +787,8 @@ enum BackupService {
         OilDTO(
             checkedAt: check.checkedAt,
             fryerName: check.fryerName,
+            methodRawValue: check.methodRawValue,
+            stripResultRawValue: check.stripResultRawValue,
             polarCompounds: check.polarCompounds,
             polarCompoundsLimit: check.polarCompoundsLimit,
             appearanceRawValue: check.appearanceRawValue,
@@ -1038,7 +1048,13 @@ enum BackupService {
             kindRawValue: analysis.kindRawValue,
             location: analysis.location,
             sampledAt: analysis.sampledAt,
+            methodRawValue: analysis.methodRawValue,
             laboratory: analysis.laboratory,
+            incubationStartedAt: analysis.incubationStartedAt,
+            incubationHours: analysis.incubationHours,
+            incubationTemperature: analysis.incubationTemperature,
+            readAt: analysis.readAt,
+            colonyDensityRawValue: analysis.colonyDensityRawValue,
             reportReference: analysis.reportReference,
             resultRawValue: analysis.resultRawValue,
             resultReceivedAt: analysis.resultReceivedAt,
@@ -1371,10 +1387,17 @@ enum BackupService {
             let appearance = OilAppearance(rawValue: dto.appearanceRawValue) ?? .clear
             let action = OilAction(rawValue: dto.actionRawValue) ?? .kept
 
+            // Une archive d'avant la bandelette ne porte pas de méthode : la
+            // présence d'une mesure dit laquelle c'était.
+            let method = OilTestMethod(rawValue: dto.methodRawValue ?? "")
+                ?? (dto.polarCompounds != nil ? .meter : .visual)
+
             let check = OilCheckRecord(
                 fryerName: dto.fryerName,
                 checkedAt: dto.checkedAt,
+                method: method,
                 polarCompounds: dto.polarCompounds,
+                stripResult: OilStripResult(rawValue: dto.stripResultRawValue ?? ""),
                 appearance: appearance,
                 action: action,
                 operatorName: dto.operatorName,
@@ -1664,7 +1687,13 @@ enum BackupService {
                 kind: AnalysisKind(rawValue: dto.kindRawValue) ?? .other,
                 location: dto.location,
                 sampledAt: dto.sampledAt,
+                method: AnalysisMethod(rawValue: dto.methodRawValue ?? "") ?? .laboratory,
                 laboratory: dto.laboratory,
+                incubationStartedAt: dto.incubationStartedAt,
+                incubationHours: dto.incubationHours ?? 48,
+                incubationTemperature: dto.incubationTemperature ?? 30,
+                readAt: dto.readAt,
+                colonyDensity: ColonyDensity(rawValue: dto.colonyDensityRawValue ?? ""),
                 reportReference: dto.reportReference,
                 result: AnalysisResult(rawValue: dto.resultRawValue) ?? .pending,
                 resultReceivedAt: dto.resultReceivedAt,

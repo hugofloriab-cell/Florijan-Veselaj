@@ -83,7 +83,7 @@ struct ThermalProcessListView: View {
                 ContentUnavailableView {
                     Label("Aucune opération", systemImage: "thermometer.variable")
                 } description: {
-                    Text("Enregistrez ici vos refroidissements rapides et vos remises en température.")
+                    Text("Enregistrez ici vos refroidissements rapides, vos congélations et vos remises en température.")
                 }
             }
         }
@@ -218,6 +218,15 @@ struct ThermalProcessFormView: View {
     let kind: ThermalProcessKind
     private let context: ModelContext
 
+    /// Le mode opératoire correspondant à l'opération lancée.
+    private var guide: OperationProtocol {
+        switch kind {
+        case .cooling:   return .rapidCooling
+        case .freezing:  return .freezing
+        case .reheating: return .reheating
+        }
+    }
+
     @State private var productName = ""
     @State private var batchNumber = ""
     @State private var temperatureText: String
@@ -252,11 +261,21 @@ struct ThermalProcessFormView: View {
                 } header: {
                     Text("Produit")
                 } footer: {
-                    Text(kind.requirement)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(kind.requirement)
+
+                        // La congélation n'a pas de durée opposable : le dire
+                        // ici évite de faire croire à une obligation que
+                        // l'application aurait inventée.
+                        if !kind.hasRegulatoryDuration {
+                            Text("Le chronomètre est un repère de bonne pratique : aucun texte ne fixe de durée de congélation. Seule la température de −18 °C à cœur est exigée.")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 Section {
-                    ProtocolLink(procedure: kind == .cooling ? .rapidCooling : .reheating)
+                    ProtocolLink(procedure: guide)
                 }
 
                 Section("Départ") {

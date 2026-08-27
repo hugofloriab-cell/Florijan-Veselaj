@@ -442,15 +442,20 @@ enum PDFReportService {
             if report.oilChecksInPeriod.isEmpty {
                 text("Aucun contrôle enregistré sur la période.", color: .darkGray)
             } else {
-                let widths: [CGFloat] = [70, 130, 90, 80, 145]
-                row(["Date", "Friteuse", "Composés polaires", "Aspect", "Suite donnée"],
+                // La colonne dit « Résultat » et non « Composés polaires » :
+                // une bandelette ne produit pas de pourcentage, et afficher
+                // « Non mesuré » en face d'un contrôle réellement fait serait
+                // faux devant un contrôleur.
+                let widths: [CGFloat] = [66, 108, 96, 84, 66, 95]
+                row(["Date", "Friteuse", "Résultat", "Méthode", "Aspect", "Suite donnée"],
                     widths: widths, font: Fonts.tableHeader, color: .darkGray)
 
                 for check in report.oilChecksInPeriod {
                     row([
                         AppFormatters.shortDate(check.checkedAt),
                         check.fryerName,
-                        check.formattedPolarCompounds,
+                        check.measurementLabel,
+                        check.method.label,
                         check.appearance.label,
                         check.action.label
                     ], widths: widths, color: check.isCompliant ? .black : .systemRed)

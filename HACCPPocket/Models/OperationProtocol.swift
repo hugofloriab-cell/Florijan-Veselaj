@@ -169,6 +169,70 @@ extension OperationProtocol {
         commonMistake: "Mettre le bac encore tiède directement au frigo. Il réchauffe toute l'enceinte et fait passer les denrées voisines en zone de danger — un seul geste, deux non-conformités."
     )
 
+    // MARK: Congélation
+
+    static let freezing = OperationProtocol(
+        id: "protocol.freezing",
+        title: "Congélation",
+        subtitle: "Descendre à −18 °C à cœur, sur un produit déjà refroidi",
+        systemImage: "thermometer.snowflake",
+        steps: [
+            ProtocolStep(
+                id: "freezing.1",
+                title: "Congelez un produit encore dans sa durée de vie",
+                detail: "Une denrée se congèle fraîche, jamais pour rattraper une date qui approche. Congeler la veille d'une DLC ne prolonge rien : le produit était déjà en fin de vie, il le restera à la décongélation.",
+                note: RegulatoryNote(
+                    title: "Ce que la congélation n'est pas",
+                    explanation: "La congélation suspend l'altération, elle ne la corrige pas. Un produit dont la qualité microbiologique s'est déjà dégradée sortira du congélateur dans le même état. C'est le point que les contrôleurs vérifient en premier quand ils voient un congélateur bien rempli.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "freezing.2",
+                title: "Refroidissez d'abord si le produit est chaud",
+                detail: "Un plat sortant du four passe d'abord par un refroidissement rapide, jusqu'à +10 °C en moins de deux heures. Ce n'est qu'ensuite qu'il part au congélateur.",
+                note: RegulatoryNote(
+                    title: "Pourquoi ne pas congeler directement",
+                    explanation: "Un bac chaud placé au congélateur fait remonter toute l'enceinte et décongèle partiellement ce qui s'y trouve déjà. Il traverse en plus lentement la zone où les bactéries se multiplient le mieux. Deux opérations distinctes, deux enregistrements.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "freezing.3",
+                title: "Portionnez avant de congeler",
+                detail: "Des portions plates et de taille égale gèlent vite et à cœur. Un bloc de cinq kilos garde un centre à température positive pendant des heures.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "freezing.4",
+                title: "Étiquetez : dénomination, date de congélation, DLC",
+                detail: "La date de congélation est obligatoire. La durée de conservation, elle, c'est vous qui la fixez et qui devez pouvoir la justifier.",
+                note: RegulatoryNote(
+                    title: "Qui fixe la date limite d'un produit congelé sur place",
+                    explanation: "Aucun texte ne donne de durée toute faite. L'exploitant la détermine et doit pouvoir l'expliquer : nature du produit, équipement, usage prévu. Une durée courte et tenue vaut mieux qu'une durée longue et invérifiable.",
+                    origin: .regulation("Règlement (CE) n° 852/2004, annexe II — obligation de maîtrise de l'exploitant")
+                )
+            ),
+            ProtocolStep(
+                id: "freezing.5",
+                title: "Vérifiez −18 °C à cœur avant de clore",
+                detail: "C'est la température à cœur qui compte, pas celle affichée par le congélateur. Sonde désinfectée, au centre de la portion la plus épaisse.",
+                note: RegulatoryNote(
+                    title: "La seule valeur imposée",
+                    explanation: "Une denrée congelée se conserve à −18 °C ou moins. C'est le seuil que le texte fixe, et c'est celui que l'application vérifie. La durée de descente, en revanche, n'est encadrée par aucun chiffre réglementaire : la limite proposée par l'application est une valeur de bonne pratique.",
+                    origin: .regulation("Arrêté du 21 décembre 2009 — températures de conservation")
+                )
+            ),
+            ProtocolStep(
+                id: "freezing.6",
+                title: "Ne recongelez jamais un produit décongelé",
+                detail: "Un produit décongelé se consomme ou se jette. Le repasser au congélateur est interdit, et c'est l'une des fautes les plus lourdes qu'un contrôle puisse relever.",
+                note: nil
+            )
+        ],
+        commonMistake: "Congeler pour sauver un produit dont la DLC arrive. La congélation ne rattrape rien : elle fige un produit en fin de vie, et le registre montre alors noir sur blanc que la denrée était déjà limite au moment de l'opération."
+    )
+
     // MARK: Remise en température
 
     static let reheating = OperationProtocol(
@@ -953,5 +1017,143 @@ extension OperationProtocol {
             )
         ],
         commonMistake: "Compléter un bain fatigué avec de l'huile neuve. La dilution fait baisser la mesure sans rien réparer : les composés polaires restent, et ils contaminent l'huile fraîche."
+    )
+
+    // MARK: Auto-prélèvement en tube gélosé
+
+    static let agarSlideSampling = OperationProtocol(
+        id: "protocol.agarslide",
+        title: "Auto-contrôle au tube gélosé",
+        subtitle: "Prélever, incuber, lire — et savoir ce que ça vaut",
+        systemImage: "testtube.2",
+        steps: [
+            ProtocolStep(
+                id: "agar.1",
+                title: "Sachez d'abord ce que vous mesurez",
+                detail: "Un tube gélosé mesure la flore totale présente sur une surface. Il ne cherche ni salmonelle, ni listeria, ni aucun germe nommé. Il répond à une seule question : mon nettoyage fonctionne-t-il ?",
+                note: RegulatoryNote(
+                    title: "Ce qu'un auto-contrôle ne remplace pas",
+                    explanation: "Un tube lu en cuisine n'est pas une analyse au sens du règlement : pas de laboratoire accrédité, pas de germe identifié, pas de rapport opposable. Il documente la surveillance interne de votre plan de maîtrise, ce qui est utile et attendu. Mais le jour où un résultat opposable est nécessaire, il faut un laboratoire.",
+                    origin: .regulation("Règlement (CE) n° 2073/2005 — critères microbiologiques")
+                )
+            ),
+            ProtocolStep(
+                id: "agar.2",
+                title: "Prélevez APRÈS nettoyage et désinfection",
+                detail: "Sur une surface sèche, au moment où elle est censée être propre. Prélever avant le nettoyage ne mesure que la saleté, ce qu'on savait déjà.",
+                note: RegulatoryNote(
+                    title: "Attendre le séchage",
+                    explanation: "Un désinfectant encore humide sur la surface continue d'agir sur la gélose et tue les germes prélevés. Le résultat paraît excellent alors qu'il ne mesure plus rien. Laissez sécher, ou utilisez des lames à neutralisant si votre fournisseur en propose.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "agar.3",
+                title: "Appliquez à plat, une seule fois, sans glisser",
+                detail: "Sortez la lame du tube sans toucher la gélose, posez-la à plat sur la surface, appuyez quelques secondes sans la faire glisser, puis remettez-la dans son tube et refermez.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "agar.4",
+                title: "Notez tout de suite ce que vous avez prélevé",
+                detail: "Surface, emplacement précis, date, heure, opérateur. Trois tubes identiques posés sur une étagère sans étiquette deviennent inexploitables en deux jours.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "agar.5",
+                title: "Incubez à 30 °C pendant 48 heures",
+                detail: "Une petite étuve suffit. À défaut, un endroit tiède et stable — jamais la cuisine, dont la température varie de vingt degrés dans la journée. Vérifiez la durée indiquée par votre fournisseur : elle varie selon le milieu.",
+                note: RegulatoryNote(
+                    title: "Pourquoi la température compte autant",
+                    explanation: "Une incubation trop froide fait sous-estimer la flore : les colonies n'ont pas eu le temps de se développer et la surface paraît propre. Une incubation trop chaude favorise certains germes au détriment d'autres. Sans température stable, le résultat n'est pas comparable d'une fois sur l'autre — et c'est la comparaison dans le temps qui fait tout l'intérêt de l'auto-contrôle.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "agar.6",
+                title: "Lisez à l'heure dite, pas trois jours après",
+                detail: "Comparez la densité de colonies à l'échelle imprimée sur la boîte. Les colonies continuent de pousser au-delà : une lecture tardive fait paraître mauvaise une surface qui était correcte.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "agar.7",
+                title: "Suivez la tendance, pas le chiffre isolé",
+                detail: "Un tube ne prouve rien seul. Ce qui parle, c'est la même surface contrôlée tous les mois : une dérive signale un protocole qui se relâche, un produit mal dilué, ou un support à remplacer.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "agar.8",
+                title: "Jetez les tubes usagés correctement",
+                detail: "Un tube incubé contient une culture bactérienne vivante. Refermez-le, ne l'ouvrez pas, et éliminez-le selon les consignes du fabricant — jamais dans la poubelle de cuisine ouverte.",
+                note: nil
+            )
+        ],
+        commonMistake: "Prélever sur une surface encore humide de désinfectant. Le produit continue d'agir sur la gélose, le tube ressort impeccable, et on en conclut que tout va bien — alors qu'on n'a mesuré strictement rien."
+    )
+
+    // MARK: Bandelette de contrôle des huiles
+
+    static let oilStripTest = OperationProtocol(
+        id: "protocol.oil.strip",
+        title: "Contrôle à la bandelette",
+        subtitle: "Une plage de couleur, à lire dans les règles",
+        systemImage: "list.bullet.rectangle",
+        steps: [
+            ProtocolStep(
+                id: "strip.1",
+                title: "Lisez la notice de VOTRE boîte",
+                detail: "Température de trempage, durée d'immersion, temps de lecture : ces trois valeurs changent d'une marque à l'autre. Une bandelette utilisée aux consignes d'une autre marque ne veut rien dire.",
+                note: RegulatoryNote(
+                    title: "Pourquoi l'application ne donne pas de chiffre ici",
+                    explanation: "Certaines bandelettes se trempent dans l'huile chaude, d'autres exigent un bain refroidi. Donner une valeur unique reviendrait à en faire fausser la moitié. La notice du fabricant fait foi, et elle seule.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "strip.2",
+                title: "Filtrez et laissez le bain au repos",
+                detail: "Les particules carbonisées en suspension faussent la lecture. Filtrez, attendez quelques minutes que le bain se stabilise, puis prélevez au milieu de la cuve — ni en surface, ni au fond.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "strip.3",
+                title: "Trempez une seule fois, sans frotter",
+                detail: "Immersion complète des bandes réactives pendant la durée indiquée, puis ressortez d'un geste. Retremper une bandelette déjà utilisée la rend illisible.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "strip.4",
+                title: "Laissez l'huile s'égoutter, à plat",
+                detail: "Posez la bandelette à plat sur un papier absorbant, réactifs vers le haut. Une bandelette gardée verticale laisse couler l'huile d'une bande sur l'autre et fabrique un faux résultat.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "strip.5",
+                title: "Lisez à la lumière du jour, à l'heure dite",
+                detail: "Comparez les bandes à l'échelle imprimée sur la boîte, au temps de lecture indiqué — ni avant, ni longtemps après. Sortez de la cuisine : sous une lampe de hotte, tout paraît jaune.",
+                note: RegulatoryNote(
+                    title: "Le piège de la lumière",
+                    explanation: "Une bandelette se lit par comparaison de couleurs. L'éclairage chaud d'un piano de cuisson décale la perception vers le jaune et fait passer un bain limite pour un bain sain. C'est l'erreur la plus fréquente, et la plus facile à éviter.",
+                    origin: .practice
+                )
+            ),
+            ProtocolStep(
+                id: "strip.6",
+                title: "En cas de doute, le bain se change",
+                detail: "Une bandelette situe le bain par rapport au seuil, elle ne le mesure pas. Un résultat entre deux plages se traite comme un dépassement : une friture ratée coûte moins cher qu'une intoxication.",
+                note: RegulatoryNote(
+                    title: "Ce que vaut une bandelette en contrôle",
+                    explanation: "Elle est acceptée comme moyen de surveillance, au même titre que le testeur, dès lors que le résultat est enregistré et que la suite donnée est cohérente. Ce qu'un contrôleur regarde n'est pas l'outil, c'est la trace : un bain trouvé au-dessus du seuil et conservé quand même, voilà le manquement.",
+                    origin: .regulation("Arrêté du 8 janvier 2021 relatif aux huiles et graisses de friture")
+                )
+            ),
+            ProtocolStep(
+                id: "strip.7",
+                title: "Refermez la boîte, vérifiez la péremption",
+                detail: "Les réactifs craignent l'humidité et la chaleur. Une boîte laissée ouverte près de la friteuse donne des résultats faux au bout de quelques semaines. Notez la date d'ouverture dessus.",
+                note: nil
+            )
+        ],
+        commonMistake: "Lire la bandelette sous la lampe de la hotte, en la tenant à la verticale. Deux gestes anodins qui suffisent à faire passer un bain hors seuil pour un bain correct — et c'est le registre qui portera la trace de la mauvaise décision."
     )
 }

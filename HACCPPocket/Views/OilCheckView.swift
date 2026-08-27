@@ -99,7 +99,7 @@ struct OilCheckListView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(record.fryerName)
                     .font(.subheadline.weight(.semibold))
-                Text("\(record.formattedPolarCompounds) · \(record.appearance.label)")
+                Text("\(record.measurementLabel) · \(record.method.label)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Text("\(AppFormatters.shortDate(record.checkedAt)) · \(record.action.label)")
@@ -137,7 +137,8 @@ struct OilCheckFormView: View {
     @State private var fryerName: String
     @State private var checkedAt: Date
     @State private var polarText: String
-    @State private var hasMeasurement: Bool
+    @State private var method: OilTestMethod
+    @State private var stripResult: OilStripResult
     @State private var appearance: OilAppearance
     @State private var action: OilAction
     @State private var operatorName: String
@@ -149,7 +150,10 @@ struct OilCheckFormView: View {
 
         _fryerName = State(initialValue: record?.fryerName ?? "Friteuse")
         _checkedAt = State(initialValue: record?.checkedAt ?? .now)
-        _hasMeasurement = State(initialValue: record?.polarCompounds != nil)
+        // Un enregistrement d'avant la bandelette portait une mesure ou
+        // rien : on le relit comme un testeur ou un contrôle visuel.
+        _method = State(initialValue: record?.method ?? (record?.polarCompounds != nil ? .meter : .visual))
+        _stripResult = State(initialValue: record?.stripResult ?? .good)
         _polarText = State(initialValue: record?.polarCompounds.map {
             $0.formatted(.number.precision(.fractionLength(1)).locale(AppFormatters.locale))
         } ?? "")
@@ -160,19 +164,45 @@ struct OilCheckFormView: View {
     }
 
     private var polarCompounds: Double? {
-        hasMeasurement ? AppFormatters.parseTemperature(polarText) : nil
+        method == .meter ? AppFormatters.parseTemperature(polarText) : nil
     }
 
-    /// Conformité prévisionnelle, affichée pendant la saisie.
+    /// Conformité prévisionnelle, affichée pendant la saisie. Elle suit la
+    /// méthode choisie, exactement comme le fera le modèle.
     private var isCompliant: Bool {
-        if let polarCompounds { return polarCompounds <= OilCheckRecord.polarCompoundsLimit }
-        return !appearance.isSuspect
+        switch method {
+        case .meter:  return (polarCompounds ?? 0) <= OilCheckRecord.polarCompoundsLimit
+        case .strip:  return stripResult.isCompliant
+        case .visual: return !appearance.isSuspect
+        }
+    }
+
+    /// Plage intermédiaire : ni conforme au sens strict, ni faute.
+    private var isBorderline: Bool {
+        method == .strip && stripResult == .borderline
     }
 
     private var canSave: Bool {
         guard !fryerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
-        if hasMeasurement && polarCompounds == nil { return false }
+        if method == .meter && polarCompounds == nil { return false }
         return true
+    }
+
+    // MARK: Verdict affiché pendant la saisie
+
+    private var verdictLabel: String {
+        if isBorderline { return "Bain en fin de vie" }
+        return isCompliant ? "Bain conforme" : "Bain à changer"
+    }
+
+    private var verdictImage: String {
+        if isBorderline { return "exclamationmark.circle.fill" }
+        return isCompliant ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+    }
+
+    private var verdictColor: Color {
+        if isBorderline { return .orange }
+        return isCompliant ? .green : .red
     }
 
     var body: some View {
@@ -188,9 +218,18 @@ struct OilCheckFormView: View {
                 }
 
                 Section {
-                    Toggle("Mesure au testeur", isOn: $hasMeasurement)
+                    Picker("Méthode", selection: $method) {
+                        ForEach(OilTestMethod.allCases) { value in
+                            Label(value.label, systemImage: value.systemImage).tag(value)
+                        }
+                    }
 
-                    if hasMeasurement {
+                    if method == .strip {
+                        ProtocolLink(procedure: .oilStripTest)
+                    }
+
+                    switch method {
+                    case .meter:
                         HStack {
                             Text("Composés polaires")
                             Spacer()
@@ -200,6 +239,22 @@ struct OilCheckFormView: View {
                                 .frame(maxWidth: 80)
                             Text("%").foregroundStyle(.secondary)
                         }
+
+                    case .strip:
+                        Picker("Lecture de la bandelette", selection: $stripResult) {
+                            ForEach(OilStripResult.allCases) { value in
+                                Label(value.label, systemImage: value.systemImage).tag(value)
+                            }
+                        }
+                        .pickerStyle(.inline)
+
+                        Text(stripResult.detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                    case .visual:
+                        EmptyView()
                     }
 
                     Picker("Aspect du bain", selection: $appearance) {
@@ -210,15 +265,19 @@ struct OilCheckFormView: View {
                     .pickerStyle(.segmented)
 
                     Label(
-                        isCompliant ? "Bain conforme" : "Bain à changer",
-                        systemImage: isCompliant ? "checkmark.seal.fill" : "exclamationmark.triangle.fill"
+                        verdictLabel,
+                        systemImage: verdictImage
                     )
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(isCompliant ? Color.green : Color.red)
+                    .foregroundStyle(verdictColor)
                 } header: {
                     Text("Contrôle")
                 } footer: {
-                    Text("Le seuil réglementaire est de 25 % de composés polaires. Sans testeur, l'aspect fait foi : un bain foncé est considéré non conforme.")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Le seuil réglementaire est de 25 % de composés polaires.")
+                        Text(method.reliabilityNote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section {
@@ -231,6 +290,12 @@ struct OilCheckFormView: View {
                     if !isCompliant && action == .kept {
                         Label(
                             "Un bain hors seuil doit être filtré ou changé.",
+                            systemImage: "exclamationmark.bubble"
+                        )
+                        .foregroundStyle(.orange)
+                    } else if isBorderline && action == .kept {
+                        Label(
+                            "Une bandelette proche du seuil ne se garde pas telle quelle : filtrez et recontrôlez au prochain service.",
                             systemImage: "exclamationmark.bubble"
                         )
                         .foregroundStyle(.orange)
@@ -266,7 +331,9 @@ struct OilCheckFormView: View {
         if let record {
             record.fryerName = trimmed
             record.checkedAt = checkedAt
+            record.method = method
             record.polarCompounds = polarCompounds
+            record.stripResult = method == .strip ? stripResult : nil
             record.appearance = appearance
             record.action = action
             record.operatorName = operatorName
@@ -276,7 +343,9 @@ struct OilCheckFormView: View {
             let created = OilCheckRecord(
                 fryerName: trimmed,
                 checkedAt: checkedAt,
+                method: method,
                 polarCompounds: polarCompounds,
+                stripResult: method == .strip ? stripResult : nil,
                 appearance: appearance,
                 action: action,
                 operatorName: operatorName,

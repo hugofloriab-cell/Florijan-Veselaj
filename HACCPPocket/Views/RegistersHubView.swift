@@ -101,7 +101,7 @@ struct RegistersHubView: View {
     private var preparationsSection: some View {
         group("Préparations") {
             tile(
-                "Refroidissement",
+                "Températures process",
                 systemImage: "thermometer.variable",
                 tint: .purple,
                 badge: runningProcesses

@@ -2,12 +2,12 @@
 //  ThermalProcessRecord.swift
 //  HACCPPocket
 //
-//  Refroidissement rapide et remise en température.
+//  Refroidissement rapide, congélation et remise en température.
 //
-//  Les deux opérations sont le même processus vu à l'envers : amener un
-//  produit d'une température à une autre, dans un temps limité, avec des
-//  relevés intermédiaires. Un seul modèle les couvre donc, ce qui évite de
-//  dupliquer toute la logique de conformité.
+//  Les trois opérations sont le même processus : amener un produit d'une
+//  température à une autre, dans un temps limité, avec des relevés
+//  intermédiaires. Un seul modèle les couvre donc, ce qui évite de dupliquer
+//  toute la logique de conformité.
 //
 
 import Foundation
@@ -18,6 +18,8 @@ import SwiftData
 enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     /// +63 °C vers +10 °C en moins de deux heures.
     case cooling
+    /// Descente à −18 °C à cœur, sur un produit déjà refroidi.
+    case freezing
     /// Retour à +63 °C à cœur en moins d'une heure.
     case reheating
 
@@ -26,6 +28,7 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var label: String {
         switch self {
         case .cooling:   "Refroidissement rapide"
+        case .freezing:  "Congélation"
         case .reheating: "Remise en température"
         }
     }
@@ -33,6 +36,7 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var shortLabel: String {
         switch self {
         case .cooling:   "Refroidissement"
+        case .freezing:  "Congélation"
         case .reheating: "Remise en temp."
         }
     }
@@ -40,6 +44,7 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var systemImage: String {
         switch self {
         case .cooling:   "snowflake.circle"
+        case .freezing:  "thermometer.snowflake"
         case .reheating: "flame.circle"
         }
     }
@@ -48,25 +53,45 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var targetTemperature: Double {
         switch self {
         case .cooling:   10
+        case .freezing:  -18
         case .reheating: 63
         }
     }
 
     /// Durée maximale admise, en secondes.
+    ///
+    /// ⚠️ Les deux heures du refroidissement et l'heure de la remise en
+    /// température sont des seuils réglementaires. Les quatre heures et demie
+    /// de la congélation ne le sont PAS : le texte impose d'atteindre −18 °C
+    /// à cœur et de congeler rapidement, sans fixer de durée. La valeur est
+    /// celle d'une cellule de congélation rapide, retenue comme garde-fou
+    /// pour que le chronomètre serve à quelque chose. L'écran le dit
+    /// explicitement, plutôt que de laisser croire à une obligation.
     var maximumDuration: TimeInterval {
         switch self {
         case .cooling:   2 * 3600
+        case .freezing:  4 * 3600 + 30 * 60
         case .reheating: 1 * 3600
         }
     }
 
-    /// Le refroidissement descend, la remise en température monte.
-    var isDescending: Bool { self == .cooling }
+    /// Le refroidissement et la congélation descendent, la remise en
+    /// température monte.
+    var isDescending: Bool { self != .reheating }
+
+    /// La durée affichée est-elle un seuil opposable ?
+    ///
+    /// Dépasser deux heures sur un refroidissement est une non-conformité.
+    /// Dépasser quatre heures et demie sur une congélation est un signal,
+    /// pas une infraction — et l'écran ne doit pas dire le contraire.
+    var hasRegulatoryDuration: Bool { self != .freezing }
 
     var requirement: String {
         switch self {
         case .cooling:
             "De +63 °C à +10 °C à cœur en moins de 2 heures."
+        case .freezing:
+            "Descente à −18 °C à cœur, sur un produit déjà refroidi."
         case .reheating:
             "Retour à +63 °C à cœur en moins d'une heure."
         }
@@ -75,6 +100,7 @@ enum ThermalProcessKind: String, Codable, CaseIterable, Identifiable, Sendable {
     var startTemperatureHint: Double {
         switch self {
         case .cooling:   63
+        case .freezing:  4
         case .reheating: 8
         }
     }
@@ -229,8 +255,22 @@ extension ThermalProcessRecord {
             isCompliant = true
             return
         }
-        let elapsed = finishedAt.timeIntervalSince(startedAt)
-        isCompliant = reachesTarget(endTemperature) && elapsed <= maximumDurationSeconds
+
+        guard reachesTarget(endTemperature) else {
+            isCompliant = false
+            return
+        }
+
+        // La durée ne fait échouer l'opération que lorsqu'elle est opposable.
+        // Une congélation longue mérite d'être signalée à l'écran, pas d'être
+        // enregistrée comme une non-conformité : aucun texte ne fixe cette
+        // durée, et un registre qui invente des fautes perd sa crédibilité.
+        guard kind.hasRegulatoryDuration else {
+            isCompliant = true
+            return
+        }
+
+        isCompliant = finishedAt.timeIntervalSince(startedAt) <= maximumDurationSeconds
     }
 
     /// Un écart non documenté est un dossier incomplet en contrôle.
@@ -247,7 +287,8 @@ extension ThermalProcessRecord {
         if !reachesTarget(endTemperature) {
             reasons.append("cible de \(AppFormatters.temperature(targetTemperature)) non atteinte")
         }
-        if finishedAt.timeIntervalSince(startedAt) > maximumDurationSeconds {
+        if kind.hasRegulatoryDuration,
+           finishedAt.timeIntervalSince(startedAt) > maximumDurationSeconds {
             reasons.append("durée dépassée")
         }
         return reasons.isEmpty ? nil : reasons.joined(separator: ", ")
