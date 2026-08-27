@@ -231,6 +231,13 @@ struct RegistersHubView: View {
                 DocumentArchiveListView()
             }
             tile(
+                "Photos",
+                systemImage: "photo.on.rectangle.angled",
+                tint: .purple
+            ) {
+                PhotoLibraryView()
+            }
+            tile(
                 "Nuisibles",
                 systemImage: "ant",
                 tint: .orange,
@@ -294,7 +301,7 @@ struct RegistersHubView: View {
                 .buttonStyle(.plain)
             }
 
-            Text("Le registre mensuel rassemble tous ces enregistrements en un seul document, prêt à présenter.")
+            Text("Le registre mensuel rassemble tous ces enregistrements en un seul document, prêt à présenter. Les photos n'y figurent pas : elles s'impriment à part, depuis la page Photos.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

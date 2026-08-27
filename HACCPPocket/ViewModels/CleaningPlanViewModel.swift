@@ -74,6 +74,16 @@ final class CleaningPlanViewModel {
         if task.isCompleted(on: reference, calendar: calendar) {
             return "Fait aujourd'hui"
         }
+        // Une ligne bi-quotidienne à moitié faite n'est ni « faite » ni
+        // « en retard » : il lui reste un passage dans la journée, et c'est
+        // ce qu'il faut dire.
+        if task.frequency.isIntraday {
+            let done = task.completionCount(on: reference, calendar: calendar)
+            if done > 0 {
+                let remaining = task.remainingToday(on: reference, calendar: calendar)
+                return remaining == 1 ? "Second passage à faire" : "Encore \(remaining) passages"
+            }
+        }
         if task.isOverdue(at: reference, calendar: calendar) {
             return "En retard"
         }

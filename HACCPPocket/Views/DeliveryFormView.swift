@@ -3,17 +3,27 @@
 //  HACCPPocket
 //
 //  Contrôle d'une livraison. Le seuil de température se déduit de la famille
-//  de denrées, et un refus impose un motif écrit.
+//  de denrées, un refus impose un motif écrit, et au moins une pièce
+//  justificative doit être photographiée.
+//
+//  L'ordre de la capture est imposé : on annonce la nature du document, puis
+//  on le photographie. Demander la nature après coup revient à ne jamais la
+//  demander — le téléphone est déjà rangé.
 //
 
 import SwiftUI
 import SwiftData
+
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct DeliveryFormView: View {
 
     @Environment(\.dismiss) private var dismiss
 
     @State private var viewModel: DeliveryCheckViewModel
+    @State private var pendingKind: DeliveryDocumentKind?
 
     init(check: DeliveryCheck? = nil, context: ModelContext) {
         _viewModel = State(initialValue: DeliveryCheckViewModel(check: check, context: context))
@@ -27,10 +37,21 @@ struct DeliveryFormView: View {
                 temperatureSection
                 controlsSection
                 decisionSection
+                documentsSection
                 detailsSection
             }
             .navigationTitle(viewModel.isEditing ? "Modifier le contrôle" : "Contrôle à réception")
             .navigationBarTitleDisplayMode(.inline)
+            // La nature est choisie d'abord ; cette feuille explique quoi
+            // cadrer, puis ouvre l'appareil photo. Posée sur le formulaire et
+            // non sur la section : une présentation depuis l'intérieur d'une
+            // `Section` ne se déclenche pas de façon fiable.
+            .sheet(item: $pendingKind) { kind in
+                PhotoCaptureSheet(title: kind.label, message: kind.captureHint) { data in
+                    viewModel.addDocument(kind: kind, photoData: data)
+                    pendingKind = nil
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Annuler") { dismiss() }
@@ -133,6 +154,78 @@ struct DeliveryFormView: View {
             } else {
                 Text("Livraison conforme sur les trois points de contrôle.")
             }
+        }
+    }
+
+    // MARK: - Pièces justificatives
+
+    private var documentsSection: some View {
+        Section {
+            ForEach(viewModel.documents) { draft in
+                documentRow(draft)
+            }
+
+            Menu {
+                ForEach(DeliveryDocumentKind.allCases) { kind in
+                    Button {
+                        pendingKind = kind
+                    } label: {
+                        Label(kind.label, systemImage: kind.systemImage)
+                    }
+                }
+            } label: {
+                Label("Photographier un document", systemImage: "camera")
+            }
+        } header: {
+            Text("Pièces justificatives")
+        } footer: {
+            if viewModel.isMissingDocument {
+                Label(
+                    "Photographiez au moins le bon de livraison ou la facture. C'est la pièce qui rattache cette réception à un fournisseur et à un lot.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .foregroundStyle(.orange)
+            } else if viewModel.requiresReason && viewModel.capturedDocuments.allSatisfy({ $0.kind != .nonConformity }) {
+                Text("Un refus se défend mieux avec une photo de ce qui a été constaté : ajoutez un constat de non-conformité.")
+            } else {
+                Text("Ces photos ne figurent pas dans le registre mensuel. Elles se consultent et s'impriment depuis la page Photos des registres.")
+            }
+        }
+    }
+
+    private func documentRow(_ draft: DeliveryCheckViewModel.DraftDocument) -> some View {
+        HStack(spacing: 12) {
+            #if canImport(UIKit)
+            if let data = draft.photoData, let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            } else {
+                RowIcon(systemImage: draft.kind.systemImage, tint: .teal)
+            }
+            #else
+            RowIcon(systemImage: draft.kind.systemImage, tint: .teal)
+            #endif
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(draft.kind.label)
+                    .font(.subheadline.weight(.medium))
+                Text(AppFormatters.dateAndTime(draft.capturedAt))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer(minLength: 8)
+
+            Button(role: .destructive) {
+                viewModel.removeDocument(id: draft.id)
+            } label: {
+                Image(systemName: "trash")
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
         }
     }
 

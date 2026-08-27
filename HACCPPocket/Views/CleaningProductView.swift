@@ -94,10 +94,29 @@ struct CleaningProductListView: View {
             editedProduct = product
         } label: {
             HStack(alignment: .top, spacing: 12) {
+                // La photo du bidon prend la place de l'icône quand elle
+                // existe : c'est elle qui sert à reconnaître le produit d'un
+                // coup d'œil, et c'est le seul intérêt de l'avoir prise.
+                #if canImport(UIKit)
+                if let data = product.containerPhotoData, let image = UIImage(data: data) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 38, height: 38)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .opacity(product.isActive ? 1 : 0.5)
+                } else {
+                    RowIcon(
+                        systemImage: product.kind.systemImage,
+                        tint: product.isActive ? (product.isIncomplete ? .orange : .brand) : .secondary
+                    )
+                }
+                #else
                 RowIcon(
                     systemImage: product.kind.systemImage,
                     tint: product.isActive ? (product.isIncomplete ? .orange : .brand) : .secondary
                 )
+                #endif
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(product.displayName)
@@ -186,6 +205,8 @@ struct CleaningProductEditorView: View {
     @State private var comment: String
     @State private var safetyDataSheet: Data?
     @State private var sheetItem: PhotosPickerItem?
+    @State private var containerPhotoData: Data?
+    @State private var containerItem: PhotosPickerItem?
 
     init(product: CleaningProduct?, context: ModelContext) {
         self.product = product
@@ -206,6 +227,7 @@ struct CleaningProductEditorView: View {
         _isActive = State(initialValue: product?.isActive ?? true)
         _comment = State(initialValue: product?.comment ?? "")
         _safetyDataSheet = State(initialValue: product?.safetyDataSheet)
+        _containerPhotoData = State(initialValue: product?.containerPhotoData)
     }
 
     private var totalContactSeconds: Int {
@@ -258,6 +280,7 @@ struct CleaningProductEditorView: View {
                     Text("Recopiez les mentions H et P figurant sur l'emballage : c'est ce que votre personnel doit connaître avant de manipuler le produit.")
                 }
 
+                containerPhotoSection
                 safetySheetSection
 
                 Section {
@@ -281,6 +304,49 @@ struct CleaningProductEditorView: View {
     }
 
     @ViewBuilder
+    /// La photo du bidon vient avant la fiche de sécurité : c'est celle qu'on
+    /// regarde tous les jours, l'autre ne sert qu'en cas d'accident.
+    private var containerPhotoSection: some View {
+        Section {
+            #if canImport(UIKit)
+            if let containerPhotoData, let image = UIImage(data: containerPhotoData) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+                Button(role: .destructive) {
+                    self.containerPhotoData = nil
+                } label: {
+                    Label("Retirer la photo", systemImage: "trash")
+                }
+            }
+            #endif
+
+            PhotosPicker(selection: $containerItem, matching: .images) {
+                Label(
+                    containerPhotoData == nil ? "Photographier le bidon" : "Remplacer la photo",
+                    systemImage: "camera"
+                )
+            }
+        } header: {
+            Text("Identification visuelle")
+        } footer: {
+            Text("En plonge, personne ne lit une fiche : on cherche le bidon bleu. La photo du contenant évite de confondre deux produits aux noms voisins — et c'est ce genre de confusion qui met du dégraissant là où il fallait un désinfectant alimentaire.")
+        }
+        .onChange(of: containerItem) { _, item in
+            Task { await loadContainerPhoto(item) }
+        }
+    }
+
+    private func loadContainerPhoto(_ item: PhotosPickerItem?) async {
+        guard let item else { return }
+        if let data = try? await item.loadTransferable(type: Data.self) {
+            containerPhotoData = data
+        }
+    }
+
     private var safetySheetSection: some View {
         Section {
             #if canImport(UIKit)
@@ -335,6 +401,7 @@ struct CleaningProductEditorView: View {
         target.hazards = hazards
         target.standard = standard
         target.safetyDataSheet = safetyDataSheet
+        target.containerPhotoData = containerPhotoData
         target.isActive = isActive
         target.comment = comment
         target.touch()

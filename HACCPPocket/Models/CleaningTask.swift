@@ -13,6 +13,7 @@ import SwiftData
 // MARK: - Fréquence
 
 enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
+    case twiceDaily
     case daily
     case weekly
     case monthly
@@ -22,6 +23,7 @@ enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
+        case .twiceDaily: "Deux fois par jour"
         case .daily:     "Quotidien"
         case .weekly:    "Hebdomadaire"
         case .monthly:   "Mensuel"
@@ -31,6 +33,7 @@ enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var systemImage: String {
         switch self {
+        case .twiceDaily: "clock.arrow.2.circlepath"
         case .daily:     "sun.max"
         case .weekly:    "calendar"
         case .monthly:   "calendar.badge.clock"
@@ -41,6 +44,7 @@ enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Intervalle entre deux exécutions, exprimé en composantes de date.
     var interval: DateComponents {
         switch self {
+        case .twiceDaily: DateComponents(hour: 12)
         case .daily:     DateComponents(day: 1)
         case .weekly:    DateComponents(day: 7)
         case .monthly:   DateComponents(month: 1)
@@ -51,12 +55,27 @@ enum CleaningFrequency: String, Codable, CaseIterable, Identifiable, Sendable {
     /// Ordre d'affichage : du plus fréquent au plus rare.
     var sortWeight: Int {
         switch self {
-        case .daily:     0
-        case .weekly:    1
-        case .monthly:   2
-        case .quarterly: 3
+        case .twiceDaily: 0
+        case .daily:     1
+        case .weekly:    2
+        case .monthly:   3
+        case .quarterly: 4
         }
     }
+
+    /// Nombre d'exécutions attendues dans une journée. Sert à afficher
+    /// « 1/2 » plutôt qu'un simple coché / pas coché.
+    var occurrencesPerDay: Int {
+        switch self {
+        case .twiceDaily: 2
+        case .daily:      1
+        default:          0
+        }
+    }
+
+    /// Une fréquence qui se compte dans la journée : la tâche revient avant
+    /// le lendemain, l'écran doit donc pouvoir la proposer plusieurs fois.
+    var isIntraday: Bool { occurrencesPerDay > 1 }
 }
 
 // MARK: - Modèle
@@ -78,6 +97,15 @@ final class CleaningTask {
 
     var frequencyRawValue: String = ""
 
+    /// Une photo de l'équipement nettoyé est-elle exigée pour valider ?
+    ///
+    /// C'est la seule preuve qu'un nettoyage a réellement eu lieu : une case
+    /// cochée ne prouve rien, une photo horodatée de la plonge propre, si.
+    /// Activée par défaut sur les nouvelles lignes ; les lignes déjà créées
+    /// restent telles quelles, on ne rend pas rétroactivement incomplet un
+    /// plan de nettoyage qui fonctionnait.
+    var requiresPhoto: Bool = false
+
     var isActive: Bool = true
     var sortIndex: Int = 0
     var createdAt: Date = Date.now
@@ -91,6 +119,7 @@ final class CleaningTask {
         zone: String = "",
         productUsed: String = "",
         procedure: String = "",
+        requiresPhoto: Bool = false,
         isActive: Bool = true,
         sortIndex: Int = 0,
         createdAt: Date = .now
@@ -100,6 +129,7 @@ final class CleaningTask {
         self.zone = zone
         self.productUsed = productUsed
         self.procedure = procedure
+        self.requiresPhoto = requiresPhoto
         self.isActive = isActive
         self.sortIndex = sortIndex
         self.createdAt = createdAt
@@ -146,9 +176,39 @@ extension CleaningTask {
         return tolerance <= reference
     }
 
-    /// A-t-elle déjà été cochée aujourd'hui ? (cas des tâches quotidiennes)
+    /// Nombre d'exécutions enregistrées ce jour-là.
+    func completionCount(on day: Date, calendar: Calendar = .current) -> Int {
+        records.filter { calendar.isDate($0.completedAt, inSameDayAs: day) }.count
+    }
+
+    /// La tâche est-elle soldée pour la journée ?
+    ///
+    /// Une ligne bi-quotidienne cochée une seule fois ne l'est pas : c'est
+    /// tout l'intérêt de la fréquence. Les fréquences plus longues gardent le
+    /// comportement d'avant — une exécution dans la journée suffit.
     func isCompleted(on day: Date, calendar: Calendar = .current) -> Bool {
-        records.contains { calendar.isDate($0.completedAt, inSameDayAs: day) }
+        let done = completionCount(on: day, calendar: calendar)
+        return done >= max(1, frequency.occurrencesPerDay)
+    }
+
+    /// Reste-t-il des passages à faire aujourd'hui, et combien.
+    func remainingToday(on day: Date = .now, calendar: Calendar = .current) -> Int {
+        let expected = max(1, frequency.occurrencesPerDay)
+        return max(0, expected - completionCount(on: day, calendar: calendar))
+    }
+
+    /// « 1/2 » pour une ligne bi-quotidienne à moitié faite. Vide pour les
+    /// fréquences qui ne se comptent pas dans la journée.
+    func dailyProgressLabel(on day: Date = .now, calendar: Calendar = .current) -> String? {
+        guard frequency.isIntraday else { return nil }
+        return "\(completionCount(on: day, calendar: calendar))/\(frequency.occurrencesPerDay)"
+    }
+
+    /// Une exécution sans photo, alors que la ligne en exige une, laisse un
+    /// trou dans la preuve.
+    var recordsMissingPhoto: [CleaningRecord] {
+        guard requiresPhoto else { return [] }
+        return records.filter { $0.photoData == nil }
     }
 
     /// Exécutions comprises dans une période, pour le PDF mensuel.

@@ -69,18 +69,20 @@ enum SeedData {
         [
             CleaningTask(
                 title: "Désinfection des plans de travail",
-                frequency: .daily,
+                frequency: .twiceDaily,
                 zone: "Cuisine",
                 productUsed: "Dégraissant désinfectant contact alimentaire",
                 procedure: "Nettoyer, rincer, désinfecter, laisser agir 5 min, rincer à l'eau potable.",
+                requiresPhoto: true,
                 sortIndex: 0
             ),
             CleaningTask(
                 title: "Nettoyage du sol de la cuisine",
-                frequency: .daily,
+                frequency: .twiceDaily,
                 zone: "Cuisine",
                 productUsed: "Détergent sol alimentaire",
                 procedure: "Balayage humide puis lavage à la monobrosse ou au balai plat.",
+                requiresPhoto: true,
                 sortIndex: 1
             ),
             CleaningTask(
@@ -89,6 +91,7 @@ enum SeedData {
                 zone: "Cuisine",
                 productUsed: "Désinfectant surfaces",
                 procedure: "Vider, laver le conteneur, désinfecter, remettre un sac propre.",
+                requiresPhoto: true,
                 sortIndex: 2
             ),
             CleaningTask(
@@ -97,6 +100,7 @@ enum SeedData {
                 zone: "Cuisine / Réserve",
                 productUsed: "Désinfectant contact alimentaire",
                 procedure: "Vider, retirer les clayettes, laver, désinfecter, sécher avant remise en service.",
+                requiresPhoto: true,
                 sortIndex: 3
             ),
             CleaningTask(

@@ -85,6 +85,14 @@ final class CleaningProduct {
     /// Fiche de données de sécurité, photographiée ou importée.
     @Attribute(.externalStorage) var safetyDataSheet: Data?
 
+    /// Photo du bidon, pour l'identifier d'un coup d'œil.
+    ///
+    /// En plonge, personne ne lit une fiche : on cherche le bidon bleu. Une
+    /// photo du contenant évite la confusion entre deux produits au nom
+    /// commercial voisin — et c'est exactement le genre de confusion qui met
+    /// du dégraissant là où il fallait un désinfectant alimentaire.
+    @Attribute(.externalStorage) var containerPhotoData: Data?
+
     var isActive: Bool = true
     var comment: String = ""
     var createdAt: Date = Date.now
@@ -101,6 +109,7 @@ final class CleaningProduct {
         hazards: String = "",
         standard: String = "",
         safetyDataSheet: Data? = nil,
+        containerPhotoData: Data? = nil,
         isActive: Bool = true,
         comment: String = "",
         createdAt: Date = .now
@@ -115,6 +124,7 @@ final class CleaningProduct {
         self.hazards = hazards
         self.standard = standard
         self.safetyDataSheet = safetyDataSheet
+        self.containerPhotoData = containerPhotoData
         self.isActive = isActive
         self.comment = comment
         self.createdAt = createdAt
@@ -133,6 +143,8 @@ final class CleaningProduct {
     }
 
     var hasSafetyDataSheet: Bool { safetyDataSheet != nil }
+
+    var hasContainerPhoto: Bool { containerPhotoData != nil }
 
     /// Ex. « 5 min », « 30 s ».
     var formattedContactTime: String {

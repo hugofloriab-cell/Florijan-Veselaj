@@ -85,7 +85,7 @@ struct CleaningPlanView: View {
             .sheet(item: $photoTask) { task in
                 PhotoCaptureSheet(
                     title: "Photo du nettoyage",
-                    message: "La photo est jointe à l'enregistrement de l'opération et figure dans vos preuves d'exécution."
+                    message: "Photographiez l'équipement une fois propre. La photo est jointe à l'opération et se retrouve dans la page Photos des registres, d'où elle s'imprime."
                 ) { data in
                     if viewModel?.complete(task, photoData: data) == true {
                         celebrate(viewModel)
@@ -214,6 +214,10 @@ struct CleaningPlanView: View {
                 guard subscription.canWrite else { showsPaywall = true; return }
                 if isDone {
                     viewModel.undoCompletion(for: task)
+                } else if task.requiresPhoto {
+                    // La ligne exige une preuve : on ne coche pas, on
+                    // photographie. L'enregistrement suit la prise de vue.
+                    photoTask = task
                 } else if viewModel.complete(task) {
                     celebrate(viewModel)
                 }
@@ -239,9 +243,27 @@ struct CleaningPlanView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text(viewModel.dueLabel(for: task))
-                    .font(.caption2)
-                    .foregroundStyle(task.isOverdue() ? Color.orange : Color.secondary)
+                HStack(spacing: 6) {
+                    Text(viewModel.dueLabel(for: task))
+                        .font(.caption2)
+                        .foregroundStyle(task.isOverdue() ? Color.orange : Color.secondary)
+
+                    // « 1/2 » sur une ligne bi-quotidienne à moitié faite :
+                    // sans ce compteur, une seule exécution ressemble à un
+                    // travail terminé.
+                    if let progress = task.dailyProgressLabel() {
+                        StatusBadge(
+                            text: progress,
+                            color: isDone ? .green : .orange
+                        )
+                    }
+
+                    if task.requiresPhoto {
+                        Image(systemName: "camera.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
             }
 
             Spacer()

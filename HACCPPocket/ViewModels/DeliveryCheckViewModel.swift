@@ -64,6 +64,40 @@ final class DeliveryCheckViewModel {
     var notes: String
     var photoData: Data?
 
+    /// Pièces justificatives en cours de saisie.
+    ///
+    /// Un brouillon, pas encore un `DeliveryDocument` : tant que le contrôle
+    /// n'est pas enregistré, rien ne doit atterrir dans la base. Le lien
+    /// `existing` permet de retrouver la pièce déjà stockée pour la mettre à
+    /// jour plutôt que de la recréer — recréer ferait réécrire la photo à
+    /// chaque enregistrement.
+    struct DraftDocument: Identifiable {
+        let id: UUID
+        var kind: DeliveryDocumentKind
+        var photoData: Data?
+        var note: String
+        var capturedAt: Date
+        var existing: DeliveryDocument?
+
+        init(
+            id: UUID = UUID(),
+            kind: DeliveryDocumentKind,
+            photoData: Data?,
+            note: String = "",
+            capturedAt: Date = .now,
+            existing: DeliveryDocument? = nil
+        ) {
+            self.id = id
+            self.kind = kind
+            self.photoData = photoData
+            self.note = note
+            self.capturedAt = capturedAt
+            self.existing = existing
+        }
+    }
+
+    var documents: [DraftDocument] = []
+
     private(set) var errorMessage: String?
 
     // MARK: - Initialisation
@@ -94,6 +128,15 @@ final class DeliveryCheckViewModel {
             self.operatorName = check.operatorName
             self.notes = check.notes
             self.photoData = check.photoData
+            self.documents = check.orderedDocuments.map { document in
+                DraftDocument(
+                    kind: document.kind,
+                    photoData: document.photoData,
+                    note: document.note,
+                    capturedAt: document.capturedAt,
+                    existing: document
+                )
+            }
         } else {
             self.supplierName = ""
             self.productLabel = ""
@@ -108,6 +151,7 @@ final class DeliveryCheckViewModel {
             self.operatorName = prefs.operatorName
             self.notes = ""
             self.photoData = nil
+            self.documents = []
         }
     }
 
@@ -155,11 +199,53 @@ final class DeliveryCheckViewModel {
         decision.requiresReason
     }
 
+    /// Pièces réellement photographiées : un brouillon sans image ne compte
+    /// pas comme justificatif.
+    var capturedDocuments: [DraftDocument] {
+        documents.filter { $0.photoData != nil }
+    }
+
+    /// La pièce justificative est-elle exigée ?
+    ///
+    /// Seulement sur les nouveaux contrôles. Les réceptions saisies avant que
+    /// la règle existe restent modifiables : leur reprocher aujourd'hui une
+    /// photo qu'on ne demandait pas empêcherait de corriger une simple faute
+    /// de frappe.
+    var requiresDocument: Bool { !isEditing }
+
+    var isMissingDocument: Bool {
+        requiresDocument && capturedDocuments.isEmpty
+    }
+
     var canSave: Bool {
         guard !supplierName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
         if category.requiresTemperature && temperature == nil { return false }
         if requiresReason && !hasReason { return false }
+        if isMissingDocument { return false }
         return true
+    }
+
+    // MARK: - Pièces justificatives
+
+    /// Enregistre une pièce dont la nature a été annoncée avant la prise de
+    /// vue, puis photographiée.
+    func addDocument(kind: DeliveryDocumentKind, photoData: Data) {
+        documents.append(DraftDocument(kind: kind, photoData: photoData))
+    }
+
+    func updateDocument(id: UUID, note: String) {
+        guard let index = documents.firstIndex(where: { $0.id == id }) else { return }
+        documents[index].note = note
+    }
+
+    func removeDocument(id: UUID) {
+        documents.removeAll { $0.id == id }
+    }
+
+    /// Écarte les brouillons restés sans photo : la personne a choisi une
+    /// nature puis renoncé, il n'y a rien à enregistrer.
+    private func discardEmptyDrafts() {
+        documents.removeAll { $0.photoData == nil }
     }
 
     /// Motif pré-rempli à partir des anomalies détectées.
@@ -190,6 +276,13 @@ final class DeliveryCheckViewModel {
             return false
         }
 
+        discardEmptyDrafts()
+
+        if requiresDocument && documents.isEmpty {
+            errorMessage = "Photographiez au moins une pièce justificative : bon de livraison ou facture."
+            return false
+        }
+
         if let existing = existingCheck {
             existing.supplierName = trimmedSupplier
             existing.productLabel = productLabel
@@ -204,6 +297,7 @@ final class DeliveryCheckViewModel {
             existing.operatorName = operatorName
             existing.notes = notes
             existing.photoData = photoData
+            syncDocuments(of: existing)
         } else {
             let check = DeliveryCheck(
                 supplierName: trimmedSupplier,
@@ -221,6 +315,7 @@ final class DeliveryCheckViewModel {
                 notes: notes
             )
             modelContext.insert(check)
+            syncDocuments(of: check)
         }
 
         do {
@@ -229,6 +324,39 @@ final class DeliveryCheckViewModel {
         } catch {
             errorMessage = "Enregistrement impossible : \(error.localizedDescription)"
             return false
+        }
+    }
+
+    /// Aligne les pièces stockées sur les brouillons.
+    ///
+    /// Trois opérations distinctes plutôt qu'un effacement suivi d'une
+    /// recréation : réécrire la photo d'un bon de livraison à chaque
+    /// correction de faute de frappe userait le stockage pour rien.
+    private func syncDocuments(of check: DeliveryCheck) {
+        // 1. Les pièces retirées de l'écran sortent de la base.
+        let keptIDs = Set(documents.compactMap { $0.existing?.persistentModelID })
+        for stored in check.documents where !keptIDs.contains(stored.persistentModelID) {
+            modelContext.delete(stored)
+        }
+
+        for draft in documents {
+            if let stored = draft.existing {
+                // 2. Pièce déjà enregistrée : on met à jour ce qui a changé.
+                stored.kind = draft.kind
+                stored.note = draft.note
+                stored.photoData = draft.photoData
+                stored.capturedAt = draft.capturedAt
+            } else {
+                // 3. Pièce nouvelle.
+                let document = DeliveryDocument(
+                    kind: draft.kind,
+                    photoData: draft.photoData,
+                    capturedAt: draft.capturedAt,
+                    note: draft.note,
+                    delivery: check
+                )
+                modelContext.insert(document)
+            }
         }
     }
 }

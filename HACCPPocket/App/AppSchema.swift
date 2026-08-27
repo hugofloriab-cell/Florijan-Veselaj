@@ -20,7 +20,7 @@ enum AppSchema {
 
     /// La version de schéma que l'application utilise aujourd'hui.
     /// Une seule ligne à changer le jour où l'on passe en V2.
-    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV7.self
+    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV8.self
 
     /// Toutes les entités persistées. Ajouter un modèle dans la version de
     /// schéma courante, et nulle part ailleurs.
@@ -322,8 +322,9 @@ enum AppSchema {
 
         guard fileManager.fileExists(atPath: archiveURL.path) else { return }
 
-        // La base courante prend la place d'une archive.
-        try? setStoreAside()
+        // La base courante prend la place d'une archive : l'échange reste
+        // réversible. Son adresse ne sert à rien ici, d'où le `_`.
+        _ = try? setStoreAside()
 
         let originalName = storeURL.lastPathComponent
         for suffix in ["", ".shm", ".wal"] {

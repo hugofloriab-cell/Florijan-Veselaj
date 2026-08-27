@@ -94,6 +94,9 @@ struct BackupArchive: Codable {
         for task in cleaningTasks {
             total += task.records.count
         }
+        for delivery in deliveries {
+            total += delivery.documents?.count ?? 0
+        }
 
         return total
     }
@@ -172,8 +175,18 @@ struct DeliveryDTO: Codable {
     var reason: String
     var operatorName: String
     var photoData: Data?
+    /// Optionnel : une archive écrite avant les pièces justificatives n'en
+    /// porte aucune, et doit rester restaurable.
+    var documents: [DeliveryDocumentDTO]?
     var notes: String
     var createdAt: Date
+}
+
+struct DeliveryDocumentDTO: Codable {
+    var kindRawValue: String
+    var photoData: Data?
+    var capturedAt: Date
+    var note: String
 }
 
 struct CleaningRecordDTO: Codable {
@@ -191,6 +204,7 @@ struct CleaningTaskDTO: Codable {
     var productUsed: String
     var procedure: String
     var frequencyRawValue: String
+    var requiresPhoto: Bool?
     var isActive: Bool
     var sortIndex: Int
     var createdAt: Date
@@ -373,6 +387,7 @@ struct CleaningProductDTO: Codable {
     var hazards: String
     var standard: String
     var safetyDataSheet: Data?
+    var containerPhotoData: Data?
     var isActive: Bool
     var comment: String
     var createdAt: Date
@@ -690,8 +705,23 @@ enum BackupService {
             reason: delivery.reason,
             operatorName: delivery.operatorName,
             photoData: photo(delivery.photoData, includePhotos: includePhotos),
+            documents: delivery.orderedDocuments.map {
+                deliveryDocumentDTO(for: $0, includePhotos: includePhotos)
+            },
             notes: delivery.notes,
             createdAt: delivery.createdAt
+        )
+    }
+
+    private static func deliveryDocumentDTO(
+        for document: DeliveryDocument,
+        includePhotos: Bool
+    ) -> DeliveryDocumentDTO {
+        DeliveryDocumentDTO(
+            kindRawValue: document.kindRawValue,
+            photoData: photo(document.photoData, includePhotos: includePhotos),
+            capturedAt: document.capturedAt,
+            note: document.note
         )
     }
 
@@ -713,6 +743,7 @@ enum BackupService {
             productUsed: task.productUsed,
             procedure: task.procedure,
             frequencyRawValue: task.frequencyRawValue,
+            requiresPhoto: task.requiresPhoto,
             isActive: task.isActive,
             sortIndex: task.sortIndex,
             createdAt: task.createdAt,
@@ -933,6 +964,7 @@ enum BackupService {
             hazards: product.hazards,
             standard: product.standard,
             safetyDataSheet: photo(product.safetyDataSheet, includePhotos: includePhotos),
+            containerPhotoData: photo(product.containerPhotoData, includePhotos: includePhotos),
             isActive: product.isActive,
             comment: product.comment,
             createdAt: product.createdAt,
@@ -1247,6 +1279,17 @@ enum BackupService {
                 createdAt: dto.createdAt
             )
             context.insert(delivery)
+
+            for documentDTO in dto.documents ?? [] {
+                let document = DeliveryDocument(
+                    kind: DeliveryDocumentKind(rawValue: documentDTO.kindRawValue) ?? .other,
+                    photoData: documentDTO.photoData,
+                    capturedAt: documentDTO.capturedAt,
+                    note: documentDTO.note,
+                    delivery: delivery
+                )
+                context.insert(document)
+            }
         }
     }
 
@@ -1259,6 +1302,7 @@ enum BackupService {
                 zone: dto.zone,
                 productUsed: dto.productUsed,
                 procedure: dto.procedure,
+                requiresPhoto: dto.requiresPhoto ?? false,
                 isActive: dto.isActive,
                 sortIndex: dto.sortIndex,
                 createdAt: dto.createdAt
@@ -1534,6 +1578,7 @@ enum BackupService {
                 hazards: dto.hazards,
                 standard: dto.standard,
                 safetyDataSheet: dto.safetyDataSheet,
+                containerPhotoData: dto.containerPhotoData,
                 isActive: dto.isActive,
                 comment: dto.comment,
                 createdAt: dto.createdAt
@@ -1697,6 +1742,7 @@ enum BackupService {
         try delete(TemperatureReading.self, in: context)
         try delete(CleaningRecord.self, in: context)
         try delete(ThermalCheckpoint.self, in: context)
+        try delete(DeliveryDocument.self, in: context)
 
         try delete(Equipment.self, in: context)
         try delete(CleaningTask.self, in: context)

@@ -22,6 +22,7 @@ struct CleaningTaskEditorView: View {
     @State private var productUsed: String
     @State private var procedure: String
     @State private var frequency: CleaningFrequency
+    @State private var requiresPhoto: Bool
     @State private var isActive: Bool
 
     /// `task` à `nil` crée une nouvelle opération.
@@ -34,6 +35,10 @@ struct CleaningTaskEditorView: View {
         _productUsed = State(initialValue: task?.productUsed ?? "")
         _procedure = State(initialValue: task?.procedure ?? "")
         _frequency = State(initialValue: task?.frequency ?? .daily)
+        // Exigée d'office sur une nouvelle ligne, reprise telle quelle sur une
+        // ligne existante : on n'impose pas rétroactivement une preuve que le
+        // plan de nettoyage ne demandait pas.
+        _requiresPhoto = State(initialValue: task?.requiresPhoto ?? true)
         _isActive = State(initialValue: task?.isActive ?? true)
     }
 
@@ -77,6 +82,14 @@ struct CleaningTaskEditorView: View {
                     Text("Consultable d'un geste depuis le plan de nettoyage, au moment de cocher l'opération.")
                 }
 
+                Section {
+                    Toggle("Photo obligatoire", isOn: $requiresPhoto)
+                } header: {
+                    Text("Preuve")
+                } footer: {
+                    Text("Une case cochée ne prouve rien. Une photo horodatée de l'équipement propre, si — c'est elle qu'on montre en cas de contrôle ou de litige. Vous ne pourrez pas valider l'opération sans elle.")
+                }
+
                 if task != nil {
                     Section {
                         Toggle("Opération active", isOn: $isActive)
@@ -108,6 +121,7 @@ struct CleaningTaskEditorView: View {
             task.productUsed = productUsed
             task.procedure = procedure
             task.frequency = frequency
+            task.requiresPhoto = requiresPhoto
             task.isActive = isActive
         } else {
             let created = CleaningTask(
@@ -116,6 +130,7 @@ struct CleaningTaskEditorView: View {
                 zone: zone,
                 productUsed: productUsed,
                 procedure: procedure,
+                requiresPhoto: requiresPhoto,
                 sortIndex: sortIndex
             )
             modelContext.insert(created)

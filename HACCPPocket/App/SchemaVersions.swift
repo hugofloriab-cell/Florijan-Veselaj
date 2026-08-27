@@ -345,3 +345,22 @@ enum HACCPSchemaV7: VersionedSchema {
         HACCPSchemaV6.models + [IntegritySeal.self]
     }
 }
+
+// MARK: - Version 8
+
+/// Ajoute les pièces justificatives photographiées à la réception.
+///
+/// Un modèle nouveau, `DeliveryDocument`. Les propriétés ajoutées au même
+/// moment — la photo du bidon sur `CleaningProduct`, la photo exigée sur
+/// `CleaningTask` — n'auraient justifié aucune version à elles seules : elles
+/// possèdent une valeur par défaut et la migration implicite les absorbe.
+enum HACCPSchemaV8: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(8, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        HACCPSchemaV7.models + [DeliveryDocument.self]
+    }
+}

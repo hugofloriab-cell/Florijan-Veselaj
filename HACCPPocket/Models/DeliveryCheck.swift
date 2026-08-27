@@ -70,8 +70,15 @@ final class DeliveryCheck {
 
     var operatorName: String = ""
 
-    /// Photo du bon de livraison ou de la non-conformité constatée.
+    /// Photo libre de la marchandise. Conservée pour les enregistrements
+    /// saisis avant que les pièces justificatives ne soient séparées.
     @Attribute(.externalStorage) var photoData: Data?
+
+    /// Pièces justificatives photographiées : bon de livraison, facture,
+    /// constat de non-conformité. Chacune porte sa nature, annoncée avant la
+    /// prise de vue.
+    @Relationship(deleteRule: .cascade, inverse: \DeliveryDocument.delivery)
+    var documents: [DeliveryDocument] = []
 
     var notes: String = ""
     var createdAt: Date = Date.now
@@ -146,5 +153,33 @@ extension DeliveryCheck {
     /// Un contrôle non conforme sans motif renseigné est un dossier incomplet.
     var needsReason: Bool {
         decision.requiresReason && reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    // MARK: Pièces justificatives
+
+    /// Documents photographiés, groupés par nature puis du plus récent au
+    /// plus ancien.
+    var orderedDocuments: [DeliveryDocument] {
+        documents.sorted { left, right in
+            if left.kind.sortWeight != right.kind.sortWeight {
+                return left.kind.sortWeight < right.kind.sortWeight
+            }
+            return left.capturedAt > right.capturedAt
+        }
+    }
+
+    /// Au moins une pièce photographiée.
+    ///
+    /// La photo libre des anciens enregistrements compte : ils ont été saisis
+    /// quand rien n'était exigé, les marquer incomplets aujourd'hui
+    /// reviendrait à leur reprocher une règle qui n'existait pas.
+    var hasJustification: Bool {
+        documents.contains(where: \.hasPhoto) || photoData != nil
+    }
+
+    /// Une réception refusée ou acceptée sous réserve sans photo du constat
+    /// est difficile à défendre : c'est la photo qui montre ce qui a été vu.
+    var lacksNonConformityEvidence: Bool {
+        decision.requiresReason && !documents.contains { $0.kind == .nonConformity && $0.hasPhoto }
     }
 }
