@@ -525,6 +525,17 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     </div>
   </header>
 
+  <noscript>
+    <section class="notice" style="display:flex">
+      <div>
+        <b>Enregistrement indisponible</b>
+        <p>Le script de la page ne s'exécute pas dans cette fenêtre : la check-list reste
+        lisible et imprimable, mais rien ne sera enregistré et les cases cochées seront
+        perdues. Copiez le fichier sur la tablette et ouvrez-le avec Chrome.</p>
+      </div>
+    </section>
+  </noscript>
+
   <section class="notice" id="notice" hidden>
     <div>
       <b id="notice-title">Aperçu</b>
@@ -546,11 +557,86 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     <div>Rappel HACCP / Consignes</div>
     <div>Val.</div>
   </div>
-  <div class="slots" id="slots"></div>
+  <div class="slots" id="slots">
+    <div class="slot">
+      <div class="slot-time" data-slot="0" data-count="0/3">06h00</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t0-0" data-id="t0-0"><span>Prise de poste (T-shirt propre, badge, surchaussures).</span></label>
+          <label class="task"><input type="checkbox" id="t0-1" data-id="t0-1"><span>Prise des consignes réception (Nb de PDJ + cuissons).</span></label>
+          <label class="task"><input type="checkbox" id="t0-2" data-id="t0-2"><span>Remplir le bac de plonge avec produit adapté.</span></label></div></div>
+      <div class="haccp">Contrôle visuel propreté zone</div>
+      <div class="val" data-val="0"><span class="mark">✓</span><span class="count">0/3</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="1" data-count="0/2">06h00 – 08h00</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t1-0" data-id="t1-0"><span>Relevé T° sur tablette (Profil <i>Ibis Petit Déjeuner</i> &gt; CONTRÔLE MATÉRIEL).</span></label>
+          <label class="task"><input type="checkbox" id="t1-1" data-id="t1-1"><span>Vérification congélateurs coffres/verticaux, chambre froide, frigos, timbres inox.</span></label></div></div>
+      <div class="haccp"><b>Normes T° :</b><span class="norm">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span></div>
+      <div class="val" data-val="1"><span class="mark">✓</span><span class="count">0/2</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="2" data-count="0/3">07h30</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t2-0" data-id="t2-0"><span>Tour de la chambre froide (vérifier doublons prêts).</span></label>
+          <label class="task"><input type="checkbox" id="t2-1" data-id="t2-1"><span>Rangement stocks congelés cuisine si nécessaire.</span></label>
+          <label class="task"><input type="checkbox" id="t2-2" data-id="t2-2"><span>Nettoyage des tables au fur et à mesure des départs clients.</span></label></div></div>
+      <div class="haccp">Rotation des stocks (FIFO)</div>
+      <div class="val" data-val="2"><span class="mark">✓</span><span class="count">0/3</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="3" data-count="0/4">08h00</div>
+      <div>
+        <div class="tasklist">
+          <label class="task key"><input type="checkbox" id="t3-0" data-id="t3-0"><span>Relevé T° buffet sur tablette : <b>Fromage blanc &amp; Jambon blanc.</b></span></label>
+          <label class="task"><input type="checkbox" id="t3-1" data-id="t3-1"><span>Relevé T° banque froide.</span></label>
+          <label class="task"><input type="checkbox" id="t3-2" data-id="t3-2"><span>Vider et nettoyer les machines à café.</span></label>
+          <label class="task"><input type="checkbox" id="t3-3" data-id="t3-3"><span>Remplissage du buffet &amp; accueil clients.</span></label></div></div>
+      <div class="haccp alert">Si T° produit &gt; 10°C :<br>Jeter et remplacer !</div>
+      <div class="val" data-val="3"><span class="mark">✓</span><span class="count">0/4</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="4" data-count="0/3">08h30</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t4-0" data-id="t4-0"><span>Point sur le nombre de petits-déjeuners restants.</span></label>
+          <label class="task"><input type="checkbox" id="t4-1" data-id="t4-1"><span>Préparation des étiquettes (alerte DLC/DLUO).</span></label>
+          <label class="task key"><input type="checkbox" id="t4-2" data-id="t4-2"><span>Avancer la plonge au fur et à mesure.</span></label></div></div>
+      <div class="haccp">Ne rien laisser s'accumuler en plonge</div>
+      <div class="val" data-val="4"><span class="mark">✓</span><span class="count">0/3</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="5" data-count="0/4">10h00</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t5-0" data-id="t5-0"><span>Relevé T° final des produits et du buffet sur la tablette.</span></label>
+          <label class="task"><input type="checkbox" id="t5-1" data-id="t5-1"><span>Débarrassage et rangement buffet froid et sec + nettoyage.</span></label>
+          <label class="task"><input type="checkbox" id="t5-2" data-id="t5-2"><span>Nettoyage plan de travail cuisine / dessert.</span></label>
+          <label class="task key"><input type="checkbox" id="t5-3" data-id="t5-3"><span>Finition &amp; nettoyage complet de la plonge.</span></label></div></div>
+      <div class="haccp">Enregistrement tablette obligatoire</div>
+      <div class="val" data-val="5"><span class="mark">✓</span><span class="count">0/4</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="6" data-count="0/3">11h00</div>
+      <div>
+        <div class="tasklist">
+          <label class="task key"><input type="checkbox" id="t6-0" data-id="t6-0"><span>Vérification finale cuisine / plonge (état nickel avant arrivée équipe midi).</span></label>
+          <label class="task"><input type="checkbox" id="t6-1" data-id="t6-1"><span>Nettoyage des tables, machines à café.</span></label>
+          <label class="task"><input type="checkbox" id="t6-2" data-id="t6-2"><span>Passage aspirateur salle + Pergola.</span></label></div></div>
+      <div class="haccp strong">Livraison plonge nickel exigée</div>
+      <div class="val" data-val="6"><span class="mark">✓</span><span class="count">0/3</span></div></div>
+    <div class="slot">
+      <div class="slot-time" data-slot="7" data-count="0/1">11h30</div>
+      <div>
+        <div class="tasklist">
+          <label class="task"><input type="checkbox" id="t7-0" data-id="t7-0"><span>Pause puis départ service Étages.</span></label></div></div>
+      <div class="haccp">Passage de consignes</div>
+      <div class="val" data-val="7"><span class="mark">✓</span><span class="count">0/1</span></div></div>
+  </div>
 
   <section class="extra">
     <h3>Tâches supplémentaires &amp; remise en état plonge (impératif)</h3>
-    <div class="tasklist" id="extra-tasks"></div>
+    <div class="tasklist" id="extra-tasks">
+      <label class="task"><input type="checkbox" id="x0" data-id="x0"><span><em>Mardi / Jeudi :</em> Réception et rangement complet des commandes PDJ.</span></label>
+      <label class="task"><input type="checkbox" id="x1" data-id="x1"><span><em>Contrôle propreté plonge :</em> À 14h, l'équipe du midi valide l'état de propreté laissé sur la tablette. Aucun ustensile ou vaisselle du petit-déjeuner ne doit rester dans l'évier ou sur les égoûtoirs.</span></label>
+    </div>
   </section>
 
   <h2 class="section-title"><span class="num">2.</span> Validation &amp; transmission de fin de service <span class="rule"></span></h2>
@@ -767,63 +853,20 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
   var els = {};
 
   /* ============ Rendu ============ */
-  function taskEl(id, item){
-    var label = document.createElement("label");
-    label.className = "task" + (item.key ? " key" : "");
-    var input = document.createElement("input");
-    input.type = "checkbox";
-    input.id = id;
-    input.setAttribute("data-id", id);
-    var span = document.createElement("span");
-    span.innerHTML = item.html;
-    label.appendChild(input);
-    label.appendChild(span);
-    input.addEventListener("change", function(){
-      state.checks[id] = input.checked;
-      refresh();
-      persist();
-    });
-    return label;
-  }
-
   function normalize(t){ return typeof t === "string" ? { html:t } : t; }
 
-  function render(){
-    var slots = document.getElementById("slots");
-    slots.textContent = "";
-    SLOTS.forEach(function(slot, si){
-      var row = document.createElement("div");
-      row.className = "slot";
-
-      var time = document.createElement("div");
-      time.className = "slot-time";
-      time.textContent = slot.time;
-      time.setAttribute("data-slot", si);
-
-      var cell = document.createElement("div");
-      var list = document.createElement("div");
-      list.className = "tasklist";
-      slot.tasks.forEach(function(t, ti){
-        list.appendChild(taskEl("t"+si+"-"+ti, normalize(t)));
+  /* Les lignes de la check-list sont écrites en dur dans la page : elles
+     restent lisibles et imprimables même si le script ne s'exécute pas.
+     On ne fait ici que brancher le pointage. */
+  function bind(){
+    document.querySelectorAll(".task input").forEach(function(input){
+      var id = input.getAttribute("data-id");
+      input.addEventListener("change", function(){
+        state.checks[id] = input.checked;
+        refresh();
+        persist();
       });
-      cell.appendChild(list);
-
-      var haccp = document.createElement("div");
-      haccp.className = "haccp" + (slot.haccp.cls ? " "+slot.haccp.cls : "");
-      haccp.innerHTML = slot.haccp.html;
-
-      var val = document.createElement("div");
-      val.className = "val";
-      val.setAttribute("data-val", si);
-      val.innerHTML = '<span class="mark">&#10003;</span><span class="count"></span>';
-
-      row.appendChild(time); row.appendChild(cell); row.appendChild(haccp); row.appendChild(val);
-      slots.appendChild(row);
     });
-
-    var extra = document.getElementById("extra-tasks");
-    extra.textContent = "";
-    EXTRA.forEach(function(t, i){ extra.appendChild(taskEl("x"+i, normalize(t))); });
   }
 
   /* ============ Synchronisation UI ============ */
@@ -1313,7 +1356,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       share:document.getElementById("share-btn")
     };
 
-    render();
+    bind();
     setupSignature();
     showNotice();
 

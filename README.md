@@ -70,9 +70,14 @@ uniquement. Les fiches ne sont donc **pas** synchronisées entre plusieurs table
 
 ## Modifier le contenu de la fiche
 
-Les tâches sont décrites en haut du bloc `<script>` de `checklist-petit-dejeuner.html`,
-dans les tableaux `SLOTS` (déroulé horaire) et `EXTRA` (tâches supplémentaires).
-Ajouter, retirer ou reformuler une ligne suffit : cases, compteurs et export suivent.
+Les lignes de la check-list sont écrites **en dur** dans le corps de la page
+(`<div class="slots">` et `<div class="tasklist" id="extra-tasks">`), afin que la
+fiche reste complète, lisible et imprimable même si le script ne s'exécute pas.
+
+Le bloc `<script>` contient les mêmes libellés dans les tableaux `SLOTS` et `EXTRA`,
+utilisés pour les compteurs de validation et pour l'export. **Toute modification doit
+être reportée aux deux endroits**, en conservant les identifiants `t<créneau>-<ligne>`
+et `x<n>` des cases à cocher.
 
 Après modification, régénérer la version publication :
 
