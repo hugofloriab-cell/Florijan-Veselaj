@@ -150,6 +150,22 @@ input[type="date"].date-input{
 }
 .themebtn:hover{background:rgba(255,255,255,.12)}
 
+/* ---------- Bandeau d'avertissement ---------- */
+.notice{
+  margin-top:14px;background:var(--amber-soft);border:1px solid var(--amber-line);
+  border-left:4px solid var(--amber);border-radius:0 4px 4px 0;padding:14px 18px;
+  display:flex;gap:14px;align-items:flex-start;
+}
+.notice b{display:block;color:var(--amber);font-family:Archivo,sans-serif;
+  font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.notice p{margin:0;font-size:.94rem;color:var(--ink-2)}
+.notice .dismiss{
+  margin-left:auto;flex:0 0 auto;background:transparent;border:0;cursor:pointer;
+  color:var(--ink-3);font-size:1.4rem;line-height:1;padding:0 4px;
+}
+.notice .dismiss:hover{color:var(--ink)}
+.notice[hidden]{display:none}
+
 /* ---------- Missions ---------- */
 .missions{
   border-left:4px solid var(--navy-2);
@@ -508,6 +524,14 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       <button type="button" class="themebtn" id="theme-toggle">Mode sombre</button>
     </div>
   </header>
+
+  <section class="notice" id="notice" hidden>
+    <div>
+      <b id="notice-title">Aperçu</b>
+      <p id="notice-text"></p>
+    </div>
+    <button type="button" class="dismiss" id="notice-close" aria-label="Masquer">&times;</button>
+  </section>
 
   <section class="missions">
     <p><strong>Mission principale :</strong> Accueil et service clients prioritaires en salle.</p>
@@ -885,8 +909,14 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     if(ro) ro.observe(cv); else window.addEventListener("resize", size);
 
     function pos(e){ var r=cv.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+    /* Certaines WebView n'honorent pas touch-action : on bloque le défilement
+       explicitement pendant le tracé. */
+    cv.addEventListener("touchstart", function(e){ e.preventDefault(); }, { passive:false });
+    cv.addEventListener("touchmove",  function(e){ e.preventDefault(); }, { passive:false });
+
     cv.addEventListener("pointerdown", function(e){
-      e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      try{ cv.setPointerCapture(e.pointerId); }catch(err){}
       drawing=true; hasInk=true;
       els.sigwrap.classList.add("signed");
       var p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+0.1,p.y); ctx.stroke();
@@ -903,6 +933,26 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
         persist();
       });
     });
+    /* Navigateurs sans Pointer Events : tracé via les évènements tactiles. */
+    if(!window.PointerEvent){
+      cv.addEventListener("touchstart", function(e){
+        var t = e.changedTouches[0]; if(!t) return;
+        drawing=true; hasInk=true; els.sigwrap.classList.add("signed");
+        var p = pos(t); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+0.1,p.y); ctx.stroke();
+      }, { passive:false });
+      cv.addEventListener("touchmove", function(e){
+        if(!drawing) return;
+        var t = e.changedTouches[0]; if(!t) return;
+        var p = pos(t); ctx.lineTo(p.x,p.y); ctx.stroke();
+      }, { passive:false });
+      cv.addEventListener("touchend", function(){
+        if(!drawing) return;
+        drawing=false;
+        try{ state.signature = cv.toDataURL("image/png"); }catch(e){}
+        persist();
+      });
+    }
+
     els.clearSig.addEventListener("click", function(){
       ctx.clearRect(0,0,cv.width,cv.height);
       hasInk=false; state.signature="";
@@ -1114,9 +1164,18 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       ? current.text
       : "Bonjour,\n\nVeuillez trouver l'historique des check-lists petit déjeuner en pièce jointe (fichier « "
         + current.name + " » enregistré depuis la tablette de la cuisine).\n\nCordialement,";
-    window.location.href = "mailto:" + encodeURIComponent(to.join(",")) +
+    var href = "mailto:" + encodeURIComponent(to.join(",")) +
       "?subject=" + encodeURIComponent(subject()) + "&body=" + encodeURIComponent(body);
-    toast(current.kind === "jour" ? "Ouverture de la messagerie…" : "Messagerie ouverte — joignez le fichier enregistré.");
+    if(restricted){
+      toast("L'envoi par e-mail est bloqué dans cette fenêtre d'aperçu. Ouvrez le fichier dans Chrome sur la tablette, ou utilisez « Copier ».");
+      return;
+    }
+    var a = document.createElement("a");
+    a.href = href; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    toast(current.kind === "jour"
+      ? "Ouverture de la messagerie… si rien ne s'ouvre, utilisez « Copier »."
+      : "Messagerie ouverte — joignez le fichier enregistré.");
   }
 
   function canShare(){
@@ -1183,6 +1242,28 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     }
   }
 
+  /* ============ Contexte d'exécution ============ */
+  /* Dans un aperçu (fenêtre imbriquée), le navigateur bloque l'impression,
+     l'ouverture de la messagerie et l'enregistrement de fichiers. */
+  var restricted = false;
+  try{ restricted = window.self !== window.top; }catch(e){ restricted = true; }
+
+  function showNotice(){
+    if(!restricted) return;
+    if(store.get("notice-hidden", false)) return;
+    document.getElementById("notice-title").textContent = "Aperçu — fonctions limitées";
+    document.getElementById("notice-text").textContent =
+      "Vous consultez la fiche dans une fenêtre d'aperçu : l'impression, l'ouverture de la messagerie et " +
+      "l'enregistrement de fichiers y sont bloqués par le navigateur. Le pointage des tâches et la signature " +
+      "fonctionnent normalement. Pour disposer de toutes les fonctions, copiez le fichier sur la tablette et " +
+      "ouvrez-le avec Chrome.";
+    document.getElementById("notice").hidden = false;
+    document.getElementById("notice-close").addEventListener("click", function(){
+      document.getElementById("notice").hidden = true;
+      store.set("notice-hidden", true);
+    });
+  }
+
   /* ============ Divers ============ */
   var toastTimer = null;
   function toast(msg){
@@ -1234,6 +1315,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 
     render();
     setupSignature();
+    showNotice();
 
     var startDate = todayISO();
     els.date.value = startDate;
@@ -1258,7 +1340,14 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       state.endTime = els.endtime.value; persist();
     });
 
-    document.getElementById("print-btn").addEventListener("click", function(){ window.print(); });
+    document.getElementById("print-btn").addEventListener("click", function(){
+      if(restricted){
+        toast("L'impression est bloquée dans cette fenêtre d'aperçu. Ouvrez le fichier dans Chrome sur la tablette.");
+        return;
+      }
+      try{ window.print(); }
+      catch(e){ toast("Impression indisponible ici — ouvrez le fichier dans Chrome sur la tablette."); }
+    });
 
     els.recipients.value = store.get("recipients", "");
     document.getElementById("export-btn").addEventListener("click", openTransmit);

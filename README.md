@@ -53,6 +53,13 @@ installée dessus.
 
 Aucune connexion Internet n'est nécessaire au quotidien.
 
+> **Ouvrez bien le fichier avec Chrome, pas depuis un aperçu.**
+> Dans une fenêtre d'aperçu (pièce jointe consultée directement dans une
+> application de messagerie, page intégrée), le navigateur bloque l'impression,
+> l'ouverture de la messagerie et l'enregistrement de fichiers. La fiche le
+> détecte et affiche un bandeau d'avertissement. Le pointage des tâches et la
+> signature, eux, fonctionnent partout.
+
 ## Où sont stockées les données
 
 Dans le stockage local du navigateur de la tablette (`localStorage`), sur cet appareil
