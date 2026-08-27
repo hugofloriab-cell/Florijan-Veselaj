@@ -1,0 +1,1157 @@
+<title>Check-list Petit Déjeuner Ibis Sisteron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+:root{
+  --paper:#F7F8FA;
+  --surface:#FFFFFF;
+  --sunken:#EEF1F6;
+  --ink:#131A26;
+  --ink-2:#4B5666;
+  --ink-3:#7C879A;
+  --line:#DBE1EA;
+  --line-strong:#BFC8D6;
+  --navy:#12336B;
+  --navy-2:#1B4A96;
+  --navy-soft:#E7EDF8;
+  --on-navy:#FFFFFF;
+  --red:#BC2026;
+  --red-soft:#FBECEC;
+  --amber:#A3560A;
+  --amber-soft:#FDF4E8;
+  --amber-line:#E2B276;
+  --green:#0F6B49;
+  --green-soft:#E4F2EC;
+  --shadow:0 1px 2px rgba(19,26,38,.06), 0 8px 24px -12px rgba(19,26,38,.18);
+  --focus:#1B4A96;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E131C;
+    --surface:#161D29;
+    --sunken:#1D2634;
+    --ink:#E8ECF3;
+    --ink-2:#A7B2C2;
+    --ink-3:#7A869A;
+    --line:#2A3547;
+    --line-strong:#3B4859;
+    --navy:#22375E;
+    --navy-2:#8AAFEA;
+    --navy-soft:#1B2740;
+    --on-navy:#EEF3FC;
+    --red:#F2807F;
+    --red-soft:#2E1B1E;
+    --amber:#E3A860;
+    --amber-soft:#251E14;
+    --amber-line:#5C452A;
+    --green:#63C5A0;
+    --green-soft:#12281F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --focus:#8AAFEA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E131C;
+  --surface:#161D29;
+  --sunken:#1D2634;
+  --ink:#E8ECF3;
+  --ink-2:#A7B2C2;
+  --ink-3:#7A869A;
+  --line:#2A3547;
+  --line-strong:#3B4859;
+  --navy:#22375E;
+  --navy-2:#8AAFEA;
+  --navy-soft:#1B2740;
+  --on-navy:#EEF3FC;
+  --red:#F2807F;
+  --red-soft:#2E1B1E;
+  --amber:#E3A860;
+  --amber-soft:#251E14;
+  --amber-line:#5C452A;
+  --green:#63C5A0;
+  --green-soft:#12281F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --focus:#8AAFEA;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:124px;
+}
+h1,h2,h3{font-family:Archivo,"Segoe UI",Helvetica,Arial,sans-serif;margin:0;text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+
+.sheet{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+
+/* ---------- En-tête ---------- */
+.masthead{
+  background:var(--navy);
+  color:var(--on-navy);
+  border-radius:4px;
+  padding:22px 26px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:18px 28px;
+  align-items:flex-start;
+  justify-content:space-between;
+}
+.masthead h1{
+  font-size:clamp(1.3rem,3.4vw,1.9rem);
+  font-weight:700;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  line-height:1.15;
+}
+.masthead .sub{
+  font-style:italic;
+  color:rgba(255,255,255,.78);
+  font-size:.95rem;
+  margin-top:6px;
+}
+.masthead-side{display:flex;flex-direction:column;gap:10px;align-items:flex-end}
+.datefield{display:flex;align-items:center;gap:10px}
+.datehuman{
+  font-family:"IBM Plex Mono",monospace;font-size:.78rem;
+  color:rgba(255,255,255,.72);text-align:right;letter-spacing:.02em;
+}
+.datefield label{
+  font-family:Archivo,sans-serif;font-size:.7rem;letter-spacing:.14em;
+  text-transform:uppercase;color:rgba(255,255,255,.7)
+}
+input[type="date"].date-input{
+  font-family:"IBM Plex Mono",monospace;font-size:1rem;font-weight:600;
+  background:rgba(255,255,255,.12);color:var(--on-navy);
+  border:1px solid rgba(255,255,255,.35);border-radius:3px;
+  padding:8px 10px;min-height:44px;
+}
+:root[data-theme="dark"] input[type="date"].date-input,
+.date-input{color-scheme:dark}
+.themebtn{
+  background:transparent;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.85);
+  border-radius:3px;padding:7px 12px;min-height:38px;cursor:pointer;
+  font-family:Archivo,sans-serif;font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;
+}
+.themebtn:hover{background:rgba(255,255,255,.12)}
+
+/* ---------- Missions ---------- */
+.missions{
+  border-left:4px solid var(--navy-2);
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-left:4px solid var(--navy-2);
+  border-radius:0 4px 4px 0;
+  padding:16px 20px;
+  margin-top:18px;
+  display:grid;
+  gap:8px;
+  box-shadow:var(--shadow);
+}
+.missions p{margin:0;color:var(--ink-2);font-size:.97rem}
+.missions strong{color:var(--navy-2);font-family:Archivo,sans-serif;font-weight:700;letter-spacing:.02em}
+
+/* ---------- Titres de section ---------- */
+.section-title{
+  display:flex;align-items:baseline;gap:12px;
+  margin:34px 0 12px;
+  font-size:1.02rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink);
+}
+.section-title .num{
+  font-family:"IBM Plex Mono",monospace;color:var(--navy-2);font-weight:600;
+}
+.section-title .rule{flex:1;height:1px;background:var(--line-strong)}
+
+/* ---------- Tableau chronologique ---------- */
+.tablehead{
+  display:grid;
+  grid-template-columns:104px minmax(0,1fr) 250px 92px;
+  background:var(--navy);
+  color:var(--on-navy);
+  border-radius:3px 3px 0 0;
+  font-family:Archivo,sans-serif;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+}
+.tablehead > div{padding:11px 14px;border-right:1px solid rgba(255,255,255,.18)}
+.tablehead > div:last-child{border-right:0;text-align:center}
+
+.slots{border:1px solid var(--line);border-top:0;border-radius:0 0 3px 3px;overflow:hidden;background:var(--surface)}
+.slot{
+  display:grid;
+  grid-template-columns:104px minmax(0,1fr) 250px 92px;
+  border-bottom:1px solid var(--line);
+}
+.slot:last-child{border-bottom:0}
+.slot:nth-child(even){background:var(--sunken)}
+.slot > div{padding:14px;border-right:1px solid var(--line)}
+.slot > div:last-child{border-right:0}
+
+.slot-time{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:.95rem;
+  color:var(--navy-2);letter-spacing:-.01em;
+}
+.tasklist{display:flex;flex-direction:column;gap:2px;margin:-6px -8px}
+
+.task{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:9px 8px;border-radius:4px;cursor:pointer;
+  min-height:44px;
+  -webkit-tap-highlight-color:transparent;
+}
+.task:hover{background:var(--navy-soft)}
+.task input{
+  appearance:none;-webkit-appearance:none;
+  flex:0 0 auto;width:26px;height:26px;margin:1px 0 0;
+  border:2px solid var(--line-strong);border-radius:3px;
+  background:var(--surface);cursor:pointer;position:relative;
+  transition:background .12s ease, border-color .12s ease;
+}
+.task input:checked{background:var(--navy-2);border-color:var(--navy-2)}
+.task input:checked::after{
+  content:"";position:absolute;left:8px;top:3px;width:6px;height:12px;
+  border:solid var(--surface);border-width:0 2.5px 2.5px 0;transform:rotate(43deg);
+}
+:root[data-theme="dark"] .task input:checked::after{border-color:#0E131C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .task input:checked::after{border-color:#0E131C}}
+.task input:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.task span{font-size:.97rem;line-height:1.45;padding-top:2px}
+.task input:checked + span{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.task.key span{font-weight:700}
+
+.haccp{font-size:.9rem;color:var(--ink-2)}
+.haccp .norm{display:block;font-family:"IBM Plex Mono",monospace;font-size:.85rem;margin-top:4px;color:var(--ink)}
+.haccp.alert{color:var(--red);font-weight:700;font-family:Archivo,sans-serif;font-size:.88rem;letter-spacing:.02em}
+.haccp.strong{color:var(--ink);font-weight:700;font-family:Archivo,sans-serif;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase}
+
+.val{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.val .mark{
+  width:34px;height:34px;border-radius:50%;
+  border:2px solid var(--line-strong);background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  color:transparent;font-size:1rem;font-weight:700;
+  transition:all .16s ease;
+}
+.val.done .mark{background:var(--green);border-color:var(--green);color:#fff}
+:root[data-theme="dark"] .val.done .mark{color:#0E131C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .val.done .mark{color:#0E131C}}
+.val .count{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-3)}
+.val.done .count{color:var(--green);font-weight:600}
+
+/* ---------- Encadré tâches supplémentaires ---------- */
+.extra{
+  margin-top:26px;
+  background:var(--amber-soft);
+  border:1px solid var(--amber-line);
+  border-left:4px solid var(--amber);
+  border-radius:0 4px 4px 0;
+  padding:18px 20px;
+}
+.extra h3{
+  color:var(--red);font-size:.88rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  margin-bottom:10px;
+}
+.extra .tasklist{margin:0 -8px}
+.extra .task:hover{background:rgba(163,86,10,.09)}
+.extra .task span b{font-weight:700}
+.extra .task span em{font-style:normal;color:var(--amber);font-weight:600}
+
+/* ---------- Validation ---------- */
+.validation{
+  margin-top:16px;background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.validation .vhead{
+  background:var(--navy);color:var(--on-navy);padding:11px 16px;
+  font-family:Archivo,sans-serif;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;
+}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0}
+.vcell{padding:16px 18px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.vcell:last-child{border-right:0}
+.vcell.sig{grid-column:1/-1;border-right:0}
+.vcell > label,.flabel{
+  display:block;font-family:Archivo,sans-serif;font-size:.66rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:9px;
+}
+.vcell input[type="text"],.vcell input[type="time"],textarea{
+  width:100%;font-family:inherit;font-size:1rem;color:var(--ink);
+  background:var(--sunken);border:1px solid var(--line);border-radius:3px;
+  padding:11px 12px;min-height:46px;
+}
+.vcell input[type="time"]{font-family:"IBM Plex Mono",monospace;font-weight:600}
+input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-visible{
+  outline:3px solid var(--focus);outline-offset:2px
+}
+.timerow{display:flex;gap:8px}
+.nowbtn{
+  flex:0 0 auto;background:var(--navy-soft);color:var(--navy-2);border:1px solid var(--line);
+  border-radius:3px;padding:0 14px;min-height:46px;cursor:pointer;
+  font-family:Archivo,sans-serif;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+}
+.nowbtn:hover{background:var(--navy);color:var(--on-navy);border-color:var(--navy)}
+
+.segmented{display:flex;gap:10px}
+.seg{
+  flex:1;position:relative;
+}
+.seg input{position:absolute;opacity:0;width:0;height:0}
+.seg span{
+  display:flex;align-items:center;justify-content:center;
+  min-height:46px;border:2px solid var(--line-strong);border-radius:3px;
+  font-family:Archivo,sans-serif;font-weight:700;letter-spacing:.1em;font-size:.85rem;
+  color:var(--ink-2);cursor:pointer;background:var(--surface);
+}
+.seg input:checked + span{color:#fff}
+.seg.oui input:checked + span{background:var(--green);border-color:var(--green)}
+.seg.non input:checked + span{background:var(--red);border-color:var(--red)}
+:root[data-theme="dark"] .seg input:checked + span{color:#0E131C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg input:checked + span{color:#0E131C}}
+.seg input:focus-visible + span{outline:3px solid var(--focus);outline-offset:2px}
+
+.sigwrap{position:relative}
+.sigpad{
+  width:100%;height:110px;background:var(--sunken);
+  border:1px solid var(--line);border-radius:3px;
+  touch-action:none;cursor:crosshair;display:block;
+}
+.sighint{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;color:var(--ink-3);font-size:.9rem;font-style:italic;
+}
+.sigwrap.signed .sighint{display:none}
+.clearsig{
+  position:absolute;right:8px;bottom:8px;background:var(--surface);border:1px solid var(--line);
+  border-radius:3px;padding:5px 10px;font-size:.75rem;color:var(--ink-2);cursor:pointer;
+  font-family:Archivo,sans-serif;letter-spacing:.06em;text-transform:uppercase;
+}
+.clearsig:hover{color:var(--red);border-color:var(--red)}
+
+.notes{padding:16px 18px}
+.notes textarea{min-height:88px;resize:vertical;line-height:1.5}
+
+.quote{
+  margin:22px 0 0;text-align:center;font-style:italic;color:var(--ink-3);
+  font-size:.92rem;max-width:62ch;margin-inline:auto;
+}
+
+/* ---------- Historique ---------- */
+.history{margin-top:36px}
+.hlist{display:grid;gap:8px;margin-top:12px}
+.hempty{color:var(--ink-3);font-style:italic;font-size:.95rem;padding:14px 0}
+.hrow{
+  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;
+  background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  padding:12px 16px;cursor:pointer;text-align:left;width:100%;font:inherit;color:inherit;
+}
+.hrow:hover{border-color:var(--navy-2);background:var(--navy-soft)}
+.hrow .hdate{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--navy-2);min-width:110px}
+.hrow .hagent{flex:1;min-width:120px}
+.hrow .hstat{font-family:"IBM Plex Mono",monospace;font-size:.85rem;color:var(--ink-3)}
+.pill{
+  font-family:Archivo,sans-serif;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;padding:4px 9px;border-radius:2px;
+}
+.pill.ok{background:var(--green-soft);color:var(--green)}
+.pill.ko{background:var(--red-soft);color:var(--red)}
+.pill.wip{background:var(--sunken);color:var(--ink-3)}
+
+/* ---------- Barre d'actions ---------- */
+.actionbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:var(--surface);border-top:1px solid var(--line-strong);
+  padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 -6px 20px -14px rgba(0,0,0,.5);
+}
+.progress{flex:1;min-width:200px}
+.progress .ptop{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:6px}
+.progress .plabel{font-family:Archivo,sans-serif;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.progress .pcount{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:.9rem}
+.bar{height:7px;background:var(--sunken);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--navy-2);transition:width .25s ease}
+.bar i.full{background:var(--green)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+button.btn{
+  font-family:Archivo,sans-serif;font-size:.74rem;letter-spacing:.09em;text-transform:uppercase;font-weight:600;
+  border-radius:3px;padding:0 16px;min-height:46px;cursor:pointer;
+  border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);
+}
+button.btn:hover{border-color:var(--navy-2);color:var(--navy-2)}
+button.btn.primary{background:var(--navy-2);border-color:var(--navy-2);color:#fff}
+button.btn.primary:hover{filter:brightness(1.1);color:#fff}
+:root[data-theme="dark"] button.btn.primary{color:#0E131C}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.btn.primary{color:#0E131C}}
+.saved{font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--ink-3);white-space:nowrap}
+
+/* ---------- Dialogue export ---------- */
+dialog{
+  border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--ink);
+  max-width:min(720px,94vw);width:100%;padding:0;box-shadow:0 24px 60px -20px rgba(0,0,0,.5);
+}
+dialog::backdrop{background:rgba(10,15,24,.55)}
+.dlg-head{background:var(--navy);color:var(--on-navy);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.dlg-head h3{font-size:.9rem;letter-spacing:.1em;text-transform:uppercase}
+.dlg-body{padding:20px;display:grid;gap:14px}
+.dlg-body p{margin:0;color:var(--ink-2);font-size:.94rem}
+.dlg-body textarea{width:100%;min-height:180px;font-family:"IBM Plex Mono",monospace;font-size:.8rem;resize:vertical}
+.dlg-actions{display:flex;gap:8px;flex-wrap:wrap}
+.closex{background:transparent;border:0;color:rgba(255,255,255,.8);font-size:1.5rem;line-height:1;cursor:pointer;padding:0 4px}
+.closex:hover{color:#fff}
+
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:110px;z-index:60;
+  background:var(--navy);color:var(--on-navy);padding:12px 20px;border-radius:3px;
+  font-size:.92rem;box-shadow:var(--shadow);opacity:0;pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+
+/* ---------- Tablette / mobile ---------- */
+@media (max-width:960px){
+  body{padding-bottom:172px}
+  .tablehead{display:none}
+  .slots{border-radius:3px;border-top:1px solid var(--line)}
+  .slot{grid-template-columns:1fr;gap:0}
+  .slot > div{border-right:0;border-bottom:1px dashed var(--line)}
+  .slot > div:last-child{border-bottom:0}
+  .slot-time{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--navy-soft);font-size:1.05rem;padding:12px 14px;
+  }
+  .slot-time::after{content:attr(data-count);font-size:.75rem;color:var(--ink-3);font-weight:500}
+  .val{flex-direction:row;gap:10px;justify-content:flex-start}
+  .val::before{
+    content:"Validation";font-family:Archivo,sans-serif;font-size:.66rem;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-3);margin-right:auto;
+  }
+  .haccp::before{
+    content:"Rappel HACCP";display:block;font-family:Archivo,sans-serif;font-size:.62rem;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px;
+  }
+  .masthead{flex-direction:column}
+  .masthead-side{align-items:stretch;width:100%}
+  .datefield{justify-content:space-between}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+}
+
+/* ---------- Impression ---------- */
+@media print{
+  body{background:#fff;color:#000;padding:0;font-size:11pt}
+  .actionbar,.themebtn,.nowbtn,.clearsig,.history,.toast,dialog{display:none !important}
+  .sheet{max-width:none;padding:0}
+  .masthead{background:#12336B !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .slot,.extra,.validation,.missions{break-inside:avoid}
+  .tablehead{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .task input{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <h1>Check-list &amp; Hygiène Petit Déjeuner</h1>
+      <div class="sub">Hôtel Ibis Sisteron — Respect des procédures HACCP &amp; Passage de consignes</div>
+    </div>
+    <div class="masthead-side">
+      <div class="datefield">
+        <label for="fiche-date">Date du service</label>
+        <input type="date" id="fiche-date" class="date-input">
+      </div>
+      <div class="datehuman" id="date-human"></div>
+      <button type="button" class="themebtn" id="theme-toggle">Mode sombre</button>
+    </div>
+  </header>
+
+  <section class="missions">
+    <p><strong>Mission principale :</strong> Accueil et service clients prioritaires en salle.</p>
+    <p><strong>Mission secondaire obligatoire :</strong> Respect strict du plan HACCP, entretien permanent et remise en état complète de la cuisine et de la plonge avant 11h30.</p>
+  </section>
+
+  <h2 class="section-title"><span class="num">1.</span> Déroulé et tâches chronologiques <span class="rule"></span></h2>
+
+  <div class="tablehead" aria-hidden="true">
+    <div>Horaire</div>
+    <div>Tâches &amp; actions opérationnelles</div>
+    <div>Rappel HACCP / Consignes</div>
+    <div>Val.</div>
+  </div>
+  <div class="slots" id="slots"></div>
+
+  <section class="extra">
+    <h3>Tâches supplémentaires &amp; remise en état plonge (impératif)</h3>
+    <div class="tasklist" id="extra-tasks"></div>
+  </section>
+
+  <h2 class="section-title"><span class="num">2.</span> Validation &amp; transmission de fin de service <span class="rule"></span></h2>
+
+  <section class="validation">
+    <div class="vhead">Fin de service — 11h00</div>
+    <div class="vgrid">
+      <div class="vcell">
+        <label for="agent">Agent petit déjeuner (nom / prénom)</label>
+        <input type="text" id="agent" autocomplete="name" placeholder="Nom et prénom">
+      </div>
+      <div class="vcell">
+        <label for="endtime">Heure de fin de cleaning</label>
+        <div class="timerow">
+          <input type="time" id="endtime">
+          <button type="button" class="nowbtn" id="now-btn">Maintenant</button>
+        </div>
+      </div>
+      <div class="vcell">
+        <span class="flabel">Établissement &amp; plonge conformes</span>
+        <div class="segmented">
+          <label class="seg oui"><input type="radio" name="conforme" value="OUI"><span>Oui</span></label>
+          <label class="seg non"><input type="radio" name="conforme" value="NON"><span>Non</span></label>
+        </div>
+      </div>
+      <div class="vcell sig">
+        <span class="flabel">Signature agent</span>
+        <div class="sigwrap" id="sigwrap">
+          <canvas class="sigpad" id="sigpad"></canvas>
+          <div class="sighint">Signer avec le doigt</div>
+          <button type="button" class="clearsig" id="clear-sig">Effacer</button>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <label class="flabel" for="notes">Observations &amp; anomalies constatées</label>
+      <textarea id="notes" placeholder="Rupture de stock, T° non conforme, matériel en panne, produit jeté…"></textarea>
+    </div>
+  </section>
+
+  <p class="quote">« La satisfaction client et l'esprit d'équipe reposent sur la rigueur de chacun. La cuisine et la plonge doivent être rendues parfaitement propres et prêtes pour le service du midi. »</p>
+
+  <section class="history">
+    <h2 class="section-title">Fiches enregistrées <span class="rule"></span></h2>
+    <div class="hlist" id="hlist"></div>
+  </section>
+
+</div>
+
+<div class="actionbar">
+  <div class="progress">
+    <div class="ptop">
+      <span class="plabel">Avancement du service</span>
+      <span class="pcount" id="pcount">0 / 0</span>
+    </div>
+    <div class="bar"><i id="pbar"></i></div>
+  </div>
+  <span class="saved" id="saved-at">—</span>
+  <div class="actions">
+    <button type="button" class="btn" id="print-btn">Imprimer / PDF</button>
+    <button type="button" class="btn" id="export-btn">Exporter</button>
+    <button type="button" class="btn" id="reset-btn">Réinitialiser</button>
+    <button type="button" class="btn primary" id="close-btn">Clôturer la fiche</button>
+  </div>
+</div>
+
+<dialog id="export-dlg">
+  <div class="dlg-head">
+    <h3>Exporter les fiches</h3>
+    <button type="button" class="closex" id="dlg-close" aria-label="Fermer">&times;</button>
+  </div>
+  <div class="dlg-body">
+    <div class="dlg-actions">
+      <button type="button" class="btn" id="mk-csv">Tableau CSV (Excel)</button>
+      <button type="button" class="btn" id="mk-json">Sauvegarde complète (JSON)</button>
+    </div>
+    <p id="dlg-note">Choisissez un format : le contenu du fichier s'affiche ci-dessous.</p>
+    <textarea id="dlg-out" readonly spellcheck="false"></textarea>
+    <div class="dlg-actions">
+      <button type="button" class="btn primary" id="dl-file">Enregistrer le fichier</button>
+      <button type="button" class="btn" id="copy-file">Copier le contenu</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============ Contenu de la fiche ============ */
+  var SLOTS = [
+    { time:"06h00", tasks:[
+        "Prise de poste (T-shirt propre, badge, surchaussures).",
+        "Prise des consignes réception (Nb de PDJ + cuissons).",
+        "Remplir le bac de plonge avec produit adapté."
+      ],
+      haccp:{ html:"Contrôle visuel propreté zone" } },
+
+    { time:"06h00 – 08h00", tasks:[
+        "Relevé T° sur tablette (Profil <i>Ibis Petit Déjeuner</i> &gt; CONTRÔLE MATÉRIEL).",
+        "Vérification congélateurs coffres/verticaux, chambre froide, frigos, timbres inox."
+      ],
+      haccp:{ html:"<b>Normes T° :</b><span class=\"norm\">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span>" } },
+
+    { time:"07h30", tasks:[
+        "Tour de la chambre froide (vérifier doublons prêts).",
+        "Rangement stocks congelés cuisine si nécessaire.",
+        "Nettoyage des tables au fur et à mesure des départs clients."
+      ],
+      haccp:{ html:"Rotation des stocks (FIFO)" } },
+
+    { time:"08h00", tasks:[
+        { html:"Relevé T° buffet sur tablette : <b>Fromage blanc &amp; Jambon blanc.</b>", key:true },
+        "Relevé T° banque froide.",
+        "Vider et nettoyer les machines à café.",
+        "Remplissage du buffet &amp; accueil clients."
+      ],
+      haccp:{ html:"Si T° produit &gt; 10°C :<br>Jeter et remplacer !", cls:"alert" } },
+
+    { time:"08h30", tasks:[
+        "Point sur le nombre de petits-déjeuners restants.",
+        "Préparation des étiquettes (alerte DLC/DLUO).",
+        { html:"Avancer la plonge au fur et à mesure.", key:true }
+      ],
+      haccp:{ html:"Ne rien laisser s'accumuler en plonge" } },
+
+    { time:"10h00", tasks:[
+        "Relevé T° final des produits et du buffet sur la tablette.",
+        "Débarrassage et rangement buffet froid et sec + nettoyage.",
+        "Nettoyage plan de travail cuisine / dessert.",
+        { html:"Finition &amp; nettoyage complet de la plonge.", key:true }
+      ],
+      haccp:{ html:"Enregistrement tablette obligatoire" } },
+
+    { time:"11h00", tasks:[
+        { html:"Vérification finale cuisine / plonge (état nickel avant arrivée équipe midi).", key:true },
+        "Nettoyage des tables, machines à café.",
+        "Passage aspirateur salle + Pergola."
+      ],
+      haccp:{ html:"Livraison plonge nickel exigée", cls:"strong" } },
+
+    { time:"11h30", tasks:[
+        "Pause puis départ service Étages."
+      ],
+      haccp:{ html:"Passage de consignes" } }
+  ];
+
+  var EXTRA = [
+    { html:"<em>Mardi / Jeudi :</em> Réception et rangement complet des commandes PDJ." },
+    { html:"<em>Contrôle propreté plonge :</em> À 14h, l'équipe du midi valide l'état de propreté laissé sur la tablette. Aucun ustensile ou vaisselle du petit-déjeuner ne doit rester dans l'évier ou sur les égoûtoirs." }
+  ];
+
+  /* ============ Stockage ============ */
+  var NS = "ibis-pdj-v2";
+  var store = {
+    get:function(k,d){ try{ var v=localStorage.getItem(NS+":"+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+    set:function(k,v){ try{ localStorage.setItem(NS+":"+k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+    del:function(k){ try{ localStorage.removeItem(NS+":"+k); }catch(e){} },
+    keys:function(){ try{ return store.get("index",[]); }catch(e){ return []; } }
+  };
+
+  function todayISO(){
+    var d=new Date(), p=function(n){return (n<10?"0":"")+n;};
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate());
+  }
+  var JOURS=["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+  var MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  function longDate(iso){
+    var p=(iso||"").split("-");
+    if(p.length!==3) return "";
+    var d=new Date(+p[0], +p[1]-1, +p[2]);
+    if(isNaN(d.getTime())) return "";
+    var s=JOURS[d.getDay()]+" "+(+p[2])+" "+MOIS[+p[1]-1]+" "+p[0];
+    return s.charAt(0).toUpperCase()+s.slice(1);
+  }
+  function frDate(iso){
+    if(!iso) return "";
+    var p=iso.split("-");
+    if(p.length!==3) return iso;
+    return p[2]+"/"+p[1]+"/"+p[0];
+  }
+
+  var TOTAL = 0;
+  SLOTS.forEach(function(s){ TOTAL += s.tasks.length; });
+  TOTAL += EXTRA.length;
+
+  function blankState(date){
+    return { date:date, checks:{}, agent:"", endTime:"", conforme:"", notes:"", signature:"", closed:false, closedAt:"" };
+  }
+
+  var state = null;
+  var els = {};
+
+  /* ============ Rendu ============ */
+  function taskEl(id, item){
+    var label = document.createElement("label");
+    label.className = "task" + (item.key ? " key" : "");
+    var input = document.createElement("input");
+    input.type = "checkbox";
+    input.id = id;
+    input.setAttribute("data-id", id);
+    var span = document.createElement("span");
+    span.innerHTML = item.html;
+    label.appendChild(input);
+    label.appendChild(span);
+    input.addEventListener("change", function(){
+      state.checks[id] = input.checked;
+      refresh();
+      persist();
+    });
+    return label;
+  }
+
+  function normalize(t){ return typeof t === "string" ? { html:t } : t; }
+
+  function render(){
+    var slots = document.getElementById("slots");
+    slots.textContent = "";
+    SLOTS.forEach(function(slot, si){
+      var row = document.createElement("div");
+      row.className = "slot";
+
+      var time = document.createElement("div");
+      time.className = "slot-time";
+      time.textContent = slot.time;
+      time.setAttribute("data-slot", si);
+
+      var cell = document.createElement("div");
+      var list = document.createElement("div");
+      list.className = "tasklist";
+      slot.tasks.forEach(function(t, ti){
+        list.appendChild(taskEl("t"+si+"-"+ti, normalize(t)));
+      });
+      cell.appendChild(list);
+
+      var haccp = document.createElement("div");
+      haccp.className = "haccp" + (slot.haccp.cls ? " "+slot.haccp.cls : "");
+      haccp.innerHTML = slot.haccp.html;
+
+      var val = document.createElement("div");
+      val.className = "val";
+      val.setAttribute("data-val", si);
+      val.innerHTML = '<span class="mark">&#10003;</span><span class="count"></span>';
+
+      row.appendChild(time); row.appendChild(cell); row.appendChild(haccp); row.appendChild(val);
+      slots.appendChild(row);
+    });
+
+    var extra = document.getElementById("extra-tasks");
+    extra.textContent = "";
+    EXTRA.forEach(function(t, i){ extra.appendChild(taskEl("x"+i, normalize(t))); });
+  }
+
+  /* ============ Synchronisation UI ============ */
+  function refresh(){
+    var done = 0;
+    SLOTS.forEach(function(slot, si){
+      var n = slot.tasks.length, k = 0;
+      for(var ti=0; ti<n; ti++){ if(state.checks["t"+si+"-"+ti]) k++; }
+      done += k;
+      var val = document.querySelector('[data-val="'+si+'"]');
+      if(val){
+        val.classList.toggle("done", k===n);
+        val.querySelector(".count").textContent = k+"/"+n;
+      }
+      var time = document.querySelector('[data-slot="'+si+'"]');
+      if(time) time.setAttribute("data-count", k+"/"+n);
+    });
+    EXTRA.forEach(function(_, i){ if(state.checks["x"+i]) done++; });
+
+    var pct = TOTAL ? Math.round(done/TOTAL*100) : 0;
+    els.pcount.textContent = done + " / " + TOTAL + "  (" + pct + "%)";
+    els.pbar.style.width = pct + "%";
+    els.pbar.classList.toggle("full", done===TOTAL);
+    return done;
+  }
+
+  function applyState(){
+    els.date.value = state.date;
+    els.dateHuman.textContent = longDate(state.date);
+    els.agent.value = state.agent || "";
+    els.endtime.value = state.endTime || "";
+    els.notes.value = state.notes || "";
+    var radios = document.getElementsByName("conforme");
+    for(var i=0;i<radios.length;i++){ radios[i].checked = (radios[i].value === state.conforme); }
+    document.querySelectorAll('.task input').forEach(function(inp){
+      inp.checked = !!state.checks[inp.getAttribute("data-id")];
+    });
+    loadSignature();
+    refresh();
+  }
+
+  /* ============ Persistance ============ */
+  var saveTimer = null;
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var ok = store.set("fiche:"+state.date, state);
+      var idx = store.get("index", []);
+      if(idx.indexOf(state.date) === -1){ idx.push(state.date); idx.sort(); store.set("index", idx); }
+      var d = new Date(), p=function(n){return (n<10?"0":"")+n;};
+      els.savedAt.textContent = ok ? ("Enregistré à " + p(d.getHours()) + ":" + p(d.getMinutes())) : "Sauvegarde indisponible";
+      renderHistory();
+    }, 350);
+  }
+
+  function loadDate(date){
+    state = store.get("fiche:"+date, null) || blankState(date);
+    state.date = date;
+    applyState();
+    els.savedAt.textContent = state.closed
+      ? "Fiche clôturée"
+      : (store.get("fiche:"+date, null) ? "Fiche chargée" : "Nouvelle fiche");
+  }
+
+  /* ============ Signature ============ */
+  var ctx, drawing=false, hasInk=false;
+  function setupSignature(){
+    var cv = els.sigpad;
+    function size(){
+      var r = cv.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      var data = hasInk ? cv.toDataURL() : null;
+      cv.width = Math.max(1, Math.round(r.width*dpr));
+      cv.height = Math.max(1, Math.round(r.height*dpr));
+      ctx = cv.getContext("2d");
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = 2.2; ctx.lineCap="round"; ctx.lineJoin="round";
+      ctx.strokeStyle = getComputedStyle(document.body).color;
+      if(data){ var img=new Image(); img.onload=function(){ ctx.drawImage(img,0,0,r.width,r.height); }; img.src=data; }
+    }
+    size();
+    var ro = window.ResizeObserver ? new ResizeObserver(size) : null;
+    if(ro) ro.observe(cv); else window.addEventListener("resize", size);
+
+    function pos(e){ var r=cv.getBoundingClientRect(); return { x:e.clientX-r.left, y:e.clientY-r.top }; }
+    cv.addEventListener("pointerdown", function(e){
+      e.preventDefault(); cv.setPointerCapture(e.pointerId);
+      drawing=true; hasInk=true;
+      els.sigwrap.classList.add("signed");
+      var p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x+0.1,p.y); ctx.stroke();
+    });
+    cv.addEventListener("pointermove", function(e){
+      if(!drawing) return;
+      var p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke();
+    });
+    ["pointerup","pointercancel","pointerleave"].forEach(function(ev){
+      cv.addEventListener(ev, function(){
+        if(!drawing) return;
+        drawing=false;
+        try{ state.signature = cv.toDataURL("image/png"); }catch(e){}
+        persist();
+      });
+    });
+    els.clearSig.addEventListener("click", function(){
+      ctx.clearRect(0,0,cv.width,cv.height);
+      hasInk=false; state.signature="";
+      els.sigwrap.classList.remove("signed");
+      persist();
+    });
+  }
+
+  function loadSignature(){
+    var cv = els.sigpad;
+    if(!ctx) return;
+    var r = cv.getBoundingClientRect();
+    ctx.clearRect(0,0,cv.width,cv.height);
+    hasInk = false;
+    els.sigwrap.classList.remove("signed");
+    if(state.signature){
+      var img = new Image();
+      img.onload = function(){ ctx.drawImage(img, 0, 0, r.width, r.height); };
+      img.src = state.signature;
+      hasInk = true;
+      els.sigwrap.classList.add("signed");
+    }
+  }
+
+  /* ============ Historique ============ */
+  function fiches(){
+    return store.get("index", []).slice().sort().reverse().map(function(d){
+      return store.get("fiche:"+d, null);
+    }).filter(Boolean);
+  }
+
+  function countDone(f){
+    var n = 0;
+    for(var k in f.checks){ if(f.checks[k]) n++; }
+    return n;
+  }
+
+  function renderHistory(){
+    var list = document.getElementById("hlist");
+    list.textContent = "";
+    var all = fiches();
+    if(!all.length){
+      var e = document.createElement("p");
+      e.className = "hempty";
+      e.textContent = "Aucune fiche enregistrée pour l'instant. La fiche du jour se sauvegarde automatiquement.";
+      list.appendChild(e);
+      return;
+    }
+    all.forEach(function(f){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "hrow";
+      var pill = f.closed
+        ? (f.conforme === "NON" ? '<span class="pill ko">Non conforme</span>' : '<span class="pill ok">Clôturée</span>')
+        : '<span class="pill wip">En cours</span>';
+      b.innerHTML =
+        '<span class="hdate">'+frDate(f.date)+'</span>' +
+        '<span class="hagent">'+(f.agent ? escapeHtml(f.agent) : '<i style="color:var(--ink-3)">Agent non renseigné</i>')+'</span>' +
+        '<span class="hstat">'+countDone(f)+'/'+TOTAL+' tâches'+(f.endTime ? ' · fin '+f.endTime : '')+'</span>' +
+        pill;
+      b.addEventListener("click", function(){
+        els.date.value = f.date;
+        loadDate(f.date);
+        window.scrollTo({ top:0, behavior:"smooth" });
+      });
+      list.appendChild(b);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+    });
+  }
+
+  /* ============ Export ============ */
+  function plain(html){
+    var d = document.createElement("div");
+    d.innerHTML = html;
+    return (d.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  var LABELS = (function(){
+    var out = [];
+    SLOTS.forEach(function(s, si){
+      s.tasks.forEach(function(t, ti){
+        out.push({ id:"t"+si+"-"+ti, label:s.time+" — "+plain(normalize(t).html) });
+      });
+    });
+    EXTRA.forEach(function(t, i){ out.push({ id:"x"+i, label:"Supplémentaire — "+plain(normalize(t).html) }); });
+    return out;
+  })();
+
+  function csvCell(v){
+    v = v == null ? "" : String(v);
+    return /[";\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  }
+
+  function buildCSV(){
+    var head = ["Date","Agent","Heure fin cleaning","Conformes","Taches validees","Total taches","Observations"];
+    LABELS.forEach(function(l){ head.push(l.label); });
+    var rows = [head.map(csvCell).join(";")];
+    fiches().slice().reverse().forEach(function(f){
+      var r = [ frDate(f.date), f.agent, f.endTime, f.conforme, countDone(f), TOTAL, (f.notes||"").replace(/\r?\n/g," ") ];
+      LABELS.forEach(function(l){ r.push(f.checks[l.id] ? "OUI" : "NON"); });
+      rows.push(r.map(csvCell).join(";"));
+    });
+    return "﻿" + rows.join("\r\n");
+  }
+
+  function buildJSON(){
+    return JSON.stringify({
+      document:"Check-list & Hygiène Petit Déjeuner — Hôtel Ibis Sisteron",
+      exporte_le:new Date().toISOString(),
+      total_taches:TOTAL,
+      fiches:fiches()
+    }, null, 2);
+  }
+
+  var current = { name:"", mime:"", text:"" };
+
+  function showExport(kind){
+    if(kind === "csv"){
+      current = { name:"checklist-pdj-"+todayISO()+".csv", mime:"text/csv;charset=utf-8", text:buildCSV() };
+    } else {
+      current = { name:"checklist-pdj-"+todayISO()+".json", mime:"application/json;charset=utf-8", text:buildJSON() };
+    }
+    els.dlgOut.value = current.text;
+    els.dlgNote.textContent = "Fichier prêt : « " + current.name + " » — " + fiches().length + " fiche(s). Enregistrez-le sur la tablette, ou copiez le contenu pour le coller ailleurs.";
+  }
+
+  /* Enregistrement du fichier : via l'hôte claude.ai quand il est présent
+     (page publiée en ligne), sinon par téléchargement direct du navigateur
+     (fichier HTML posé sur la tablette). */
+  var hostSave = null;
+  if(window.claude && typeof window.claude.use === "function"){
+    try{
+      window.claude.use("downloads").then(function(ns){ hostSave = ns; }, function(){});
+    }catch(e){}
+  }
+
+  function browserSave(){
+    var blob = new Blob([current.text], { type: current.mime });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = current.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    toast("Enregistrement de « "+current.name+" » lancé.");
+  }
+
+  function download(){
+    if(!current.text){ toast("Choisissez d'abord un format."); return; }
+    if(hostSave && hostSave.save){
+      hostSave.save({ filename:current.name, data:current.text }).then(function(){
+        toast("« "+current.name+" » enregistré.");
+      }, function(err){
+        var code = err && err.code;
+        if(code === "extension_not_enabled" || code === "rejected_extension"){
+          var alt = current.name.replace(/\.[^.]+$/, "") + ".txt";
+          hostSave.save({ filename:alt, data:current.text }).then(function(){
+            toast("« "+alt+" » enregistré (renommez-le en .csv pour Excel).");
+          }, function(){ toast("Enregistrement refusé — utilisez « Copier le contenu »."); });
+        } else if(code === "declined"){
+          toast("Enregistrement annulé.");
+        } else {
+          toast("Enregistrement indisponible ici — utilisez « Copier le contenu ».");
+        }
+      });
+      return;
+    }
+    try{ browserSave(); }
+    catch(e){ toast("Enregistrement bloqué ici — utilisez « Copier le contenu »."); }
+  }
+
+  function copyOut(){
+    if(!current.text){ toast("Choisissez d'abord un format."); return; }
+    els.dlgOut.focus(); els.dlgOut.select();
+    var done = false;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(current.text).then(function(){ toast("Contenu copié."); }, function(){ legacy(); });
+      return;
+    }
+    legacy();
+    function legacy(){
+      try{ done = document.execCommand("copy"); }catch(e){}
+      toast(done ? "Contenu copié." : "Copie impossible — sélectionnez le texte manuellement.");
+    }
+  }
+
+  /* ============ Divers ============ */
+  var toastTimer = null;
+  function toast(msg){
+    els.toast.textContent = msg;
+    els.toast.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ els.toast.classList.remove("show"); }, 3200);
+  }
+
+  function applyTheme(t){
+    if(t === "dark" || t === "light"){ document.documentElement.setAttribute("data-theme", t); }
+    else { document.documentElement.removeAttribute("data-theme"); }
+    var dark = t === "dark" || (t !== "light" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    els.theme.textContent = dark ? "Mode clair" : "Mode sombre";
+  }
+
+  /* ============ Démarrage ============ */
+  function init(){
+    els = {
+      date:document.getElementById("fiche-date"),
+      agent:document.getElementById("agent"),
+      endtime:document.getElementById("endtime"),
+      notes:document.getElementById("notes"),
+      sigpad:document.getElementById("sigpad"),
+      sigwrap:document.getElementById("sigwrap"),
+      clearSig:document.getElementById("clear-sig"),
+      pcount:document.getElementById("pcount"),
+      pbar:document.getElementById("pbar"),
+      savedAt:document.getElementById("saved-at"),
+      toast:document.getElementById("toast"),
+      theme:document.getElementById("theme-toggle"),
+      dlg:document.getElementById("export-dlg"),
+      dlgOut:document.getElementById("dlg-out"),
+      dlgNote:document.getElementById("dlg-note"),
+      dateHuman:document.getElementById("date-human")
+    };
+
+    render();
+    setupSignature();
+
+    var startDate = todayISO();
+    els.date.value = startDate;
+    loadDate(startDate);
+    renderHistory();
+
+    els.date.addEventListener("change", function(){
+      var d = els.date.value || todayISO();
+      loadDate(d);
+    });
+
+    els.agent.addEventListener("input", function(){ state.agent = els.agent.value; persist(); });
+    els.endtime.addEventListener("input", function(){ state.endTime = els.endtime.value; persist(); });
+    els.notes.addEventListener("input", function(){ state.notes = els.notes.value; persist(); });
+    Array.prototype.forEach.call(document.getElementsByName("conforme"), function(r){
+      r.addEventListener("change", function(){ state.conforme = r.value; persist(); });
+    });
+
+    document.getElementById("now-btn").addEventListener("click", function(){
+      var d = new Date(), p=function(n){return (n<10?"0":"")+n;};
+      els.endtime.value = p(d.getHours())+":"+p(d.getMinutes());
+      state.endTime = els.endtime.value; persist();
+    });
+
+    document.getElementById("print-btn").addEventListener("click", function(){ window.print(); });
+
+    document.getElementById("export-btn").addEventListener("click", function(){
+      current = { name:"", mime:"", text:"" };
+      els.dlgOut.value = "";
+      els.dlgNote.textContent = "Choisissez un format : le contenu du fichier s'affiche ci-dessous.";
+      if(els.dlg.showModal) els.dlg.showModal(); else els.dlg.setAttribute("open","");
+    });
+    document.getElementById("dlg-close").addEventListener("click", function(){
+      if(els.dlg.close) els.dlg.close(); else els.dlg.removeAttribute("open");
+    });
+    document.getElementById("mk-csv").addEventListener("click", function(){ showExport("csv"); });
+    document.getElementById("mk-json").addEventListener("click", function(){ showExport("json"); });
+    document.getElementById("dl-file").addEventListener("click", download);
+    document.getElementById("copy-file").addEventListener("click", copyOut);
+
+    document.getElementById("reset-btn").addEventListener("click", function(){
+      if(!window.confirm("Effacer toutes les cases et les informations de la fiche du "+frDate(state.date)+" ?")) return;
+      state = blankState(state.date);
+      applyState();
+      persist();
+      toast("Fiche du "+frDate(state.date)+" réinitialisée.");
+    });
+
+    document.getElementById("close-btn").addEventListener("click", function(){
+      var done = refresh();
+      if(!state.agent.trim()){ els.agent.focus(); toast("Renseignez le nom de l'agent avant de clôturer."); return; }
+      if(!state.endTime){ els.endtime.focus(); toast("Renseignez l'heure de fin de cleaning."); return; }
+      if(!state.conforme){ toast("Indiquez si l'établissement et la plonge sont conformes."); return; }
+      if(done < TOTAL && !window.confirm(done+" tâche(s) sur "+TOTAL+" validées. Clôturer quand même la fiche du "+frDate(state.date)+" ?")) return;
+      state.closed = true;
+      state.closedAt = new Date().toISOString();
+      persist();
+      toast("Fiche du "+frDate(state.date)+" clôturée et enregistrée.");
+    });
+
+    var pref = store.get("theme", "auto");
+    applyTheme(pref);
+    els.theme.addEventListener("click", function(){
+      var dark = document.documentElement.getAttribute("data-theme") === "dark"
+        || (!document.documentElement.getAttribute("data-theme") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      var next = dark ? "light" : "dark";
+      store.set("theme", next);
+      applyTheme(next);
+      loadSignature();
+    });
+
+    window.addEventListener("beforeunload", function(){
+      clearTimeout(saveTimer);
+      store.set("fiche:"+state.date, state);
+    });
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
+</script>
