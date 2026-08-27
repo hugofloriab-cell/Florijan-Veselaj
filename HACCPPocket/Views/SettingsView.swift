@@ -108,6 +108,7 @@ struct SettingsView: View {
                 subscriptionSection
                 siteAndRoleSection
                 establishmentSection
+                contactSection
                 logoSection
                 operatorSection
                 teamSection
@@ -221,6 +222,34 @@ struct SettingsView: View {
     // MARK: - Logo
 
     @ViewBuilder
+    // MARK: - Contact
+
+    private var contactSection: some View {
+        Section {
+            TextField(
+                "Adresse électronique",
+                text: Bindable(preferences).contactEmail
+            )
+            .keyboardType(.emailAddress)
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+
+            Button {
+                preferences.hasCompletedOnboarding = false
+            } label: {
+                Label("Revoir l'écran de bienvenue", systemImage: "sparkles")
+            }
+        } header: {
+            Text("Contact")
+        } footer: {
+            // La nuance compte : présenter cette adresse comme un identifiant
+            // de connexion serait un mensonge, et le jour où l'utilisateur
+            // changerait de téléphone en pensant « retrouver son compte », il
+            // découvrirait qu'il n'y en a jamais eu.
+            Text("Cette adresse n'est pas un compte : l'application fonctionne sans connexion et sans serveur, et rien ne vous est demandé pour l'ouvrir. Elle sert à retrouver votre abonnement en cas de changement de téléphone, à pré-remplir vos déclarations d'incident, et à nous joindre.")
+        }
+    }
+
     private var logoSection: some View {
         if let establishment {
             Section {

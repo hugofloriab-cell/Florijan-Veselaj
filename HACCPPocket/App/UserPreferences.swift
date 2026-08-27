@@ -64,6 +64,8 @@ final class UserPreferences {
         static let shelfLifeDays = "haccp.defaultShelfLifeDays"
         static let reminders = "haccp.reminders.v2"
         static let knownOperators = "haccp.operators.v1"
+        static let contactEmail = "haccp.contactEmail"
+        static let hasCompletedOnboarding = "haccp.onboarding.done.v1"
     }
 
     private let defaults: UserDefaults
@@ -90,6 +92,27 @@ final class UserPreferences {
         didSet { defaults.set(knownOperators, forKey: Key.knownOperators) }
     }
 
+    /// Adresse de contact du responsable.
+    ///
+    /// ⚠️ Ce n'est PAS un identifiant de connexion, et l'application ne
+    /// prétend pas le contraire. Vérifier qu'une adresse appartient bien à
+    /// celui qui la saisit demande d'envoyer un message et d'en attendre la
+    /// réponse, donc un serveur — ce que cette application n'a pas et n'aura
+    /// pas, c'est le choix de départ.
+    ///
+    /// Elle sert à trois choses concrètes : pré-remplir l'expéditeur des
+    /// déclarations d'incident, retrouver un achat auprès de l'App Store en
+    /// cas de changement de téléphone, et savoir qui contacter pour du
+    /// support. Rien de plus, et rien n'en dépend pour ouvrir l'application.
+    var contactEmail: String {
+        didSet { defaults.set(contactEmail, forKey: Key.contactEmail) }
+    }
+
+    /// L'écran de première ouverture a-t-il été passé ?
+    var hasCompletedOnboarding: Bool {
+        didSet { defaults.set(hasCompletedOnboarding, forKey: Key.hasCompletedOnboarding) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
@@ -98,6 +121,8 @@ final class UserPreferences {
             ?? TrackedProduct.defaultShelfLifeDays
 
         self.knownOperators = defaults.stringArray(forKey: Key.knownOperators) ?? []
+        self.contactEmail = defaults.string(forKey: Key.contactEmail) ?? ""
+        self.hasCompletedOnboarding = defaults.bool(forKey: Key.hasCompletedOnboarding)
 
         if let data = defaults.data(forKey: Key.reminders),
            let decoded = try? JSONDecoder().decode([ReminderSlot].self, from: data) {
