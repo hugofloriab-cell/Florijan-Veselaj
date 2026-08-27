@@ -7,8 +7,12 @@ conçue pour la tablette de la cuisine.
 
 | Fichier | Usage |
 | --- | --- |
-| `checklist-petit-dejeuner.html` | **Fichier à installer sur la tablette.** Page autonome, fonctionne hors connexion. |
-| `.artifact/checklist-petit-dejeuner.html` | Même page, format publication en ligne (générée depuis le fichier ci-dessus). |
+| `checklist-petit-dejeuner.html` | **La source.** Page autonome, copiable telle quelle sur une tablette. |
+| `docs/` | **Version installable publiée sur le web** (voir ci-dessous). Générée. |
+| `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
+| `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
+
+Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
 ## Ce que fait la fiche
 
@@ -66,6 +70,39 @@ Aucune connexion Internet n'est nécessaire au quotidien.
 > détecte et affiche un bandeau d'avertissement. Le pointage des tâches et la
 > signature, eux, fonctionnent partout.
 
+## Installation recommandée : par adresse web
+
+Copier le fichier sur chaque tablette est fastidieux, et les aperçus de pièces
+jointes n'exécutent pas le script — la fiche s'affiche alors sans pouvoir être
+signée ni enregistrée. La publication web supprime ce problème.
+
+### Mise en ligne (une seule fois)
+
+Dans le dépôt GitHub : **Settings → Pages → Build and deployment**
+
+- *Source* : **Deploy from a branch**
+- *Branch* : la branche contenant ce dossier, et **`/docs`** comme répertoire
+- **Save**
+
+Au bout d'une minute, la page affiche l'adresse publique, de la forme
+`https://<compte>.github.io/<dépôt>/`.
+
+### Installation sur chaque tablette
+
+1. Ouvrir **Chrome**, saisir cette adresse.
+2. Menu **⋮ → Ajouter à l'écran d'accueil**.
+
+La fiche se lance alors en plein écran, avec sa propre icône, **sans barre
+d'adresse et sans connexion Internet** : le service worker (`docs/sw.js`) la
+conserve sur l'appareil. Seule la première ouverture demande du réseau.
+
+### Mettre à jour la fiche
+
+Modifier `checklist-petit-dejeuner.html`, lancer `python3 build.py`, incrémenter
+`CACHE` dans `docs/sw.js` (`checklist-pdj-v1` vers `v2`...), puis pousser. Les
+tablettes récupèrent la nouvelle version à leur prochaine ouverture avec réseau.
+Sans changement de `CACHE`, elles gardent l'ancienne.
+
 ## Où sont stockées les données
 
 Dans le stockage local du navigateur de la tablette (`localStorage`), sur cet appareil
@@ -85,13 +122,4 @@ utilisés pour les compteurs de validation et pour l'export. **Toute modificatio
 être reportée aux deux endroits**, en conservant les identifiants `t<créneau>-<ligne>`
 et `x<n>` des cases à cocher.
 
-Après modification, régénérer la version publication :
-
-```sh
-python3 - <<'PY'
-s = open('checklist-petit-dejeuner.html', encoding='utf-8').read()
-frag = s.split('<!--ARTIFACT-START-->')[1].split('<!--ARTIFACT-END-->')[0]
-frag = '\n'.join(l for l in frag.split('\n') if l.strip() not in ('</head>', '<body>'))
-open('.artifact/checklist-petit-dejeuner.html', 'w', encoding='utf-8').write(frag.strip() + '\n')
-PY
-```
+Après modification, régénérer les versions dérivées avec `python3 build.py`.
