@@ -319,6 +319,8 @@ struct SanitizingDTO: Codable {
 
 struct BeefOriginDTO: Codable {
     var cutName: String
+    var speciesRawValue: String?
+    var isOnMenu: Bool?
     var batchNumber: String
     var supplier: String
     var birthCountry: String
@@ -871,6 +873,8 @@ enum BackupService {
     private static func beefOriginDTO(for record: BeefOriginRecord, includePhotos: Bool) -> BeefOriginDTO {
         BeefOriginDTO(
             cutName: record.cutName,
+            speciesRawValue: record.speciesRawValue,
+            isOnMenu: record.isOnMenu,
             batchNumber: record.batchNumber,
             supplier: record.supplier,
             birthCountry: record.birthCountry,
@@ -1460,6 +1464,8 @@ enum BackupService {
         for dto in items {
             let record = BeefOriginRecord(
                 cutName: dto.cutName,
+                species: MeatSpecies(rawValue: dto.speciesRawValue ?? "") ?? .bovine,
+                isOnMenu: dto.isOnMenu ?? true,
                 batchNumber: dto.batchNumber,
                 supplier: dto.supplier,
                 birthCountry: dto.birthCountry,

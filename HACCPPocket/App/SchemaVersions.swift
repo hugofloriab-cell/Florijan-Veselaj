@@ -331,6 +331,27 @@ enum HACCPSchemaV7: VersionedSchema {
     }
 }
 
+// MARK: - Version 8
+
+/// Étend le registre d'origine des viandes au décret n° 2022-65 : l'espèce
+/// (bovine, porcine, ovine, volaille) et la présence à la carte.
+///
+/// La liste des modèles ne bouge pas — les deux propriétés ajoutées à
+/// `BeefOriginRecord` ont toutes les deux une valeur par défaut, ce qui suffit
+/// à SwiftData pour migrer seul les fiches déjà saisies : elles deviennent des
+/// viandes bovines présentes à la carte, ce qui correspond au comportement
+/// d'avant puisque le registre ne visait que le bœuf.
+enum HACCPSchemaV8: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(8, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        HACCPSchemaV7.models
+    }
+}
+
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -340,11 +361,11 @@ enum HACCPSchemaV7: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self, HACCPSchemaV8.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7, v7ToV8]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -384,5 +405,12 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
     static let v6ToV7 = MigrationStage.lightweight(
         fromVersion: HACCPSchemaV6.self,
         toVersion: HACCPSchemaV7.self
+    )
+
+    /// V7 → V8 : deux propriétés ajoutées à `BeefOriginRecord`, munies chacune
+    /// d'une valeur par défaut. Aucun modèle ajouté ni retiré.
+    static let v7ToV8 = MigrationStage.lightweight(
+        fromVersion: HACCPSchemaV7.self,
+        toVersion: HACCPSchemaV8.self
     )
 }

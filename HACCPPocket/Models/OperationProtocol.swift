@@ -667,14 +667,24 @@ extension OperationProtocol {
         commonMistake: "Attendre de voir un nuisible pour agir. Quand on en voit un en journée, la population est déjà installée depuis longtemps."
     )
 
-    // MARK: Origine de la viande bovine
+    // MARK: Origine des viandes
 
     static let beefOrigin = OperationProtocol(
         id: "protocol.beef",
-        title: "Origine de la viande bovine",
-        subtitle: "Trois pays, à lire sur l'étiquette du fournisseur",
+        title: "Origine des viandes",
+        subtitle: "Toutes les viandes de la carte, trois pays chacune",
         systemImage: "text.badge.checkmark",
         steps: [
+            ProtocolStep(
+                id: "beef.0",
+                title: "Listez toutes les viandes de votre carte",
+                detail: "Bœuf, porc, agneau, volaille : chaque viande proposée doit figurer sur l'affichage. Si vous en servez dix, les dix sont listées, une par une.",
+                note: RegulatoryNote(
+                    title: "Ce n'est plus seulement le bœuf",
+                    explanation: "L'obligation ne visait que la viande bovine jusqu'en 2022. Le décret n° 2022-65 du 26 janvier 2022 l'a étendue aux viandes porcine, ovine et de volaille servies en restauration. Un établissement qui n'affiche que l'origine de son bœuf n'est plus à jour.",
+                    origin: .regulation("Décret n° 2022-65 modifiant le décret n° 2002-1455")
+                )
+            ),
             ProtocolStep(
                 id: "beef.1",
                 title: "Cherchez les trois pays sur l'étiquette",
@@ -694,13 +704,19 @@ extension OperationProtocol {
                 note: RegulatoryNote(
                     title: "Pourquoi trois pays et pas un",
                     explanation: "Un animal peut naître dans un pays, être engraissé dans un autre et abattu dans un troisième. Écrire « Origine France » parce que l'abattoir est français, quand l'animal est né et élevé ailleurs, est une information trompeuse au sens du droit de la consommation.",
-                    origin: .regulation("Décret n° 2002-1465 relatif à l'étiquetage des viandes bovines")
+                    origin: .regulation("Décret n° 2002-1455 relatif à l'étiquetage des viandes en restauration")
                 )
             ),
             ProtocolStep(
                 id: "beef.4",
                 title: "Mettez à jour à chaque lot",
                 detail: "L'origine change d'un arrivage à l'autre. L'affichage aussi.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "beef.5",
+                title: "Éditez le document et affichez-le",
+                detail: "Le registre produit un document daté reprenant toutes les viandes à la carte avec leurs trois pays. Imprimez-le et affichez-le en salle, ou reportez les mentions sur vos cartes et menus.",
                 note: nil
             )
         ],

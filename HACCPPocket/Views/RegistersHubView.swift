@@ -210,7 +210,7 @@ struct RegistersHubView: View {
                 MenuListView()
             }
             tile(
-                "Origine bovine",
+                "Origine des viandes",
                 systemImage: "text.badge.checkmark",
                 tint: .brown,
                 badge: incompleteBeef
@@ -404,8 +404,10 @@ struct RegistersHubView: View {
         dishes.filter { $0.isAvailable && $0.needsAllergenReview }.count
     }
 
+    /// Seules les viandes réellement proposées comptent : celles retirées de
+    /// la carte n'ont pas à figurer sur l'affichage en salle.
     private var incompleteBeef: Int {
-        beefOrigins.filter { !$0.isComplete }.count
+        beefOrigins.filter { $0.isOnMenu && !$0.isComplete }.count
     }
 
     private var documentsToHandle: Int {

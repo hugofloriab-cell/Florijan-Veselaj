@@ -2,7 +2,12 @@
 //  BeefOriginView.swift
 //  HACCPPocket
 //
-//  Traçabilité de l'origine de la viande bovine.
+//  Traçabilité de l'origine des viandes servies.
+//
+//  Le registre ne suit pas seulement le bœuf : depuis le décret n° 2022-65,
+//  le porc, le mouton et la volaille sont visés de la même façon. Chaque
+//  viande proposée à la carte y figure séparément — dix viandes au menu, dix
+//  fiches — et l'écran produit le document daté à afficher en salle.
 //
 
 import SwiftUI
@@ -17,15 +22,23 @@ struct BeefOriginListView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(SubscriptionManager.self) private var subscription
+    @Environment(UserPreferences.self) private var preferences
 
     @Query(sort: \BeefOriginRecord.receivedAt, order: .reverse)
     private var records: [BeefOriginRecord]
 
+    @Query private var establishments: [Establishment]
+
     @State private var isCreating = false
     @State private var editedRecord: BeefOriginRecord?
     @State private var showsPaywall = false
+    @State private var sheetURL: URL?
+    @State private var isPreparing = false
+    @State private var errorMessage: String?
 
-    private var incomplete: [BeefOriginRecord] { records.filter { !$0.isComplete } }
+    private var onMenu: [BeefOriginRecord] { records.filter(\.isOnMenu) }
+    private var offMenu: [BeefOriginRecord] { records.filter { !$0.isOnMenu } }
+    private var incomplete: [BeefOriginRecord] { onMenu.filter { !$0.isComplete } }
 
     var body: some View {
         List {
@@ -34,11 +47,11 @@ struct BeefOriginListView: View {
             if records.isEmpty {
                 Section {
                     ContentUnavailableView {
-                        Label("Aucune origine enregistrée", systemImage: "text.badge.checkmark")
+                        Label("Aucune viande déclarée", systemImage: "text.badge.checkmark")
                     } description: {
-                        Text("Servir de la viande bovine oblige à informer le client de son origine : pays de naissance, d'élevage et d'abattage. Ce registre garde la preuve, lot par lot.")
+                        Text("Toutes les viandes de votre carte doivent être listées avec leur origine : bovine, porcine, ovine et volaille depuis le décret de 2022. Listez-les ici, l'application produit le document à afficher.")
                     } actions: {
-                        Button("Enregistrer un lot") { create() }
+                        Button("Déclarer une viande") { create() }
                             .buttonStyle(.borderedProminent)
                     }
                     .listRowBackground(Color.clear)
@@ -53,35 +66,119 @@ struct BeefOriginListView: View {
                 } header: {
                     Text("À compléter")
                 } footer: {
-                    Text("Les trois pays doivent être connus pour pouvoir afficher quoi que ce soit en salle.")
+                    Text("Les trois pays doivent être connus pour afficher quoi que ce soit. Une origine incomplète apparaîtra en rouge sur le document.")
                 }
             }
 
-            let complete = records.filter(\.isComplete)
+            let complete = onMenu.filter(\.isComplete)
             if !complete.isEmpty {
-                Section("Lots tracés") {
+                Section {
                     ForEach(complete) { record in
                         row(record)
                     }
+                } header: {
+                    Text("À la carte")
                 }
             }
+
+            if !offMenu.isEmpty {
+                Section {
+                    ForEach(offMenu) { record in
+                        row(record)
+                    }
+                } header: {
+                    Text("Retirées de la carte")
+                } footer: {
+                    Text("Conservées pour l'historique : elles ne figurent pas sur le document affiché.")
+                }
+            }
+
+            if !onMenu.isEmpty {
+                documentSection
+            }
         }
-        .navigationTitle("Origine viande bovine")
+        .navigationTitle("Origine des viandes")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button { create() } label: {
-                    Label("Enregistrer un lot", systemImage: "plus")
+                    Label("Déclarer une viande", systemImage: "plus")
                 }
             }
         }
-        .sheet(isPresented: $isCreating) {
+        // Après toute modification, le document déjà préparé ne reflète plus
+        // le registre. On l'oublie plutôt que de laisser imprimer une version
+        // périmée : ce papier est affiché devant les clients.
+        .sheet(isPresented: $isCreating, onDismiss: { sheetURL = nil }) {
             BeefOriginEditorView(record: nil, context: modelContext)
         }
-        .sheet(item: $editedRecord) { record in
+        .sheet(item: $editedRecord, onDismiss: { sheetURL = nil }) { record in
             BeefOriginEditorView(record: record, context: modelContext)
         }
         .sheet(isPresented: $showsPaywall) { PaywallView() }
+        .alert("Document", isPresented: errorBinding, presenting: errorMessage) { _ in
+            Button("Fermer", role: .cancel) { errorMessage = nil }
+        } message: { message in
+            Text(message)
+        }
+    }
+
+    // MARK: - Le document affiché en salle
+
+    private var documentSection: some View {
+        Section {
+            Button {
+                prepareSheet()
+            } label: {
+                if isPreparing {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("Préparation…")
+                    }
+                } else {
+                    Label("Préparer le document d'affichage", systemImage: "doc.text")
+                }
+            }
+            .disabled(isPreparing)
+
+            if let sheetURL {
+                ShareLink(item: sheetURL) {
+                    Label("Imprimer ou partager", systemImage: "printer")
+                }
+            }
+        } header: {
+            Text("Affichage en salle")
+        } footer: {
+            Text("Le document reprend les \(onMenu.count) viande(s) à la carte, avec leurs trois pays, votre entreprise et la mention réglementaire. Les photos d'étiquettes n'y figurent pas : il est vu par vos clients.")
+        }
+    }
+
+    private func prepareSheet() {
+        isPreparing = true
+
+        Task { @MainActor in
+            await Task.yield()
+
+            let sheet = MeatOriginSheet(
+                entries: records,
+                establishment: establishments.first,
+                responsibleName: establishments.first?.managerName.isEmpty == false
+                    ? (establishments.first?.managerName ?? "")
+                    : preferences.operatorName
+            )
+
+            do {
+                sheetURL = try MeatOriginSheetService.render(sheet)
+            } catch {
+                errorMessage = "Le document n'a pas pu être créé. \(error.localizedDescription)"
+            }
+
+            isPreparing = false
+        }
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
 
     private func row(_ record: BeefOriginRecord) -> some View {
@@ -90,14 +187,18 @@ struct BeefOriginListView: View {
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 RowIcon(
-                    systemImage: "fork.knife",
-                    tint: record.isComplete ? .brand : .orange
+                    systemImage: record.species.systemImage,
+                    tint: record.isOnMenu ? (record.isComplete ? .brand : .orange) : .secondary
                 )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(record.displayName)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.primary)
+                    HStack(spacing: 6) {
+                        Text(record.displayName)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(record.isOnMenu ? Color.primary : Color.secondary)
+                        StatusBadge(text: record.species.label, color: .brand)
+                        Spacer(minLength: 0)
+                    }
 
                     Text(record.displayMention)
                         .font(.caption)
@@ -124,7 +225,27 @@ struct BeefOriginListView: View {
             Button(role: .destructive) { delete(record) } label: {
                 Label("Supprimer", systemImage: "trash")
             }
+
+            Button {
+                toggleMenu(record)
+            } label: {
+                Label(
+                    record.isOnMenu ? "Retirer" : "Remettre",
+                    systemImage: record.isOnMenu ? "eye.slash" : "eye"
+                )
+            }
+            .tint(.orange)
         }
+    }
+
+    private func toggleMenu(_ record: BeefOriginRecord) {
+        guard subscription.canWrite else {
+            showsPaywall = true
+            return
+        }
+        record.isOnMenu.toggle()
+        sheetURL = nil
+        try? modelContext.save()
     }
 
     private func create() {
@@ -141,6 +262,7 @@ struct BeefOriginListView: View {
             return
         }
         modelContext.delete(record)
+        sheetURL = nil
         try? modelContext.save()
     }
 }
@@ -156,6 +278,8 @@ struct BeefOriginEditorView: View {
     private let context: ModelContext
 
     @State private var cutName: String
+    @State private var species: MeatSpecies
+    @State private var isOnMenu: Bool
     @State private var batchNumber: String
     @State private var supplier: String
     @State private var birthCountry: String
@@ -179,6 +303,8 @@ struct BeefOriginEditorView: View {
         self.context = context
 
         _cutName = State(initialValue: record?.cutName ?? "")
+        _species = State(initialValue: record?.species ?? .bovine)
+        _isOnMenu = State(initialValue: record?.isOnMenu ?? true)
         _batchNumber = State(initialValue: record?.batchNumber ?? "")
         _supplier = State(initialValue: record?.supplier ?? "")
         _birthCountry = State(initialValue: record?.birthCountry ?? "")
@@ -211,12 +337,29 @@ struct BeefOriginEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Pièce") {
+                Section {
+                    Picker("Espèce", selection: $species) {
+                        ForEach(MeatSpecies.allCases) { candidate in
+                            Label(candidate.label, systemImage: candidate.systemImage)
+                                .tag(candidate)
+                        }
+                    }
+
                     TextField("Désignation (entrecôte, haché…)", text: $cutName)
                     TextField("Numéro de lot", text: $batchNumber)
                     TextField("Fournisseur", text: $supplier)
                     TextField("Quantité (facultatif)", text: $quantity)
                     DatePicker("Réceptionné le", selection: $receivedAt, in: ...Date.now)
+                } header: {
+                    Text("Viande")
+                } footer: {
+                    Text("Une fiche par viande proposée. Le décret de 2022 vise les quatre espèces, pas seulement le bœuf.")
+                }
+
+                Section {
+                    Toggle("Proposée à la carte", isOn: $isOnMenu)
+                } footer: {
+                    Text("Seules les viandes cochées apparaissent sur le document affiché en salle. Décochez celle que vous ne servez plus : sa fiche reste dans le registre.")
                 }
 
                 Section {
@@ -261,7 +404,7 @@ struct BeefOriginEditorView: View {
                         .lineLimit(1...3)
                 }
             }
-            .navigationTitle(record == nil ? "Nouveau lot" : "Modifier")
+            .navigationTitle(record == nil ? "Nouvelle viande" : "Modifier")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -346,6 +489,8 @@ struct BeefOriginEditorView: View {
         let target = record ?? BeefOriginRecord()
 
         target.cutName = cutName.trimmingCharacters(in: .whitespacesAndNewlines)
+        target.species = species
+        target.isOnMenu = isOnMenu
         target.batchNumber = batchNumber
         target.supplier = supplier
         target.birthCountry = birthCountry.trimmingCharacters(in: .whitespacesAndNewlines)
