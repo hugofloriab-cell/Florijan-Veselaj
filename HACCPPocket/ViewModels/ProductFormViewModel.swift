@@ -223,8 +223,19 @@ final class ProductFormViewModel {
                 barcode = code
             }
 
+            // Dénomination et lot sont devinés par heuristique : ils se
+            // trompent plus souvent que la date. On ne les pose donc que sur
+            // un champ vide, jamais par-dessus une saisie.
+            if let scannedName = result.productName, name.isEmpty {
+                name = scannedName
+            }
+
+            if let lot = result.batchNumber, batchNumber.isEmpty {
+                batchNumber = lot
+            }
+
             if result.isEmpty {
-                errorMessage = "Aucune date ni code-barres détecté. Vous pouvez saisir la DLC à la main."
+                errorMessage = "Rien n'a été reconnu sur cette étiquette. Cadrez-la de plus près, à plat et bien éclairée — ou saisissez les informations à la main."
             }
         } catch {
             errorMessage = error.localizedDescription

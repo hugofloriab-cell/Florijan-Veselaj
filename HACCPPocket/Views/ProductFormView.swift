@@ -236,6 +236,18 @@ struct ProductFormView: View {
                 }
             }
 
+            // Ce qui a été reconnu, énoncé explicitement : la personne doit
+            // pouvoir vérifier d'un coup d'œil ce que la machine a rempli.
+            if let scan = viewModel.lastScanResult, !scan.isEmpty {
+                Label(
+                    "Reconnu : \(scan.summary). Vérifiez les champs avant d'enregistrer.",
+                    systemImage: "text.viewfinder"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let message = viewModel.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -244,7 +256,7 @@ struct ProductFormView: View {
         } header: {
             Text("Étiquette")
         } footer: {
-            Text("La photo est analysée sur l'appareil pour retrouver la DLC et le code-barres. Aucune image n'est envoyée sur Internet.")
+            Text("La photo est analysée sur l'appareil : dénomination, lot, DLC et code-barres. Aucune image n'est envoyée sur Internet. La dénomination et le lot sont devinés — relisez-les, ils se trompent plus souvent que la date.")
         }
     }
 

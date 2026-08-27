@@ -2,9 +2,16 @@
 //  DateOCRService.swift
 //  HACCPPocket
 //
-//  Lecture d'une étiquette produit avec Vision : reconnaissance de la DLC/DDM
-//  et du code-barres. Tout le traitement est fait sur l'appareil, aucune image
-//  n'est envoyée nulle part.
+//  Lecture d'une étiquette produit avec Vision : dénomination, numéro de lot,
+//  DLC/DDM et code-barres. Tout le traitement est fait sur l'appareil : aucune
+//  image ne part sur un réseau, ce qui règle à la fois la question du coût et
+//  celle de la confidentialité.
+//
+//  Ce que la reconnaissance sait faire, et ce qu'elle ne sait pas :
+//  une étiquette imprimée bien cadrée sort presque toujours juste ; une
+//  étiquette froissée, sous film, ou marquée au jet d'encre sur un carton se
+//  lit mal. L'écran propose donc toujours le résultat en pré-remplissage,
+//  jamais en validation automatique.
 //
 
 import Foundation
@@ -13,15 +20,42 @@ import Vision
 /// Résultat d'un scan d'étiquette. `Sendable` pour traverser proprement les
 /// frontières de concurrence entre le traitement Vision et la vue.
 struct LabelScanResult: Sendable, Equatable {
+    var productName: String?
+    var batchNumber: String?
     var expiryDate: Date?
     var barcode: String?
     var recognizedLines: [String]
 
-    var isEmpty: Bool {
-        expiryDate == nil && barcode == nil
+    init(
+        productName: String? = nil,
+        batchNumber: String? = nil,
+        expiryDate: Date? = nil,
+        barcode: String? = nil,
+        recognizedLines: [String] = []
+    ) {
+        self.productName = productName
+        self.batchNumber = batchNumber
+        self.expiryDate = expiryDate
+        self.barcode = barcode
+        self.recognizedLines = recognizedLines
     }
 
-    static let empty = LabelScanResult(expiryDate: nil, barcode: nil, recognizedLines: [])
+    var isEmpty: Bool {
+        productName == nil && batchNumber == nil && expiryDate == nil && barcode == nil
+    }
+
+    /// Ce qui a été trouvé, pour le dire à l'utilisateur sans lui faire
+    /// relire les champs un par un.
+    var summary: String {
+        var found: [String] = []
+        if productName != nil { found.append("dénomination") }
+        if batchNumber != nil { found.append("lot") }
+        if expiryDate != nil { found.append("date") }
+        if barcode != nil { found.append("code-barres") }
+        return found.isEmpty ? "" : found.joined(separator: ", ")
+    }
+
+    static let empty = LabelScanResult()
 }
 
 enum LabelScanError: LocalizedError {
@@ -86,10 +120,120 @@ enum DateOCRService {
             .first
 
         return LabelScanResult(
+            productName: productName(in: lines),
+            batchNumber: batchNumber(in: lines),
             expiryDate: expiryDate(in: lines, reference: reference),
             barcode: barcode,
             recognizedLines: lines
         )
+    }
+
+    // MARK: - Extraction du numéro de lot
+
+    /// Mots et abréviations qui annoncent un numéro de lot sur un emballage.
+    private static let batchKeywords = ["lot", "l.", "l:", "batch", "lot n", "n lot"]
+
+    /// Cherche le numéro de lot.
+    ///
+    /// Sur un emballage, il suit presque toujours le mot « LOT » ou un « L »
+    /// isolé. On récupère ce qui vient après, en s'arrêtant au premier blanc
+    /// significatif : un lot est un bloc, pas une phrase.
+    static func batchNumber(in lines: [String]) -> String? {
+        for line in lines {
+            let normalized = normalize(line)
+            guard batchKeywords.contains(where: { normalized.contains($0) }) else { continue }
+
+            // On travaille sur la ligne d'origine : un numéro de lot contient
+            // des majuscules qui font partie de sa valeur.
+            guard let candidate = trailingToken(of: line) else { continue }
+            if isPlausibleBatch(candidate) { return candidate }
+        }
+        return nil
+    }
+
+    /// Renvoie ce qui suit le dernier séparateur de la ligne.
+    private static func trailingToken(of line: String) -> String? {
+        let separators = CharacterSet(charactersIn: " :.-—#")
+        let parts = line
+            .components(separatedBy: separators)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
+        // Le mot clé lui-même ne nous intéresse pas : on prend le morceau
+        // suivant, donc le dernier une fois les vides retirés.
+        guard parts.count >= 2 else { return nil }
+        return parts.last
+    }
+
+    /// Écarte les faux positifs les plus courants : une date, une masse, un
+    /// prix. Un lot mêle en général chiffres et lettres, ou n'est que des
+    /// chiffres mais assez long.
+    private static func isPlausibleBatch(_ token: String) -> Bool {
+        let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3, trimmed.count <= 24 else { return false }
+
+        // Une date déguisée en lot : on la laisse à l'extracteur de dates.
+        if trimmed.contains("/") || trimmed.contains("\\") { return false }
+
+        let hasDigit = trimmed.contains { $0.isNumber }
+        guard hasDigit else { return false }
+
+        let normalized = normalize(trimmed)
+        let units = ["kg", "g", "ml", "cl", "eur", "€", "%"]
+        if units.contains(where: { normalized.hasSuffix($0) }) { return false }
+
+        return true
+    }
+
+    // MARK: - Extraction de la dénomination
+
+    /// Lignes à ignorer quand on cherche le nom du produit.
+    private static let namingNoise = [
+        "lot", "dlc", "ddm", "consommer", "jusqu", "avant", "exp", "peremption",
+        "conserver", "poids", "net", "kg", "eur", "prix", "www", "tel",
+        "ingredient", "valeurs", "energie", "matieres", "glucides", "proteines",
+        "sel", "fabrique", "emballe"
+    ]
+
+    /// Devine la dénomination du produit.
+    ///
+    /// Sur une étiquette, le nom est la ligne la plus longue composée surtout
+    /// de lettres, dans le premier tiers du texte reconnu — Vision restitue
+    /// les lignes de haut en bas. Cette heuristique se trompe, d'où le
+    /// pré-remplissage plutôt que la validation automatique.
+    static func productName(in lines: [String]) -> String? {
+        let candidates = lines.prefix(max(3, lines.count / 2))
+
+        var best: String?
+        var bestScore = 0
+
+        for line in candidates {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard trimmed.count >= 4, trimmed.count <= 60 else { continue }
+
+            let normalized = normalize(trimmed)
+            if namingNoise.contains(where: { normalized.contains($0) }) { continue }
+
+            let letters = trimmed.filter { $0.isLetter }.count
+            let digits = trimmed.filter { $0.isNumber }.count
+
+            // Une ligne majoritairement chiffrée est un code, pas un nom.
+            guard letters > digits * 2 else { continue }
+
+            if letters > bestScore {
+                bestScore = letters
+                best = trimmed
+            }
+        }
+
+        return best.map { cleanedName($0) }
+    }
+
+    /// Une dénomination tout en majuscules se lit mal dans une liste.
+    private static func cleanedName(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: CharacterSet(charactersIn: " -–—:."))
+        guard trimmed == trimmed.uppercased(with: AppFormatters.locale) else { return trimmed }
+        return trimmed.capitalized(with: AppFormatters.locale)
     }
 
     // MARK: - Extraction de la date
