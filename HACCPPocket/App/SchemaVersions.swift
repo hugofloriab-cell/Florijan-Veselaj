@@ -2,7 +2,7 @@
 //  SchemaVersions.swift
 //  HACCPPocket
 //
-//  Versions du schéma SwiftData et plan de migration.
+//  Historique des versions du schéma SwiftData.
 //
 //  ─────────────────────────────────────────────────────────────────────────
 //  POURQUOI CE FICHIER EXISTE
@@ -13,116 +13,103 @@
 //  base au cours d'une mise à jour n'est pas un incident technique, c'est la
 //  fin de l'application.
 //
-//  Sans plan de migration déclaré, SwiftData tente une migration implicite.
-//  Elle réussit sur des changements simples, mais échoue — et fait planter le
-//  lancement — dès qu'un modèle change de forme. Ce fichier remplace ce pari
-//  par un contrat explicite : chaque version du schéma est nommée, figée, et
-//  reliée à la suivante par une étape de migration.
+//  Ce fichier nomme la forme du schéma à chaque étape de son histoire, et
+//  désigne celle qui a cours. Il sert de journal : savoir ce qui a été livré,
+//  et à quelle version correspond une base rencontrée sur un appareil.
+//
+//  Il ne pilote plus la migration — la section suivante explique pourquoi, et
+//  c'est à lire avant de modifier le moindre `@Model`.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  COMMENT AJOUTER UNE VERSION — à lire avant toute modification d'un @Model
+//  POURQUOI IL N'Y A PLUS DE PLAN DE MIGRATION — constaté le 27 août 2026
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  Règle absolue : dès que l'application est publiée, une version de schéma
-//  déjà livrée ne se modifie JAMAIS. On en ajoute une nouvelle.
+//  Ce fichier a longtemps déclaré un `SchemaMigrationPlan` passé au
+//  `ModelContainer`. Il a été retiré, et voici pourquoi — c'est important à
+//  comprendre avant d'avoir la tentation de le remettre.
 //
-//  Le passage de V1 à V2, plus bas, sert d'exemple complet.
+//  Les versions ci-dessous ne recopient pas leurs modèles : elles pointent
+//  toutes sur les classes `@Model` courantes du projet. Ce choix était
+//  délibéré (recopier partiellement fait échouer la migration, cf. le piège
+//  du 24 août), mais il a une conséquence qui n'avait pas été tirée :
 //
-//  1. Laisser les versions existantes exactement telles quelles.
+//      la somme de contrôle d'une version décrit toujours la forme
+//      D'AUJOURD'HUI des modèles, jamais celle du jour où elle a été écrite.
 //
-//  2. Créer la version suivante en dessous, avec un numéro incrémenté et la
-//     liste complète des modèles — y compris ceux qui n'ont pas changé.
+//  Tant qu'on ne fait qu'AJOUTER des modèles, ça tient : la version déjà
+//  livrée garde la même somme de contrôle d'un build à l'autre, SwiftData
+//  reconnaît la base et applique l'étape suivante. C'est ce qui a fait
+//  fonctionner les migrations V1 à V7.
 //
-//     ⚠️ Piège vérifié à nos dépens le 27 août 2026, et c'est le point 3
-//     ci-dessous qui y menait tout droit. Une nouvelle version ne se
-//     justifie QUE si la LISTE DES MODÈLES change — un modèle ajouté ou
-//     retiré. Ajouter des propriétés à un modèle existant n'en demande pas.
+//  Mais dès qu'on ajoute une PROPRIÉTÉ à un modèle existant, la somme de
+//  contrôle de TOUTES les versions change d'un coup. La base enregistrée
+//  porte celle de l'ancien build, plus aucune version déclarée ne lui
+//  correspond, et SwiftData refuse :
 //
-//     La raison tient au point 3 : comme aucune version ne recopie ses
-//     modèles, chacune pointe sur les classes de haut niveau. Deux versions
-//     qui déclarent la même liste décrivent donc, mot pour mot, le même
-//     schéma. SwiftData en calcule la somme de contrôle, tombe deux fois sur
-//     la même, et lève l'exception :
+//      Cannot use staged migration with an unknown coordinator model version
 //
-//         Duplicate version checksums detected
+//  La base est alors mise de côté et l'utilisateur repart d'un registre
+//  vierge. Autrement dit : ce plan cassait exactement les cas qu'il était
+//  censé protéger, et l'ajout d'une propriété est de loin le changement le
+//  plus courant.
 //
-//     C'est une NSException, pas une erreur Swift : elle traverse le `try`
-//     de `makeContainer` sans être attrapée, et le filet de secours d'
-//     `AppSchema.openStore()` ne peut rien pour elle. L'application s'arrête
-//     au lancement, sur toutes les machines à la fois.
+//  Sans plan, SwiftData fait une migration légère implicite : il compare la
+//  base à la forme actuelle des modèles et comble l'écart. Elle couvre tous
+//  les changements additifs — modèle ajouté, propriété ajoutée avec valeur
+//  par défaut ou optionnelle, propriété supprimée, index. C'est ce qu'il
+//  fallait depuis le début.
 //
-//     Une propriété munie d'une valeur par défaut ou optionnelle n'a de
-//     toute façon besoin d'aucune étape : SwiftData la voit manquante dans
-//     le store, l'ajoute avec sa valeur par défaut, et c'est réglé. Il suffit
-//     de l'écrire dans le modèle et de ne toucher à rien ici.
+//  ⚠️ La note qui figurait plus haut dans ce fichier prétendait qu'une
+//  migration implicite « fait planter le lancement dès qu'un modèle change de
+//  forme ». C'était faux sur les deux points : elle absorbe les changements
+//  additifs, et quand elle échoue vraiment, `AppSchema.openStore()` attrape
+//  l'erreur, met la base de côté sans la détruire et laisse l'application
+//  s'ouvrir. Cette phrase a coûté deux incidents, elle est retirée.
 //
-//     Concrètement, avant d'ajouter une version, poser la question :
-//     « est-ce que `models` va changer de contenu ? » Si la réponse est non,
-//     il n'y a pas de version à ajouter.
+//  ─────────────────────────────────────────────────────────────────────────
+//  COMMENT MODIFIER UN @Model — à lire avant d'y toucher
+//  ─────────────────────────────────────────────────────────────────────────
 //
-//  3. Ne PAS recopier les modèles tant que la migration reste légère.
-//     (C'est ce choix qui rend le point 2 ci-dessus indispensable.)
-//     SwiftData n'a pas besoin de la forme d'origine décrite en Swift : elle
-//     est enregistrée dans le store, et c'est là qu'il la lit. Référencer
-//     directement les modèles courants dans chaque version suffit.
+//  1. Changement ADDITIF — c'est le cas courant, et il n'y a RIEN à faire
+//     dans ce fichier au-delà du point 2.
 //
-//     ⚠️ Piège vérifié à nos dépens le 24 août 2026 : recopier un seul modèle
-//     à l'intérieur d'une version, en laissant les autres pointer sur le
-//     modèle de haut niveau, fait échouer la migration. Deux classes `@Model`
-//     portant le même nom d'entité coexistent alors dans le module, et
-//     SwiftData ne sait plus laquelle correspond au store. La base est alors
-//     mise de côté et l'utilisateur repart d'un registre vierge.
+//     Sont additifs : ajouter un modèle, ajouter une propriété munie d'une
+//     valeur par défaut ou optionnelle, supprimer une propriété, ajouter ou
+//     retirer un index. Écrire le changement dans le modèle suffit : la
+//     migration implicite s'en charge, les données existantes sont conservées
+//     et les nouvelles propriétés prennent leur valeur par défaut.
 //
-//     Si une migration personnalisée impose vraiment de relire les anciennes
-//     valeurs, alors TOUTES les versions doivent imbriquer TOUS leurs
-//     modèles, et la version courante être exposée par des `typealias`.
-//     C'est un chantier à part entière, à ne lancer que s'il est inévitable.
+//  2. Tenir l'historique à jour. Ajouter une version en dessous, avec la
+//     liste complète des modèles, et pointer `AppSchema.currentVersion`
+//     dessus. Ces versions ne pilotent plus la migration : elles servent de
+//     journal de ce qui a été livré, et `versionIdentifier` alimente le
+//     numéro affiché dans les réglages. Un ajout de propriété seul ne
+//     justifie pas une version — la liste des modèles n'a pas changé.
 //
-//  4. Décrire le passage d'une version à l'autre :
+//  3. Changement LOURD — renommer une propriété ou un modèle, changer un
+//     type, rendre obligatoire une propriété optionnelle, découper ou
+//     fusionner un modèle. La migration implicite ne sait pas le faire : les
+//     valeurs concernées seraient perdues, ou la base refusée.
 //
-//     • Changement LÉGER (`.lightweight`) — SwiftData s'en charge seul.
-//       Le seul cas qui justifie une étape ici est l'ajout ou le retrait d'un
-//       modèle. Les changements de propriétés légers — valeur par défaut,
-//       optionnelle, propriété supprimée, index — sont pris en charge sans
-//       qu'on déclare quoi que ce soit, et déclarer une version pour eux
-//       fait planter le lancement (voir le point 2).
+//     C'est le seul cas qui justifie de réintroduire un plan de migration —
+//     et il devra alors être fait correctement, ce qui est un chantier à part
+//     entière : CHAQUE version doit imbriquer SES PROPRES copies de TOUS ses
+//     modèles, et la version courante être exposée par des `typealias`. Une
+//     recopie partielle fait coexister deux classes portant le même nom
+//     d'entité, et SwiftData ne sait plus laquelle correspond à la base.
+//     À moitié fait, c'est pire que pas fait du tout.
 //
-//         static let v3ToV4 = MigrationStage.lightweight(
-//             fromVersion: HACCPSchemaV3.self,
-//             toVersion: HACCPSchemaV4.self
-//         )
+//     Avant de s'y lancer, se demander si le changement est évitable. Garder
+//     une propriété au nom devenu inexact coûte moins cher qu'une migration
+//     personnalisée ratée sur les registres d'un client. C'est ce qui a été
+//     décidé pour `BeefOriginRecord`, qui couvre les quatre espèces sans
+//     avoir été renommé.
 //
-//     • Changement LOURD (`.custom`) — il faut écrire la transformation.
-//       Cas concernés : renommer une propriété, changer son type, rendre
-//       obligatoire une propriété qui était optionnelle, découper ou fusionner
-//       un modèle. Sans ça, les valeurs existantes sont perdues.
-//
-//         static let v3ToV4 = MigrationStage.custom(
-//             fromVersion: HACCPSchemaV3.self,
-//             toVersion: HACCPSchemaV4.self,
-//             willMigrate: nil,
-//             didMigrate: { context in
-//                 // Ici, les objets sont déjà au format V4 mais les nouvelles
-//                 // propriétés sont vides : c'est le moment de les remplir à
-//                 // partir des anciennes valeurs.
-//                 let equipments = try context.fetch(FetchDescriptor<Equipment>())
-//                 for equipment in equipments {
-//                     equipment.nouvelleProprieté = ...
-//                 }
-//                 try context.save()
-//             }
-//         )
-//
-//  5. Déclarer la nouvelle version et l'étape dans `HACCPMigrationPlan` :
-//     `schemas` dans l'ordre chronologique, `stages` dans le même ordre.
-//
-//  6. Pointer `AppSchema.currentVersion` sur la nouvelle version.
-//
-//  7. TESTER LA MIGRATION AVANT DE PUBLIER, et pas sur une base vide :
-//     installer la version précédente depuis TestFlight ou l'App Store,
-//     saisir des données dans chaque registre, puis lancer la nouvelle version
-//     par-dessus SANS supprimer l'application. Les données doivent être là.
-//     C'est le seul test qui compte.
+//  4. TESTER AVANT DE PUBLIER, et pas sur une base vide : installer la
+//     version précédente depuis TestFlight ou l'App Store, saisir des données
+//     dans chaque registre, puis lancer la nouvelle version par-dessus SANS
+//     supprimer l'application. Les données doivent être là. C'est le seul
+//     test qui compte.
 //
 //  ─────────────────────────────────────────────────────────────────────────
 //  CONTRAINTES iCLOUD
@@ -146,12 +133,10 @@ import SwiftData
 
 /// Schéma de la première version publiée.
 ///
-/// Les modèles sont référencés directement, sans copie figée. Pour une
-/// migration légère, SwiftData n'a pas besoin de la forme d'origine décrite
-/// en Swift : il la lit dans le store lui-même, où elle est enregistrée. Ce
-/// n'est que pour une migration personnalisée, où il faut relire les
-/// anciennes valeurs, que les versions doivent porter leur propre copie des
-/// modèles — et dans ce cas **toutes** les versions, sans exception.
+/// Les modèles sont référencés directement, sans copie figée : cette version
+/// décrit donc la forme qu'ils ont aujourd'hui, pas celle qu'ils avaient à sa
+/// publication. C'est acceptable pour un journal, et c'est précisément ce qui
+/// interdisait d'en faire un plan de migration — voir l'en-tête du fichier.
 enum HACCPSchemaV1: VersionedSchema {
 
     static var versionIdentifier: Schema.Version {
@@ -360,102 +345,3 @@ enum HACCPSchemaV7: VersionedSchema {
         HACCPSchemaV6.models + [IntegritySeal.self]
     }
 }
-
-// MARK: - Plan de migration
-
-/// Chaîne des versions successives du schéma.
-///
-/// `schemas` est dans l'ordre chronologique, `stages` contient une étape par
-/// passage d'une version à la suivante.
-enum HACCPMigrationPlan: SchemaMigrationPlan {
-
-    static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self]
-    }
-
-    static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7]
-    }
-
-    /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
-    /// SwiftData sait s'en charger seul. Les registres existants sont
-    /// conservés tels quels, avec une liste d'allergènes vide.
-    static let v1ToV2 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV1.self,
-        toVersion: HACCPSchemaV2.self
-    )
-
-    /// V2 → V3 : quatre modèles ajoutés, rien de modifié.
-    static let v2ToV3 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV2.self,
-        toVersion: HACCPSchemaV3.self
-    )
-
-    /// V3 → V4 : trois modèles ajoutés, et une propriété optionnelle de plus
-    /// sur `CleaningRecord`.
-    static let v3ToV4 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV3.self,
-        toVersion: HACCPSchemaV4.self
-    )
-
-    /// V4 → V5 : trois modèles ajoutés, rien de modifié.
-    static let v4ToV5 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV4.self,
-        toVersion: HACCPSchemaV5.self
-    )
-
-    /// V5 → V6 : trois modèles ajoutés, rien de modifié.
-    static let v5ToV6 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV5.self,
-        toVersion: HACCPSchemaV6.self
-    )
-
-    /// V6 → V7 : un modèle ajouté, rien de modifié.
-    static let v6ToV7 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV6.self,
-        toVersion: HACCPSchemaV7.self
-    )
-}
-
-// MARK: - Garde-fou de développement
-
-#if DEBUG
-extension HACCPMigrationPlan {
-
-    /// Vérifie que deux versions ne décrivent pas le même schéma.
-    ///
-    /// Sans ce contrôle, l'erreur ne se manifeste qu'au lancement, sous la
-    /// forme d'une `NSException` « Duplicate version checksums detected » que
-    /// le `try` de `makeContainer` ne peut pas attraper : l'application
-    /// s'arrête, sans indiquer quelle version est en cause.
-    ///
-    /// Appelé uniquement en développement — en production le schéma est déjà
-    /// figé, et le coût du contrôle n'aurait plus de contrepartie.
-    static func assertVersionsAreDistinct() {
-        var seen: [String: String] = [:]
-
-        for version in schemas {
-            let entities = version.models
-                .map { String(describing: $0) }
-                .sorted()
-                .joined(separator: ",")
-
-            let name = String(describing: version)
-
-            if let previous = seen[entities] {
-                assertionFailure(
-                    """
-                    Deux versions du schéma décrivent les mêmes modèles : \(previous) et \(name).
-                    SwiftData leur calculera la même somme de contrôle et refusera d'ouvrir la base.
-                    Une version ne s'ajoute que lorsque la liste des modèles change — l'ajout d'une
-                    propriété munie d'une valeur par défaut n'en demande aucune.
-                    """
-                )
-                return
-            }
-
-            seen[entities] = name
-        }
-    }
-}
-#endif

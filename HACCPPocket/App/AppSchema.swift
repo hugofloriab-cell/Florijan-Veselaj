@@ -6,9 +6,9 @@
 //  local : aucune configuration CloudKit, aucun réseau, donc aucun coût
 //  d'infrastructure.
 //
-//  Les versions du schéma et le plan de migration vivent dans
-//  `SchemaVersions.swift` — c'est là qu'il faut aller avant de toucher au
-//  moindre `@Model`.
+//  Les versions du schéma vivent dans `SchemaVersions.swift` — c'est là
+//  qu'il faut aller avant de toucher au moindre `@Model`, notamment pour
+//  savoir ce qui se migre tout seul et ce qui ne se migre pas.
 //
 
 import Foundation
@@ -140,7 +140,8 @@ enum AppSchema {
         //    sont tenus par personne.
         performPendingRestoreIfNeeded()
 
-        // 1. Tentative normale, avec le plan de migration.
+        // 1. Tentative normale : migration légère implicite si la base
+        //    n'a pas tout à fait la forme attendue.
         if let container = try? makeContainer() {
             SeedData.seedIfNeeded(in: container.mainContext)
             return StoreResult(container: container, outcome: .opened)
@@ -174,23 +175,23 @@ enum AppSchema {
     }
 
     /// Construction nue du conteneur, sans filet.
+    /// Aucun plan de migration n'est passé, et c'est volontaire : SwiftData
+    /// fait alors une migration légère implicite, qui compare la base à la
+    /// forme actuelle des modèles et comble l'écart. Elle couvre tous les
+    /// changements additifs — c'est-à-dire la quasi-totalité de ce que fait
+    /// évoluer cette application.
+    ///
+    /// Un plan explicite a été essayé et retiré : ses versions pointant sur
+    /// les classes courantes, l'ajout d'une simple propriété rendait toutes
+    /// les bases existantes méconnaissables. `SchemaVersions.swift` détaille
+    /// le mécanisme et les conditions à réunir pour en réintroduire un.
     @MainActor
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
-        #if DEBUG
-        // Deux versions de schéma identiques feraient planter le lancement
-        // avant même que ce `try` puisse servir. Autant l'apprendre ici.
-        HACCPMigrationPlan.assertVersionsAreDistinct()
-        #endif
-
         let configuration = inMemory
             ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             : productionConfiguration
 
-        return try ModelContainer(
-            for: schema,
-            migrationPlan: HACCPMigrationPlan.self,
-            configurations: configuration
-        )
+        return try ModelContainer(for: schema, configurations: configuration)
     }
 
     // MARK: - Mise à l'écart d'une base illisible
