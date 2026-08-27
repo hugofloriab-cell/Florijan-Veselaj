@@ -19,6 +19,7 @@ struct FoodSampleListView: View {
     @State private var isCreating = false
     @State private var editedSample: FoodSample?
     @State private var showsPaywall = false
+    @State private var labelSample: FoodSample?
 
     private var stored: [FoodSample] { samples.filter { !$0.isDiscarded } }
     private var toDiscard: [FoodSample] { stored.filter(\.needsAction) }
@@ -56,10 +57,14 @@ struct FoodSampleListView: View {
             }
 
             if !keeping.isEmpty {
-                Section("En conservation") {
+                Section {
                     ForEach(keeping) { sample in
                         row(sample)
                     }
+                } header: {
+                    Text("En conservation")
+                } footer: {
+                    Text("Appui long sur un prélèvement pour imprimer son étiquette : nom du plat, date d'élimination possible, service et opérateur. Cinq formats sont proposés, du petit rouleau thermique à la planche A4.")
                 }
             }
 
@@ -87,6 +92,9 @@ struct FoodSampleListView: View {
             FoodSampleEditorView(sample: sample, context: modelContext)
         }
         .sheet(isPresented: $showsPaywall) { PaywallView() }
+        .sheet(item: $labelSample) { sample in
+            LabelPrintView(sample: sample)
+        }
     }
 
     private func row(_ sample: FoodSample) -> some View {
@@ -135,6 +143,21 @@ struct FoodSampleListView: View {
                     Label("Éliminé", systemImage: "checkmark")
                 }
                 .tint(.green)
+            }
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button { labelSample = sample } label: {
+                Label("Étiquette", systemImage: "printer")
+            }
+            .tint(.indigo)
+        }
+        // Le glissement ne se découvre pas tout seul : l'appui long propose
+        // la même action, et c'est le geste que les gens essaient.
+        .contextMenu {
+            Button {
+                labelSample = sample
+            } label: {
+                Label("Imprimer l'étiquette", systemImage: "printer")
             }
         }
     }

@@ -34,17 +34,105 @@ enum LabelPayload {
 
 // MARK: - Rendu
 
+// MARK: - Contenu d'une étiquette
+
+/// Ce qu'une étiquette porte, indépendamment de ce qui l'a produite.
+///
+/// Le moteur ne connaissait que les produits entamés. Les plats témoins ont
+/// exactement les mêmes besoins — un nom, une date qui saute aux yeux, deux
+/// ou trois précisions — et rien ne justifiait d'écrire un second moteur qui
+/// aurait divergé du premier au premier ajustement de mise en page.
+struct LabelContent: Identifiable, Sendable {
+
+    let id: String
+
+    /// Ligne du haut, en gras : le nom du produit ou du plat.
+    let title: String
+
+    /// Petite ligne au-dessus de la date, en capitales.
+    let caption: String
+
+    /// La date, en très gros : c'est elle qu'on lit à un mètre.
+    let highlight: String
+
+    /// Précisions, réunies sur une ligne : lot, fournisseur, opérateur.
+    let details: [String]
+
+    /// Charge du QR code, si l'étiquette en porte un.
+    let qrPayload: String?
+
+    init(
+        id: String,
+        title: String,
+        caption: String,
+        highlight: String,
+        details: [String] = [],
+        qrPayload: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.caption = caption
+        self.highlight = highlight
+        self.details = details
+        self.qrPayload = qrPayload
+    }
+}
+
+extension TrackedProduct {
+
+    var labelContent: LabelContent {
+        var details = ["Ouvert le \(AppFormatters.shortDate(openedAt))"]
+        if !batchNumber.isEmpty { details.append("Lot \(batchNumber)") }
+        if !supplier.isEmpty { details.append(supplier) }
+
+        return LabelContent(
+            id: "product-\(identifier.uuidString)",
+            title: name,
+            caption: "À CONSOMMER AVANT LE",
+            highlight: AppFormatters.shortDate(effectiveLimitDate),
+            details: details,
+            qrPayload: LabelPayload.encode(self)
+        )
+    }
+}
+
+extension FoodSample {
+
+    /// Étiquette du plat témoin.
+    ///
+    /// La date mise en avant est celle de l'élimination possible, pas celle
+    /// du prélèvement : sur un bac au fond d'un frigo, la seule question
+    /// utile est « est-ce que je peux le jeter ? ».
+    var labelContent: LabelContent {
+        var details = ["Prélevé le \(AppFormatters.dateAndTime(collectedAt))"]
+        if !serviceLabel.isEmpty { details.append(serviceLabel) }
+        details.append("\(quantityGrams) g")
+        if !operatorName.isEmpty { details.append(operatorName) }
+
+        return LabelContent(
+            id: "sample-\(persistentModelID.hashValue)",
+            title: displayName,
+            caption: "PLAT TÉMOIN — À CONSERVER JUSQU'AU",
+            highlight: AppFormatters.shortDate(disposalDate()),
+            details: details,
+            qrPayload: nil
+        )
+    }
+}
+
+// MARK: - Moteur
+
 enum LabelRenderer {
 
-    /// Produit le PDF des étiquettes. `copies` répète chaque produit.
+    /// Produit le PDF des étiquettes. `copies` répète chaque étiquette.
     static func render(
-        products: [TrackedProduct],
+        contents: [LabelContent],
         format: LabelFormat,
         establishment: Establishment? = nil,
         copies: Int = 1
     ) -> Data {
-        let queue = products.flatMap { product in
-            Array(repeating: product, count: max(1, copies))
+        let queue = contents.flatMap { content in
+            Array(repeating: content, count: max(1, copies))
         }
 
         return format.isSheet
@@ -52,10 +140,25 @@ enum LabelRenderer {
             : renderRoll(queue, format: format, establishment: establishment)
     }
 
+    /// Conservé pour les appels existants sur les produits entamés.
+    static func render(
+        products: [TrackedProduct],
+        format: LabelFormat,
+        establishment: Establishment? = nil,
+        copies: Int = 1
+    ) -> Data {
+        render(
+            contents: products.map(\.labelContent),
+            format: format,
+            establishment: establishment,
+            copies: copies
+        )
+    }
+
     // MARK: Rouleau — une étiquette par page
 
     private static func renderRoll(
-        _ products: [TrackedProduct],
+        _ contents: [LabelContent],
         format: LabelFormat,
         establishment: Establishment?
     ) -> Data {
@@ -63,9 +166,9 @@ enum LabelRenderer {
         let renderer = UIGraphicsPDFRenderer(bounds: page)
 
         return renderer.pdfData { context in
-            for product in products {
+            for content in contents {
                 context.beginPage()
-                draw(product, in: page.insetBy(dx: 4, dy: 4), format: format, establishment: establishment)
+                draw(content, in: page.insetBy(dx: 4, dy: 4), format: format, establishment: establishment)
             }
         }
     }
@@ -73,12 +176,12 @@ enum LabelRenderer {
     // MARK: Planche A4 — grille d'étiquettes
 
     private static func renderSheet(
-        _ products: [TrackedProduct],
+        _ contents: [LabelContent],
         format: LabelFormat,
         establishment: Establishment?
     ) -> Data {
         guard let layout = format.sheetLayout else {
-            return renderRoll(products, format: format, establishment: establishment)
+            return renderRoll(contents, format: format, establishment: establishment)
         }
 
         let page = CGRect(origin: .zero, size: format.pageSize)
@@ -88,11 +191,11 @@ enum LabelRenderer {
         return renderer.pdfData { context in
             var index = 0
 
-            while index < products.count {
+            while index < contents.count {
                 context.beginPage()
 
                 for slot in 0..<layout.labelsPerSheet {
-                    guard index < products.count else { break }
+                    guard index < contents.count else { break }
 
                     let column = slot % layout.columns
                     let row = slot / layout.columns
@@ -103,7 +206,7 @@ enum LabelRenderer {
                     )
 
                     let frame = CGRect(origin: origin, size: labelSize).insetBy(dx: 4, dy: 4)
-                    draw(products[index], in: frame, format: format, establishment: establishment)
+                    draw(contents[index], in: frame, format: format, establishment: establishment)
                     index += 1
                 }
             }
@@ -113,7 +216,7 @@ enum LabelRenderer {
     // MARK: Une étiquette
 
     private static func draw(
-        _ product: TrackedProduct,
+        _ content: LabelContent,
         in rect: CGRect,
         format: LabelFormat,
         establishment: Establishment?
@@ -128,9 +231,9 @@ enum LabelRenderer {
 
         // Le QR occupe la colonne de droite quand l'étiquette est assez haute.
         var textWidth = rect.width
-        if format.supportsQRCode {
+        if format.supportsQRCode, let payload = content.qrPayload {
             let side = min(height * 0.62, rect.width * 0.3)
-            if let qr = qrImage(for: LabelPayload.encode(product), side: side) {
+            if let qr = qrImage(for: payload, side: side) {
                 qr.draw(in: CGRect(
                     x: rect.maxX - side,
                     y: rect.minY + (height - side) / 2,
@@ -144,7 +247,7 @@ enum LabelRenderer {
         var y = rect.minY
 
         y += drawText(
-            product.name.uppercased(with: AppFormatters.locale),
+            content.title.uppercased(with: AppFormatters.locale),
             font: nameFont,
             color: .black,
             rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.22),
@@ -152,7 +255,7 @@ enum LabelRenderer {
         )
 
         y += drawText(
-            "À CONSOMMER AVANT LE",
+            content.caption,
             font: captionFont,
             color: .darkGray,
             rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.13),
@@ -160,19 +263,15 @@ enum LabelRenderer {
         )
 
         y += drawText(
-            AppFormatters.shortDate(product.effectiveLimitDate),
+            content.highlight,
             font: dateFont,
             color: .black,
             rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.3),
             lines: 1
         )
 
-        var details = ["Ouvert le \(AppFormatters.shortDate(product.openedAt))"]
-        if !product.batchNumber.isEmpty { details.append("Lot \(product.batchNumber)") }
-        if !product.supplier.isEmpty { details.append(product.supplier) }
-
         _ = drawText(
-            details.joined(separator: " · "),
+            content.details.joined(separator: " · "),
             font: detailFont,
             color: .darkGray,
             rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.13),

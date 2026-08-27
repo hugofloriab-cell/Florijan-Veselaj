@@ -2,7 +2,12 @@
 //  LabelPrintView.swift
 //  HACCPPocket
 //
-//  Choix du format, aperçu et impression des étiquettes d'un produit.
+//  Choix du format, aperçu et impression d'une étiquette.
+//
+//  L'écran ne connaît plus les produits entamés en particulier : il imprime
+//  un `LabelContent`, d'où qu'il vienne. C'est ce qui permet aux plats témoins
+//  d'utiliser les mêmes cinq formats — rouleaux thermiques et planche A4 —
+//  sans qu'un second écran parte vivre sa vie.
 //
 
 import SwiftUI
@@ -16,7 +21,71 @@ struct LabelPrintView: View {
 
     @Query private var establishments: [Establishment]
 
-    let product: TrackedProduct
+    /// Ce qui sera imprimé.
+    let content: LabelContent
+
+    /// Nom du travail d'impression, affiché par AirPrint.
+    let jobName: String
+
+    /// Lignes d'information rappelées en haut de l'écran.
+    let summary: [(label: String, value: String, systemImage: String)]
+
+    init(
+        content: LabelContent,
+        jobName: String,
+        summary: [(label: String, value: String, systemImage: String)]
+    ) {
+        self.content = content
+        self.jobName = jobName
+        self.summary = summary
+    }
+
+    /// Étiquette d'un produit entamé.
+    init(product: TrackedProduct) {
+        var lines: [(label: String, value: String, systemImage: String)] = [
+            ("Produit", product.name, "shippingbox"),
+            (
+                "À consommer avant le",
+                AppFormatters.shortDate(product.effectiveLimitDate),
+                "calendar.badge.exclamationmark"
+            )
+        ]
+        if !product.batchNumber.isEmpty {
+            lines.append(("Lot", product.batchNumber, "number"))
+        }
+
+        self.init(
+            content: product.labelContent,
+            jobName: "Étiquettes — \(product.name)",
+            summary: lines
+        )
+    }
+
+    /// Étiquette d'un plat témoin.
+    init(sample: FoodSample) {
+        var lines: [(label: String, value: String, systemImage: String)] = [
+            ("Plat", sample.displayName, "takeoutbag.and.cup.and.straw"),
+            (
+                "Prélevé le",
+                AppFormatters.dateAndTime(sample.collectedAt),
+                "clock"
+            ),
+            (
+                "À conserver jusqu'au",
+                AppFormatters.shortDate(sample.disposalDate()),
+                "calendar.badge.exclamationmark"
+            )
+        ]
+        if !sample.serviceLabel.isEmpty {
+            lines.append(("Service", sample.serviceLabel, "fork.knife"))
+        }
+
+        self.init(
+            content: sample.labelContent,
+            jobName: "Plat témoin — \(sample.displayName)",
+            summary: lines
+        )
+    }
 
     @AppStorage("haccp.lastLabelFormat") private var storedFormat: String = LabelFormat.roll62x29.rawValue
     @State private var copies: Int = 1
@@ -57,14 +126,8 @@ struct LabelPrintView: View {
 
     private var productSection: some View {
         Section {
-            InfoRow(label: "Produit", value: product.name, systemImage: "shippingbox")
-            InfoRow(
-                label: "À consommer avant le",
-                value: AppFormatters.shortDate(product.effectiveLimitDate),
-                systemImage: "calendar.badge.exclamationmark"
-            )
-            if !product.batchNumber.isEmpty {
-                InfoRow(label: "Lot", value: product.batchNumber, systemImage: "number")
+            ForEach(summary, id: \.label) { line in
+                InfoRow(label: line.label, value: line.value, systemImage: line.systemImage)
             }
         }
     }
@@ -87,8 +150,10 @@ struct LabelPrintView: View {
         } header: {
             Text("Format")
         } footer: {
-            if format.supportsQRCode {
+            if format.supportsQRCode && content.qrPayload != nil {
                 Text("Un QR code de traçabilité est imprimé : le scanner depuis l'app rouvre la fiche du produit.")
+            } else if content.qrPayload == nil {
+                Text("Cette étiquette ne porte pas de QR code : seul le texte est imprimé.")
             } else {
                 Text("Ce format est trop petit pour un QR code lisible : seul le texte est imprimé.")
             }
@@ -150,13 +215,13 @@ struct LabelPrintView: View {
 
     private func refreshPreview() {
         let data = LabelRenderer.render(
-            products: [product],
+            contents: [content],
             format: format,
             establishment: establishments.first,
             copies: copies
         )
         do {
-            previewURL = try LabelRenderer.writeToTemporaryFile(data: data, name: "etiquette-\(product.identifier.uuidString.prefix(8))")
+            previewURL = try LabelRenderer.writeToTemporaryFile(data: data, name: "etiquette-\(content.id.suffix(12))")
             errorMessage = nil
         } catch {
             errorMessage = "Aperçu impossible : \(error.localizedDescription)"
@@ -165,7 +230,7 @@ struct LabelPrintView: View {
 
     private func printLabels() {
         let data = LabelRenderer.render(
-            products: [product],
+            contents: [content],
             format: format,
             establishment: establishments.first,
             copies: copies
@@ -173,7 +238,7 @@ struct LabelPrintView: View {
         do {
             try printer.send(
                 pdf: data,
-                jobName: "Étiquettes — \(product.name)",
+                jobName: jobName,
                 pageSize: format.pageSize
             )
             errorMessage = nil
