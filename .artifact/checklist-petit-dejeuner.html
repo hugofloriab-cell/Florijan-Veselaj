@@ -517,16 +517,16 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     </div>
   </header>
 
-  <noscript>
-    <section class="notice" style="display:flex">
-      <div>
-        <b>Enregistrement indisponible</b>
-        <p>Le script de la page ne s'exécute pas dans cette fenêtre : la check-list reste
-        lisible et imprimable, mais rien ne sera enregistré et les cases cochées seront
-        perdues. Copiez le fichier sur la tablette et ouvrez-le avec Chrome.</p>
-      </div>
-    </section>
-  </noscript>
+  <section class="notice" id="static-warning">
+    <div>
+      <b>Cette fenêtre n'exécute pas le script</b>
+      <p>La check-list s'affiche et s'imprime correctement, mais ici <b>rien ne peut être
+      signé ni enregistré</b> : les cases cochées seront perdues en fermant la page.
+      C'est le cas des aperçus de pièces jointes. Ouvrez le fichier avec <b>Chrome</b>
+      sur la tablette — tout fonctionne alors normalement.</p>
+    </div>
+  </section>
+  <script>(function(){var e=document.getElementById("static-warning");if(e&&e.parentNode)e.parentNode.removeChild(e);})();</script>
 
   <section class="notice" id="notice" hidden>
     <div>
