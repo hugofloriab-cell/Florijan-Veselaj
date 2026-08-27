@@ -40,12 +40,8 @@ struct DashboardView: View {
     /// sans code conditionnel.
     private let columns = [GridItem(.adaptive(minimum: 158), spacing: DS.gutter)]
 
-    /// Grille des raccourcis : des pavés nettement plus petits que les
-    /// tuiles de synthèse, pour qu'on distingue au premier coup d'œil ce qui
-    /// informe de ce qui emmène ailleurs.
-    private let shortcutColumns = [GridItem(.adaptive(minimum: 92), spacing: 10)]
-
     /// Change à chaque tâche terminée, ce qui relance l'animation.
+    @State private var showsSettings = false
     @State private var celebration: UUID?
     @State private var celebrationMessage: String?
 
@@ -67,12 +63,10 @@ struct DashboardView: View {
                     }
 
                     tilesSection
-                    shortcutsSection
                     alertsSection
                     pendingReadingsSection
                     urgentProductsSection
                     cleaningSection
-                    registersSection
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 28)
@@ -83,6 +77,16 @@ struct DashboardView: View {
             .background(Color(.systemGroupedBackground))
             .successBurst(trigger: celebration, message: celebrationMessage)
             .navigationTitle("Aujourd'hui")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showsSettings = true
+                    } label: {
+                        Label("Réglages", systemImage: "gearshape")
+                    }
+                }
+            }
+            .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
             .sheet(isPresented: $showsPaywall) { PaywallView() }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
@@ -308,128 +312,6 @@ struct DashboardView: View {
                     .accessibilityLabel("Pointer \(task.title)")
                 }
             }
-        }
-    }
-
-    // MARK: - Raccourcis
-
-    private var shortcutsSection: some View {
-        VStack(alignment: .leading, spacing: DS.gutter) {
-            SectionTitle(text: "Accès rapide")
-
-            LazyVGrid(columns: shortcutColumns, spacing: 10) {
-                // Les trois premiers sont des onglets : on bascule plutôt
-                // que d'empiler un écran par-dessus l'accueil.
-                tabShortcut(.temperatures, title: "Températures", systemImage: "thermometer.medium",
-                            badge: dashboard.pendingReadings.count)
-                tabShortcut(.products, title: "Produits", systemImage: "shippingbox",
-                            badge: dashboard.expiredProducts.count)
-                tabShortcut(.cleaning, title: "Nettoyage", systemImage: "sparkles",
-                            badge: dashboard.dueCleaningTasks.count)
-
-                pushShortcut("Réception", systemImage: "truck.box", tint: .teal) {
-                    DeliveryListView()
-                }
-                pushShortcut("Registres", systemImage: "folder", tint: .indigo) {
-                    RegistersHubView()
-                }
-                pushShortcut("Ma carte", systemImage: "fork.knife", tint: .pink) {
-                    MenuListView()
-                }
-                pushShortcut("Historique", systemImage: "clock.arrow.circlepath", tint: .cyan) {
-                    HistoryView()
-                }
-                pushShortcut("Registre mensuel", systemImage: "doc.text", tint: .purple) {
-                    ReportView()
-                }
-            }
-        }
-    }
-
-    private func tabShortcut(
-        _ destination: AppRouter.Destination,
-        title: String,
-        systemImage: String,
-        badge: Int = 0
-    ) -> some View {
-        Button {
-            router.show(destination)
-        } label: {
-            ShortcutTile(
-                title: title,
-                systemImage: systemImage,
-                tint: destination.tint,
-                badgeCount: badge
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// Les écrans de registre n'apportent pas leur propre pile de
-    /// navigation : ils s'empilent proprement sur l'accueil.
-    private func pushShortcut<Destination: View>(
-        _ title: String,
-        systemImage: String,
-        tint: Color,
-        @ViewBuilder destination: @escaping () -> Destination
-    ) -> some View {
-        NavigationLink {
-            destination()
-        } label: {
-            ShortcutTile(title: title, systemImage: systemImage, tint: tint)
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Registres
-
-    private var registersSection: some View {
-        VStack(alignment: .leading, spacing: DS.gutter) {
-            SectionTitle(text: "Registres")
-
-            NavigationLink {
-                RegistersHubView()
-            } label: {
-                ActionRow(
-                    title: "Tous les registres",
-                    subtitle: "Réception, process, huiles, nuisibles, formations",
-                    systemImage: "folder"
-                )
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                MenuListView()
-            } label: {
-                ActionRow(
-                    title: "Ma carte et les allergènes",
-                    subtitle: "Fiche à afficher en salle",
-                    systemImage: "fork.knife"
-                )
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                HistoryView()
-            } label: {
-                ActionRow(
-                    title: "Historique",
-                    subtitle: "Retrouver un lot, une date, un opérateur",
-                    systemImage: "clock.arrow.circlepath"
-                )
-            }
-            .buttonStyle(.plain)
-
-            NavigationLink {
-                ReportView()
-            } label: {
-                ActionRow(
-                    title: "Registre mensuel",
-                    subtitle: "PDF prêt à présenter, export tableur",
-                    systemImage: "doc.text"
-                )
-            }
-            .buttonStyle(.plain)
         }
     }
 

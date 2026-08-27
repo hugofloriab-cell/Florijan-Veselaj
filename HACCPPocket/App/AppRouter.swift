@@ -70,8 +70,14 @@ final class AppRouter {
 
         /// Les cinq écrans qui tiennent dans une barre d'onglets. Au-delà, iOS
         /// replie le reste dans un onglet « Plus » que personne ne va chercher.
+        ///
+        /// Les registres occupent la deuxième place, juste derrière l'accueil :
+        /// c'est de là que part tout le travail qui n'est pas quotidien. Les
+        /// réglages en sortent — on y va deux fois par mois, pas deux fois par
+        /// jour — et restent accessibles par la roue dentée de l'accueil comme
+        /// depuis la page des registres.
         static let tabCases: [Destination] = [
-            .today, .temperatures, .products, .cleaning, .settings
+            .today, .registers, .temperatures, .products, .cleaning
         ]
 
         var isTab: Bool { Destination.tabCases.contains(self) }

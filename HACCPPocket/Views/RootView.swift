@@ -151,7 +151,8 @@ struct RootView: View {
             SettingsView()
 
         case .registers:
-            NavigationStack { RegistersHubView() }
+            // Cet écran apporte désormais sa propre pile de navigation.
+            RegistersHubView()
         case .menu:
             NavigationStack { MenuListView() }
         case .history:

@@ -18,6 +18,12 @@ import UIKit
 struct SettingsView: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    /// Les réglages sont présentés en feuille depuis l'accueil et depuis les
+    /// registres : sans bouton de fermeture, on y resterait coincé.
+    var showsDoneButton: Bool = false
+
     @Environment(UserPreferences.self) private var preferences
     @Environment(NotificationService.self) private var notificationService
     @Environment(SubscriptionManager.self) private var subscription
@@ -111,6 +117,13 @@ struct SettingsView: View {
                 aboutSection
             }
             .navigationTitle("Réglages")
+            .toolbar {
+                if showsDoneButton {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("OK") { dismiss() }
+                    }
+                }
+            }
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
             }
