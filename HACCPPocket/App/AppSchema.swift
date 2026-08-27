@@ -20,7 +20,7 @@ enum AppSchema {
 
     /// La version de schéma que l'application utilise aujourd'hui.
     /// Une seule ligne à changer le jour où l'on passe en V2.
-    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV8.self
+    static let currentVersion: any VersionedSchema.Type = HACCPSchemaV7.self
 
     /// Toutes les entités persistées. Ajouter un modèle dans la version de
     /// schéma courante, et nulle part ailleurs.
@@ -176,6 +176,12 @@ enum AppSchema {
     /// Construction nue du conteneur, sans filet.
     @MainActor
     static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
+        #if DEBUG
+        // Deux versions de schéma identiques feraient planter le lancement
+        // avant même que ce `try` puisse servir. Autant l'apprendre ici.
+        HACCPMigrationPlan.assertVersionsAreDistinct()
+        #endif
+
         let configuration = inMemory
             ? ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
             : productionConfiguration

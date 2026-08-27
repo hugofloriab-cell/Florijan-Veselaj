@@ -33,7 +33,35 @@
 //  2. Créer la version suivante en dessous, avec un numéro incrémenté et la
 //     liste complète des modèles — y compris ceux qui n'ont pas changé.
 //
+//     ⚠️ Piège vérifié à nos dépens le 27 août 2026, et c'est le point 3
+//     ci-dessous qui y menait tout droit. Une nouvelle version ne se
+//     justifie QUE si la LISTE DES MODÈLES change — un modèle ajouté ou
+//     retiré. Ajouter des propriétés à un modèle existant n'en demande pas.
+//
+//     La raison tient au point 3 : comme aucune version ne recopie ses
+//     modèles, chacune pointe sur les classes de haut niveau. Deux versions
+//     qui déclarent la même liste décrivent donc, mot pour mot, le même
+//     schéma. SwiftData en calcule la somme de contrôle, tombe deux fois sur
+//     la même, et lève l'exception :
+//
+//         Duplicate version checksums detected
+//
+//     C'est une NSException, pas une erreur Swift : elle traverse le `try`
+//     de `makeContainer` sans être attrapée, et le filet de secours d'
+//     `AppSchema.openStore()` ne peut rien pour elle. L'application s'arrête
+//     au lancement, sur toutes les machines à la fois.
+//
+//     Une propriété munie d'une valeur par défaut ou optionnelle n'a de
+//     toute façon besoin d'aucune étape : SwiftData la voit manquante dans
+//     le store, l'ajoute avec sa valeur par défaut, et c'est réglé. Il suffit
+//     de l'écrire dans le modèle et de ne toucher à rien ici.
+//
+//     Concrètement, avant d'ajouter une version, poser la question :
+//     « est-ce que `models` va changer de contenu ? » Si la réponse est non,
+//     il n'y a pas de version à ajouter.
+//
 //  3. Ne PAS recopier les modèles tant que la migration reste légère.
+//     (C'est ce choix qui rend le point 2 ci-dessus indispensable.)
 //     SwiftData n'a pas besoin de la forme d'origine décrite en Swift : elle
 //     est enregistrée dans le store, et c'est là qu'il la lit. Référencer
 //     directement les modèles courants dans chaque version suffit.
@@ -53,9 +81,11 @@
 //  4. Décrire le passage d'une version à l'autre :
 //
 //     • Changement LÉGER (`.lightweight`) — SwiftData s'en charge seul.
-//       Cas couverts : ajouter un modèle, ajouter une propriété qui possède
-//       une valeur par défaut ou qui est optionnelle, supprimer une propriété,
-//       ajouter ou retirer un index.
+//       Le seul cas qui justifie une étape ici est l'ajout ou le retrait d'un
+//       modèle. Les changements de propriétés légers — valeur par défaut,
+//       optionnelle, propriété supprimée, index — sont pris en charge sans
+//       qu'on déclare quoi que ce soit, et déclarer une version pour eux
+//       fait planter le lancement (voir le point 2).
 //
 //         static let v3ToV4 = MigrationStage.lightweight(
 //             fromVersion: HACCPSchemaV3.self,
@@ -331,27 +361,6 @@ enum HACCPSchemaV7: VersionedSchema {
     }
 }
 
-// MARK: - Version 8
-
-/// Étend le registre d'origine des viandes au décret n° 2022-65 : l'espèce
-/// (bovine, porcine, ovine, volaille) et la présence à la carte.
-///
-/// La liste des modèles ne bouge pas — les deux propriétés ajoutées à
-/// `BeefOriginRecord` ont toutes les deux une valeur par défaut, ce qui suffit
-/// à SwiftData pour migrer seul les fiches déjà saisies : elles deviennent des
-/// viandes bovines présentes à la carte, ce qui correspond au comportement
-/// d'avant puisque le registre ne visait que le bœuf.
-enum HACCPSchemaV8: VersionedSchema {
-
-    static var versionIdentifier: Schema.Version {
-        Schema.Version(8, 0, 0)
-    }
-
-    static var models: [any PersistentModel.Type] {
-        HACCPSchemaV7.models
-    }
-}
-
 // MARK: - Plan de migration
 
 /// Chaîne des versions successives du schéma.
@@ -361,11 +370,11 @@ enum HACCPSchemaV8: VersionedSchema {
 enum HACCPMigrationPlan: SchemaMigrationPlan {
 
     static var schemas: [any VersionedSchema.Type] {
-        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self, HACCPSchemaV8.self]
+        [HACCPSchemaV1.self, HACCPSchemaV2.self, HACCPSchemaV3.self, HACCPSchemaV4.self, HACCPSchemaV5.self, HACCPSchemaV6.self, HACCPSchemaV7.self]
     }
 
     static var stages: [MigrationStage] {
-        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7, v7ToV8]
+        [v1ToV2, v2ToV3, v3ToV4, v4ToV5, v5ToV6, v6ToV7]
     }
 
     /// V1 → V2 : uniquement des ajouts munis de valeurs par défaut, donc
@@ -406,11 +415,47 @@ enum HACCPMigrationPlan: SchemaMigrationPlan {
         fromVersion: HACCPSchemaV6.self,
         toVersion: HACCPSchemaV7.self
     )
-
-    /// V7 → V8 : deux propriétés ajoutées à `BeefOriginRecord`, munies chacune
-    /// d'une valeur par défaut. Aucun modèle ajouté ni retiré.
-    static let v7ToV8 = MigrationStage.lightweight(
-        fromVersion: HACCPSchemaV7.self,
-        toVersion: HACCPSchemaV8.self
-    )
 }
+
+// MARK: - Garde-fou de développement
+
+#if DEBUG
+extension HACCPMigrationPlan {
+
+    /// Vérifie que deux versions ne décrivent pas le même schéma.
+    ///
+    /// Sans ce contrôle, l'erreur ne se manifeste qu'au lancement, sous la
+    /// forme d'une `NSException` « Duplicate version checksums detected » que
+    /// le `try` de `makeContainer` ne peut pas attraper : l'application
+    /// s'arrête, sans indiquer quelle version est en cause.
+    ///
+    /// Appelé uniquement en développement — en production le schéma est déjà
+    /// figé, et le coût du contrôle n'aurait plus de contrepartie.
+    static func assertVersionsAreDistinct() {
+        var seen: [String: String] = [:]
+
+        for version in schemas {
+            let entities = version.models
+                .map { String(describing: $0) }
+                .sorted()
+                .joined(separator: ",")
+
+            let name = String(describing: version)
+
+            if let previous = seen[entities] {
+                assertionFailure(
+                    """
+                    Deux versions du schéma décrivent les mêmes modèles : \(previous) et \(name).
+                    SwiftData leur calculera la même somme de contrôle et refusera d'ouvrir la base.
+                    Une version ne s'ajoute que lorsque la liste des modèles change — l'ajout d'une
+                    propriété munie d'une valeur par défaut n'en demande aucune.
+                    """
+                )
+                return
+            }
+
+            seen[entities] = name
+        }
+    }
+}
+#endif
