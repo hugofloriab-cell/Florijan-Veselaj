@@ -174,6 +174,29 @@ struct DashboardViewModel {
             }
     }
 
+    /// Avancement du plan de nettoyage du jour : ce qui est fait sur ce qui
+    /// était à faire. Toutes les tâches faites donnent 1, donc du vert.
+    var cleaningProgress: Double {
+        let dueToday = cleaningTasks.filter { $0.isActive && $0.isDue(at: referenceDate, calendar: calendar) }
+        let doneToday = cleaningTasks.filter {
+            $0.isActive && $0.isCompleted(on: referenceDate, calendar: calendar)
+        }
+
+        let total = dueToday.count + doneToday.count
+        guard total > 0 else { return 1 }
+        return Double(doneToday.count) / Double(total)
+    }
+
+    /// Part des produits entamés qui ne demandent rien : périmés et produits
+    /// du jour même tirent l'anneau vers le rouge.
+    var productHealthProgress: Double {
+        let open = openProducts
+        guard !open.isEmpty else { return 1 }
+
+        let atRisk = open.filter { $0.urgency(at: referenceDate, calendar: calendar) >= .critical }
+        return Double(open.count - atRisk.count) / Double(open.count)
+    }
+
     var overdueCleaningTasks: [CleaningTask] {
         cleaningTasks.filter { $0.isOverdue(at: referenceDate, calendar: calendar) }
     }

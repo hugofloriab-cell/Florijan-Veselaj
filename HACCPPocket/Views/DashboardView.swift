@@ -42,6 +42,9 @@ struct DashboardView: View {
 
     /// Change à chaque tâche terminée, ce qui relance l'animation.
     @State private var showsSettings = false
+    /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
+    /// l'utilisateur, pas un état par défaut.
+    @State private var showsAlerts = true
     @State private var celebration: UUID?
     @State private var celebrationMessage: String?
 
@@ -150,6 +153,7 @@ struct DashboardView: View {
                     caption: urgentProductsCaption,
                     systemImage: "shippingbox.fill",
                     tint: dashboard.expiredProducts.isEmpty ? .brand : .red,
+                    progress: dashboard.productHealthProgress,
                     needsAttention: !dashboard.expiredProducts.isEmpty
                 )
             }
@@ -166,6 +170,7 @@ struct DashboardView: View {
                         : "\(dashboard.overdueCleaningTasks.count) en retard",
                     systemImage: "sparkles",
                     tint: dashboard.overdueCleaningTasks.isEmpty ? .brand : .orange,
+                    progress: dashboard.cleaningProgress,
                     needsAttention: !dashboard.dueCleaningTasks.isEmpty
                 )
             }
@@ -205,19 +210,75 @@ struct DashboardView: View {
     @ViewBuilder
     private var alertsSection: some View {
         if dashboard.alerts.isEmpty {
-            HStack(spacing: 12) {
-                RowIcon(systemImage: "checkmark.seal.fill", tint: .green)
-                Text("Aucune anomalie en cours")
-                    .font(.subheadline.weight(.medium))
-                Spacer()
+            NavigationLink {
+                AnomalyListView()
+            } label: {
+                HStack(spacing: 12) {
+                    RowIcon(systemImage: "checkmark.seal.fill", tint: .green)
+                    Text("Aucune anomalie en cours")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(14)
+                .cardSurface()
             }
-            .padding(14)
-            .cardSurface()
+            .buttonStyle(.plain)
         } else {
             VStack(alignment: .leading, spacing: DS.gutter) {
-                SectionTitle(text: "Alertes")
-                ForEach(dashboard.alerts) { alert in
-                    AlertCard(alert: alert)
+
+                // En-tête repliable : quatre alertes déroulées repoussent le
+                // travail du jour sous la ligne de flottaison, alors que
+                // c'est lui qu'on vient consulter.
+                Button {
+                    withAnimation(.snappy) { showsAlerts.toggle() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+
+                        Text("Anomalies")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+
+                        Text("\(dashboard.alerts.count)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Color.red, in: Capsule())
+
+                        Spacer()
+
+                        Image(systemName: "chevron.down")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .rotationEffect(.degrees(showsAlerts ? 0 : -90))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showsAlerts {
+                    ForEach(dashboard.alerts) { alert in
+                        AlertCard(alert: alert)
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+
+                    NavigationLink {
+                        AnomalyListView()
+                    } label: {
+                        ActionRow(
+                            title: "Voir toutes les anomalies",
+                            subtitle: "Chaque ligne ouvre le relevé à corriger",
+                            systemImage: "list.bullet.rectangle",
+                            tint: .red
+                        )
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

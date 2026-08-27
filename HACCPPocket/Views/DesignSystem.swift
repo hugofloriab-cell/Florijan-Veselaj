@@ -52,6 +52,61 @@ extension AppRouter.Destination {
     }
 }
 
+// MARK: - Anneau de progression
+
+/// Anneau coloré qui dit d'un coup d'œil où en est une routine.
+///
+/// Le code couleur est le même partout dans l'application, et il n'a que
+/// trois états : rien de fait, en cours, terminé. Une échelle plus fine
+/// serait plus juste et beaucoup moins lisible à bout de bras.
+struct ProgressRing: View {
+
+    /// Avancement de 0 à 1.
+    let progress: Double
+
+    var size: CGFloat = 46
+    var lineWidth: CGFloat = 5
+    /// Texte au centre, en général « 2/6 ».
+    var label: String?
+    var systemImage: String?
+
+    private var clamped: Double { min(1, max(0, progress)) }
+
+    /// Vert terminé, orange entamé, rouge pas commencé.
+    var tint: Color {
+        if clamped >= 1 { return .green }
+        if clamped > 0 { return .orange }
+        return .red
+    }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(tint.opacity(0.18), lineWidth: lineWidth)
+
+            Circle()
+                .trim(from: 0, to: max(0.02, clamped))
+                .stroke(tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.snappy, value: clamped)
+
+            if let label {
+                Text(label)
+                    .font(.system(size: size * 0.28, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .foregroundStyle(tint)
+            } else if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: size * 0.34, weight: .semibold))
+                    .foregroundStyle(tint)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel(Text("Avancement \(Int(clamped * 100)) pour cent"))
+    }
+}
+
 // MARK: - Pavé de raccourci
 
 /// Tuile compacte, plus petite que `MetricTile` : elle ne porte pas de
@@ -174,8 +229,17 @@ struct MetricTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
-                RowIcon(systemImage: systemImage, tint: tint)
+                // L'anneau porte deux informations à la fois : où en est la
+                // routine, et si c'est grave. L'icône seule ne disait que la
+                // nature de la tuile.
+                if let progress {
+                    ProgressRing(progress: progress, systemImage: systemImage)
+                } else {
+                    RowIcon(systemImage: systemImage, tint: tint)
+                }
+
                 Spacer()
+
                 Image(systemName: "chevron.right")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.tertiary)
@@ -197,11 +261,7 @@ struct MetricTile: View {
                 .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
-            if let progress {
-                ProgressView(value: progress)
-                    .tint(tint)
-                    .padding(.top, 6)
-            } else if let caption {
+            if let caption {
                 Text(caption)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)

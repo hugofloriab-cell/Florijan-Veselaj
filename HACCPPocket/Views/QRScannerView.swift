@@ -4,6 +4,18 @@
 //
 //  Lecture du QR code d'une étiquette pour rouvrir la fiche du produit.
 //
+//  ⚠️ Deux conditions doivent être réunies pour que la caméra fonctionne, et
+//  l'oubli de l'une ou l'autre donne exactement le même symptôme — un écran
+//  noir, sans message :
+//
+//   1. La clé « Privacy - Camera Usage Description » doit exister dans la
+//      cible Xcode. Sans elle, l'application est arrêtée par le système au
+//      moment où elle touche la caméra.
+//   2. L'autorisation doit avoir été demandée à l'utilisateur. Sans elle, la
+//      session démarre, l'aperçu reste noir, et aucun code n'est jamais lu.
+//
+//  Cet écran traite le second point et explique le premier.
+//
 
 import SwiftUI
 import AVFoundation
@@ -18,7 +30,8 @@ struct QRScannerView: View {
     /// Reçoit la chaîne brute lue dans le QR.
     let onScan: (String) -> Void
 
-    @State private var errorMessage: String?
+    @State private var permission: AVAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
+    @State private var isRequesting = false
 
     private var isCameraAvailable: Bool {
         AVCaptureDevice.default(for: .video) != nil
@@ -27,22 +40,19 @@ struct QRScannerView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isCameraAvailable {
-                    ZStack {
-                        CameraScanner { code in
-                            onScan(code)
-                            dismiss()
-                        }
-                        .ignoresSafeArea()
-
-                        viewfinder
-                    }
+                if !isCameraAvailable {
+                    unavailableView
                 } else {
-                    ContentUnavailableView(
-                        "Caméra indisponible",
-                        systemImage: "camera.metering.unknown",
-                        description: Text("Le scan de QR code nécessite un appareil réel : le simulateur n'a pas de caméra.")
-                    )
+                    switch permission {
+                    case .authorized:
+                        scanner
+                    case .notDetermined:
+                        permissionPrompt
+                    case .denied, .restricted:
+                        deniedView
+                    @unknown default:
+                        permissionPrompt
+                    }
                 }
             }
             .navigationTitle("Scanner")
@@ -52,7 +62,82 @@ struct QRScannerView: View {
                     Button("Annuler") { dismiss() }
                 }
             }
+            .task {
+                // Une autorisation accordée depuis les réglages iOS pendant
+                // que l'écran est ouvert doit être prise en compte.
+                permission = AVCaptureDevice.authorizationStatus(for: .video)
+                if permission == .notDetermined { await requestAccess() }
+            }
         }
+    }
+
+    // MARK: - Le scanner
+
+    private var scanner: some View {
+        ZStack {
+            CameraScanner { code in
+                onScan(code)
+                dismiss()
+            }
+            .ignoresSafeArea()
+
+            viewfinder
+        }
+    }
+
+    // MARK: - Les cas où il ne se passe rien
+
+    private var unavailableView: some View {
+        ContentUnavailableView {
+            Label("Caméra indisponible", systemImage: "camera.metering.unknown")
+        } description: {
+            Text("Le scan nécessite un appareil réel : le simulateur n'a pas de caméra. Testez sur votre iPhone.")
+        }
+    }
+
+    private var permissionPrompt: some View {
+        ContentUnavailableView {
+            Label("Autoriser la caméra", systemImage: "camera")
+        } description: {
+            Text("Le scan de QR code et de code-barres a besoin de la caméra. Rien n'est enregistré ni envoyé : l'image sert uniquement à lire le code.")
+        } actions: {
+            Button {
+                Task { await requestAccess() }
+            } label: {
+                if isRequesting {
+                    ProgressView()
+                } else {
+                    Text("Autoriser")
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isRequesting)
+        }
+    }
+
+    private var deniedView: some View {
+        ContentUnavailableView {
+            Label("Caméra refusée", systemImage: "camera.badge.ellipsis")
+        } description: {
+            Text("L'accès à la caméra a été refusé. Ouvrez les réglages de l'iPhone, puis HACCP Pocket, et activez Appareil photo.")
+        } actions: {
+            Button("Ouvrir les réglages") { openSystemSettings() }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    // MARK: - Autorisation
+
+    private func requestAccess() async {
+        isRequesting = true
+        let granted = await AVCaptureDevice.requestAccess(for: .video)
+        permission = granted ? .authorized : .denied
+        isRequesting = false
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     /// Cadre de visée et consigne, superposés au flux vidéo.

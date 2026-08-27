@@ -35,10 +35,17 @@ struct ReminderSlot: Identifiable, Codable, Equatable {
         "haccp.reminder.\(id.uuidString)"
     }
 
+    /// Deux relevés par jour au minimum : celui du matin dit ce qui s'est
+    /// passé la nuit, celui du soir engage la nuit qui vient. Un seul relevé
+    /// quotidien laisse douze heures sans surveillance.
+    static let minimumDailyCount = 2
+
     static func defaults() -> [ReminderSlot] {
         [
             ReminderSlot(label: "Relevé du matin", hour: 8, minute: 30),
+            ReminderSlot(label: "Nettoyage du midi", hour: 15, minute: 0),
             ReminderSlot(label: "Relevé du soir", hour: 19, minute: 0),
+            ReminderSlot(label: "Nettoyage de fermeture", hour: 22, minute: 30),
             ReminderSlot(label: "Contrôle des DLC", hour: 9, minute: 0)
         ]
     }
@@ -109,6 +116,11 @@ final class UserPreferences {
 
     var enabledReminders: [ReminderSlot] {
         reminders.filter(\.isEnabled)
+    }
+
+    /// Le plan de surveillance tient-il le minimum de deux rappels par jour ?
+    var meetsMinimumReminders: Bool {
+        enabledReminders.count >= ReminderSlot.minimumDailyCount
     }
 
     func addReminder(label: String = "Nouveau rappel", hour: Int = 12, minute: Int = 0) {

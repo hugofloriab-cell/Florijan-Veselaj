@@ -401,6 +401,16 @@ struct SettingsView: View {
         Section {
             authorizationRow
 
+            if !preferences.meetsMinimumReminders {
+                Label(
+                    "Moins de deux rappels actifs. Le relevé du matin dit ce qui s'est passé la nuit, celui du soir engage la nuit qui vient : un seul laisse douze heures sans surveillance.",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             ForEach(preferences.reminders) { reminder in
                 reminderRow(reminder)
             }
