@@ -47,9 +47,15 @@ installée dessus.
 
 ## Installation sur la tablette
 
-1. Copier `checklist-petit-dejeuner.html` sur la tablette (câble USB, clé USB ou e-mail).
-2. Ouvrir le fichier avec Chrome.
-3. Menu de Chrome → **Ajouter à l'écran d'accueil** : la fiche s'ouvre comme une application.
+1. **Enregistrer** `checklist-petit-dejeuner.html` sur la tablette — et non « ouvrir ».
+   Le fichier arrive dans les Téléchargements.
+2. Ouvrir **Chrome**, puis saisir cette adresse dans la barre du haut :
+   `file:///sdcard/Download/`
+3. Dans la liste, taper sur `checklist-petit-dejeuner.html`.
+4. Menu **⋮ → Ajouter à l'écran d'accueil** : la fiche se lance comme une application.
+
+L'étape 2 est la plus fiable : elle évite la boîte « Ouvrir avec », qui renvoie
+souvent la fiche vers un aperçu incapable d'exécuter le script.
 
 Aucune connexion Internet n'est nécessaire au quotidien.
 

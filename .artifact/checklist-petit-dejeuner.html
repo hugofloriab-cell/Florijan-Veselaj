@@ -159,6 +159,12 @@ input[type="date"].date-input{
 }
 .notice .dismiss:hover{color:var(--ink)}
 .notice[hidden]{display:none}
+.notice ol{margin:9px 0 0;padding-left:20px;display:grid;gap:5px;font-size:.94rem;color:var(--ink-2)}
+.notice code{
+  font-family:"IBM Plex Mono",monospace;font-size:.88rem;
+  background:var(--surface);border:1px solid var(--amber-line);border-radius:3px;
+  padding:2px 6px;display:inline-block;word-break:break-all;
+}
 
 /* ---------- Missions ---------- */
 .missions{
@@ -517,13 +523,19 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     </div>
   </header>
 
-  <section class="notice" id="static-warning">
+<section class="notice" id="static-warning">
     <div>
       <b>Cette fenêtre n'exécute pas le script</b>
-      <p>La check-list s'affiche et s'imprime correctement, mais ici <b>rien ne peut être
-      signé ni enregistré</b> : les cases cochées seront perdues en fermant la page.
-      C'est le cas des aperçus de pièces jointes. Ouvrez le fichier avec <b>Chrome</b>
-      sur la tablette — tout fonctionne alors normalement.</p>
+      <p>La fiche est lisible et imprimable ici, mais <b>rien ne peut être coché durablement,
+      signé ni enregistré</b> : c'est le cas des aperçus de pièces jointes. Pour vous en servir
+      réellement, ouvrez-la dans Chrome :</p>
+      <ol>
+        <li><b>Enregistrez</b> ce fichier (et non « ouvrir ») : il arrive dans les Téléchargements.</li>
+        <li>Ouvrez <b>Chrome</b>, puis tapez cette adresse dans la barre du haut :
+            <br><code>file:///sdcard/Download/</code></li>
+        <li>Dans la liste qui s'affiche, tapez sur <code>checklist-petit-dejeuner.html</code>.</li>
+        <li>Menu <b>⋮ → Ajouter à l'écran d'accueil</b>, pour la lancer comme une application.</li>
+      </ol>
     </div>
   </section>
   <script>(function(){var e=document.getElementById("static-warning");if(e&&e.parentNode)e.parentNode.removeChild(e);})();</script>
