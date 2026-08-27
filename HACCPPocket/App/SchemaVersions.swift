@@ -364,3 +364,21 @@ enum HACCPSchemaV8: VersionedSchema {
         HACCPSchemaV7.models + [DeliveryDocument.self]
     }
 }
+
+// MARK: - Version 9
+
+/// Ajoute le registre des incidents techniques.
+///
+/// Un modèle nouveau, `TechnicalIncident` : une panne de froid, d'électricité
+/// ou de plomberie a une conséquence sanitaire, et se signalait jusqu'ici par
+/// un message oral en fin de service.
+enum HACCPSchemaV9: VersionedSchema {
+
+    static var versionIdentifier: Schema.Version {
+        Schema.Version(9, 0, 0)
+    }
+
+    static var models: [any PersistentModel.Type] {
+        HACCPSchemaV8.models + [TechnicalIncident.self]
+    }
+}

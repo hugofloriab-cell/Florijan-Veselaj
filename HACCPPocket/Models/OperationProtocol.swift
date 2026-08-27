@@ -1019,6 +1019,58 @@ extension OperationProtocol {
         commonMistake: "Compléter un bain fatigué avec de l'huile neuve. La dilution fait baisser la mesure sans rien réparer : les composés polaires restent, et ils contaminent l'huile fraîche."
     )
 
+    // MARK: Panne technique
+
+    static let technicalIncident = OperationProtocol(
+        id: "protocol.incident",
+        title: "Déclarer une panne",
+        subtitle: "Mettre les denrées à l'abri, puis prévenir",
+        systemImage: "wrench.and.screwdriver",
+        steps: [
+            ProtocolStep(
+                id: "incident.1",
+                title: "Les denrées d'abord, la déclaration ensuite",
+                detail: "Une enceinte qui remonte se vide avant qu'on écrive quoi que ce soit. Transférez dans une enceinte saine, relevez la température, et notez l'heure.",
+                note: RegulatoryNote(
+                    title: "Ce qui décide du sort des denrées",
+                    explanation: "C'est la durée passée hors température et la température atteinte qui comptent, pas la panne elle-même. Sans relevé horodaté, aucune décision ne peut être justifiée — et la seule issue prudente devient la destruction de tout le contenu.",
+                    origin: .regulation("Règlement (CE) n° 852/2004, annexe II, chapitre IX")
+                )
+            ),
+            ProtocolStep(
+                id: "incident.2",
+                title: "Photographiez avant de réparer",
+                detail: "Le thermomètre, le voyant, la pièce cassée. Une photo épargne souvent au technicien un déplacement pour simple diagnostic, et elle date le constat.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "incident.3",
+                title: "Écrivez ce que vous avez fait en attendant",
+                detail: "Denrées transférées, machine mise hors service, arrivée d'eau coupée, zone condamnée. C'est cette ligne qui fait la différence entre un incident géré et une négligence.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "incident.4",
+                title: "Transmettez le jour même",
+                detail: "Un message oral en fin de service se perd. La déclaration part par courriel, reste dans vos messages envoyés, et porte une date.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "incident.5",
+                title: "Ne touchez pas à ce qui n'est pas de votre ressort",
+                detail: "Un tableau électrique, une installation gaz, un circuit frigorifique : ces interventions relèvent d'un professionnel habilité. Signaler et attendre est la bonne conduite.",
+                note: nil
+            ),
+            ProtocolStep(
+                id: "incident.6",
+                title: "Clôturez quand c'est réparé",
+                detail: "Notez ce qui a été fait. L'historique d'un équipement qui tombe en panne tous les deux mois est l'argument qui obtient son remplacement.",
+                note: nil
+            )
+        ],
+        commonMistake: "Signaler la panne oralement en fin de service et passer à autre chose. Trois semaines plus tard, personne ne sait quand elle a commencé, ce qu'on a fait des denrées, ni si quelqu'un a été prévenu."
+    )
+
     // MARK: Auto-prélèvement en tube gélosé
 
     static let agarSlideSampling = OperationProtocol(

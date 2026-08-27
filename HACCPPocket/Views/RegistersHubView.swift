@@ -43,6 +43,7 @@ struct RegistersHubView: View {
     @Query private var analyses: [LabAnalysis]
     @Query private var waterControls: [WaterControl]
     @Query private var oilCollections: [WasteOilCollection]
+    @Query private var incidents: [TechnicalIncident]
 
     @State private var showsSettings = false
 
@@ -269,6 +270,14 @@ struct RegistersHubView: View {
             ) {
                 ProductRecallListView()
             }
+            tile(
+                "Pannes",
+                systemImage: "wrench.and.screwdriver",
+                tint: .brown,
+                badge: openIncidents
+            ) {
+                TechnicalIncidentListView()
+            }
         }
     }
 
@@ -413,6 +422,10 @@ struct RegistersHubView: View {
 
     /// Seules les viandes réellement proposées comptent : celles retirées de
     /// la carte n'ont pas à figurer sur l'affichage en salle.
+    private var openIncidents: Int {
+        incidents.filter { !$0.isResolved }.count
+    }
+
     private var incompleteBeef: Int {
         beefOrigins.filter { $0.isOnMenu && !$0.isComplete }.count
     }

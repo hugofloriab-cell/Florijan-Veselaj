@@ -53,6 +53,7 @@ struct BackupArchive: Codable {
     var waterControls: [WaterControlDTO] = []
     var oilCollections: [WasteOilDTO] = []
     var seals: [IntegritySealDTO] = []
+    var incidents: [TechnicalIncidentDTO] = []
 
     /// Nombre total d'enregistrements, tous registres confondus. Sert à
     /// afficher un résumé avant d'écraser la base.
@@ -87,6 +88,7 @@ struct BackupArchive: Codable {
         total += waterControls.count
         total += oilCollections.count
         total += seals.count
+        total += incidents.count
 
         for equipment in equipments {
             total += equipment.readings.count
@@ -396,6 +398,23 @@ struct CleaningProductDTO: Codable {
     var updatedAt: Date
 }
 
+struct TechnicalIncidentDTO: Codable {
+    var kindRawValue: String
+    var severityRawValue: String
+    var equipmentName: String
+    var descriptionText: String
+    var immediateAction: String
+    var reportedAt: Date
+    var reportedBy: String
+    var recipientName: String
+    var recipientEmail: String
+    var sentAt: Date?
+    var resolvedAt: Date?
+    var resolutionNote: String
+    var photoData: Data?
+    var createdAt: Date
+}
+
 struct RegulatoryDocumentDTO: Codable {
     var title: String
     var categoryRawValue: String
@@ -607,6 +626,8 @@ enum BackupService {
             .map { medicalDTO(for: $0, includePhotos: includePhotos) }
         archive.cleaningProducts = try context.fetch(FetchDescriptor<CleaningProduct>())
             .map { cleaningProductDTO(for: $0, includePhotos: includePhotos) }
+        archive.incidents = try context.fetch(FetchDescriptor<TechnicalIncident>())
+            .map { incidentDTO(for: $0, includePhotos: includePhotos) }
         archive.documents = try context.fetch(FetchDescriptor<RegulatoryDocument>())
             .map { documentDTO(for: $0, includePhotos: includePhotos) }
         archive.maintenance = try context.fetch(FetchDescriptor<EquipmentMaintenance>())
@@ -982,6 +1003,28 @@ enum BackupService {
         )
     }
 
+    private static func incidentDTO(
+        for incident: TechnicalIncident,
+        includePhotos: Bool
+    ) -> TechnicalIncidentDTO {
+        TechnicalIncidentDTO(
+            kindRawValue: incident.kindRawValue,
+            severityRawValue: incident.severityRawValue,
+            equipmentName: incident.equipmentName,
+            descriptionText: incident.descriptionText,
+            immediateAction: incident.immediateAction,
+            reportedAt: incident.reportedAt,
+            reportedBy: incident.reportedBy,
+            recipientName: incident.recipientName,
+            recipientEmail: incident.recipientEmail,
+            sentAt: incident.sentAt,
+            resolvedAt: incident.resolvedAt,
+            resolutionNote: incident.resolutionNote,
+            photoData: photo(incident.photoData, includePhotos: includePhotos),
+            createdAt: incident.createdAt
+        )
+    }
+
     private static func documentDTO(for document: RegulatoryDocument, includePhotos: Bool) -> RegulatoryDocumentDTO {
         RegulatoryDocumentDTO(
             title: document.title,
@@ -1171,6 +1214,7 @@ enum BackupService {
         restoreHygieneChecks(archive.hygieneChecks, into: context)
         restoreMedicalRecords(archive.medicalRecords, into: context)
         restoreCleaningProducts(archive.cleaningProducts, into: context)
+        restoreIncidents(archive.incidents, into: context)
         restoreDocuments(archive.documents, into: context)
         restoreMaintenance(archive.maintenance, into: context)
         restoreRecalls(archive.recalls, into: context)
@@ -1611,6 +1655,28 @@ enum BackupService {
         }
     }
 
+    private static func restoreIncidents(_ items: [TechnicalIncidentDTO], into context: ModelContext) {
+        for dto in items {
+            let incident = TechnicalIncident(
+                kind: IncidentKind(rawValue: dto.kindRawValue) ?? .other,
+                severity: IncidentSeverity(rawValue: dto.severityRawValue) ?? .degraded,
+                equipmentName: dto.equipmentName,
+                descriptionText: dto.descriptionText,
+                immediateAction: dto.immediateAction,
+                reportedAt: dto.reportedAt,
+                reportedBy: dto.reportedBy,
+                recipientName: dto.recipientName,
+                recipientEmail: dto.recipientEmail,
+                sentAt: dto.sentAt,
+                resolvedAt: dto.resolvedAt,
+                resolutionNote: dto.resolutionNote,
+                photoData: dto.photoData,
+                createdAt: dto.createdAt
+            )
+            context.insert(incident)
+        }
+    }
+
     private static func restoreDocuments(_ items: [RegulatoryDocumentDTO], into context: ModelContext) {
         for dto in items {
             let document = RegulatoryDocument(
@@ -1796,6 +1862,7 @@ enum BackupService {
         try delete(WaterControl.self, in: context)
         try delete(WasteOilCollection.self, in: context)
         try delete(IntegritySeal.self, in: context)
+        try delete(TechnicalIncident.self, in: context)
         try delete(Establishment.self, in: context)
 
         try context.save()
