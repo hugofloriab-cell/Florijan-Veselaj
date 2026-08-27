@@ -1,6 +1,11 @@
 # Publie la check-list petit déjeuner sur GitHub Pages.
-# Active le site au premier passage (enablement), puis met en ligne le
-# contenu de docs/ à chaque modification de main.
+#
+# Prérequis, à faire une seule fois dans les réglages du dépôt :
+#   Settings -> Pages -> Source -> GitHub Actions
+# (le jeton des Actions ne peut pas créer le site lui-même : l'API répond
+#  « Resource not accessible by integration ».)
+#
+# Ensuite, chaque modification de docs/ sur main met le site à jour.
 name: Publier la check-list
 
 on:
@@ -29,10 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Activer et configurer Pages
+      - name: Configurer Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Préparer le contenu de docs/
         uses: actions/upload-pages-artifact@v3
