@@ -2,7 +2,7 @@
    Objectif : la fiche doit s'ouvrir même sans réseau, une fois installée.
    Changer CACHE à chaque mise en ligne pour que les tablettes récupèrent
    la nouvelle version. */
-var CACHE = "checklist-pdj-v3";
+var CACHE = "checklist-pdj-v4";
 var CORE = [
   "./",
   "./index.html",
