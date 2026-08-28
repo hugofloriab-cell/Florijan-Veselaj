@@ -11,6 +11,7 @@ Sorties         :
 import datetime
 import pathlib
 import re
+import zoneinfo
 
 RACINE = pathlib.Path(__file__).parent
 SOURCE = RACINE / "checklist-petit-dejeuner.html"
@@ -54,7 +55,11 @@ MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
 def estampiller(source: str) -> str:
     """Inscrit la date du jour dans la fiche, pour qu'on sache d'un coup d'œil
     quelle version une tablette affiche."""
-    d = datetime.datetime.now()
+    # Heure de Paris : l'estampille est lue en cuisine, pas sur le serveur.
+    try:
+        d = datetime.datetime.now(zoneinfo.ZoneInfo("Europe/Paris"))
+    except Exception:
+        d = datetime.datetime.now()
     libelle = "Mise à jour du %d %s %d à %dh%02d" % (
         d.day, MOIS[d.month - 1], d.year, d.hour, d.minute)
     return re.sub(r"(<!--MAJ-->)[^<]*", r"\g<1>" + libelle, source, count=1)
