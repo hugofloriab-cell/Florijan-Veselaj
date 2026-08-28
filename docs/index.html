@@ -265,6 +265,11 @@ input[type="date"].date-input{
 .haccp{font-size:.9rem;color:var(--ink-2)}
 .haccp .norm{display:block;font-family:"IBM Plex Mono",monospace;font-size:.85rem;margin-top:4px;color:var(--ink)}
 .haccp.alert{color:var(--red);font-weight:700;font-family:Archivo,sans-serif;font-size:.88rem;letter-spacing:.02em}
+/* Rouge gras : réservé à ce qui peut rendre un client malade. */
+.critique{color:var(--red);font-weight:700}
+.haccp .norm.critique{color:var(--red)}
+/* Une tâche faite cesse d'alerter. */
+.task input:checked + span .critique{color:var(--ink-3)}
 .haccp.strong{color:var(--ink);font-weight:700;font-family:Archivo,sans-serif;font-size:.9rem;letter-spacing:.01em}
 
 .val{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
@@ -517,6 +522,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
   .slot,.extra,.validation,.missions{break-inside:avoid}
   .tablehead{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .task input{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .critique,.haccp.alert{color:#BC2026 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
 </style>
 </head>
@@ -592,7 +598,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
         <div class="tasklist">
           <label class="task"><input type="checkbox" id="t1-0" data-id="t1-0"><span>Relevé T° sur tablette (Profil <i>Ibis Petit Déjeuner</i> &gt; CONTRÔLE MATÉRIEL).</span></label>
           <label class="task"><input type="checkbox" id="t1-1" data-id="t1-1"><span>Vérification congélateurs coffres/verticaux, chambre froide, frigos, timbres inox.</span></label></div></div>
-      <div class="haccp"><b>Normes T° :</b><span class="norm">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span></div>
+      <div class="haccp"><b>Normes T° :</b><span class="norm critique">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span></div>
       <div class="val" data-val="1"><span class="mark">✓</span><span class="count">0/2</span></div></div>
     <div class="slot">
       <div class="slot-time" data-slot="2" data-count="0/3">07h30</div>
@@ -601,7 +607,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
           <label class="task"><input type="checkbox" id="t2-0" data-id="t2-0"><span>Tour de la chambre froide (vérifier doublons prêts).</span></label>
           <label class="task"><input type="checkbox" id="t2-1" data-id="t2-1"><span>Rangement stocks congelés cuisine si nécessaire.</span></label>
           <label class="task"><input type="checkbox" id="t2-2" data-id="t2-2"><span>Nettoyage des tables au fur et à mesure des départs clients.</span></label></div></div>
-      <div class="haccp">Rotation des stocks (FIFO)</div>
+      <div class="haccp"><b>Rotation des stocks (FIFO)</b></div>
       <div class="val" data-val="2"><span class="mark">✓</span><span class="count">0/3</span></div></div>
     <div class="slot">
       <div class="slot-time" data-slot="3" data-count="0/4">08h00</div>
@@ -618,7 +624,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       <div>
         <div class="tasklist">
           <label class="task"><input type="checkbox" id="t4-0" data-id="t4-0"><span>Point sur le nombre de petits-déjeuners restants.</span></label>
-          <label class="task"><input type="checkbox" id="t4-1" data-id="t4-1"><span>Préparation des étiquettes (alerte DLC/DLUO).</span></label>
+          <label class="task"><input type="checkbox" id="t4-1" data-id="t4-1"><span>Préparation des étiquettes <b class='critique'>(alerte DLC/DLUO)</b>.</span></label>
           <label class="task key"><input type="checkbox" id="t4-2" data-id="t4-2"><span>Avancer la plonge au fur et à mesure.</span></label></div></div>
       <div class="haccp">Ne rien laisser s'accumuler en plonge</div>
       <div class="val" data-val="4"><span class="mark">✓</span><span class="count">0/3</span></div></div>
@@ -780,14 +786,14 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
         "Relevé T° sur tablette (Profil <i>Ibis Petit Déjeuner</i> &gt; CONTRÔLE MATÉRIEL).",
         "Vérification congélateurs coffres/verticaux, chambre froide, frigos, timbres inox."
       ],
-      haccp:{ html:"<b>Normes T° :</b><span class=\"norm\">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span>" } },
+      haccp:{ html:"<b>Normes T° :</b><span class=\"norm critique\">Positif : +1°C à +4°C<br>Négatif : -23°C à -18°C</span>" } },
 
     { time:"07h30", tasks:[
         "Tour de la chambre froide (vérifier doublons prêts).",
         "Rangement stocks congelés cuisine si nécessaire.",
         "Nettoyage des tables au fur et à mesure des départs clients."
       ],
-      haccp:{ html:"Rotation des stocks (FIFO)" } },
+      haccp:{ html:"<b>Rotation des stocks (FIFO)</b>" } },
 
     { time:"08h00", tasks:[
         { html:"Relevé T° buffet sur tablette : <b>Fromage blanc &amp; Jambon blanc.</b>", key:true },
@@ -799,7 +805,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 
     { time:"08h30", tasks:[
         "Point sur le nombre de petits-déjeuners restants.",
-        "Préparation des étiquettes (alerte DLC/DLUO).",
+        "Préparation des étiquettes <b class='critique'>(alerte DLC/DLUO)</b>.",
         { html:"Avancer la plonge au fur et à mesure.", key:true }
       ],
       haccp:{ html:"Ne rien laisser s'accumuler en plonge" } },
