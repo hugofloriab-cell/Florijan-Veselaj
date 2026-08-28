@@ -1,7 +1,11 @@
 <title>Check-list Petit Déjeuner Ibis Sisteron</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<!-- Polices chargées sans bloquer l'affichage : sans réseau, la fiche
+     s'affiche tout de suite avec les polices du système. -->
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"></noscript>
 <style>
 :root{
   --paper:#F7F8FA;
@@ -368,6 +372,10 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-vis
   margin:22px 0 0;text-align:center;font-style:italic;color:var(--ink-3);
   font-size:.92rem;max-width:62ch;margin-inline:auto;
 }
+.version{
+  margin:14px 0 0;text-align:center;
+  font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--ink-3);
+}
 
 /* ---------- Historique ---------- */
 .history{margin-top:36px}
@@ -689,6 +697,8 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
   </section>
 
   <p class="quote">« La satisfaction client et l'esprit d'équipe reposent sur la rigueur de chacun. La cuisine et la plonge doivent être rendues parfaitement propres et prêtes pour le service du midi. »</p>
+
+  <p class="version"><!--MAJ-->Mise à jour du 28 août 2026 à 8h31</p>
 
   <section class="history">
     <h2 class="section-title">Fiches enregistrées <span class="rule"></span></h2>

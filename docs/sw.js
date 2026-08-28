@@ -2,7 +2,7 @@
    Objectif : la fiche doit s'ouvrir même sans réseau, une fois installée.
    Changer CACHE à chaque mise en ligne pour que les tablettes récupèrent
    la nouvelle version. */
-var CACHE = "checklist-pdj-v5";
+var CACHE = "checklist-pdj-v7";
 var CORE = [
   "./",
   "./index.html",
@@ -36,19 +36,35 @@ self.addEventListener("fetch", function(e){
   var req = e.request;
   if(req.method !== "GET") return;
 
-  /* Page : on sert le cache immédiatement (démarrage à 6h00 sans attendre le
-     réseau) et on rafraîchit en arrière-plan pour la prochaine ouverture. */
+  /* Page : on interroge d'abord le réseau, pour que les corrections
+     apportées à la fiche apparaissent dès l'ouverture suivante. Au-delà
+     de 2,5 secondes — wifi absent ou capricieux à 6h00 — on bascule sur
+     la copie conservée sur l'appareil. */
   if(req.mode === "navigate"){
     e.respondWith(
-      caches.match("./index.html").then(function(hit){
-        var live = fetch(req).then(function(res){
+      new Promise(function(resolve){
+        var repondu = false;
+        function repondre(r){ if(!repondu && r){ repondu = true; resolve(r); } }
+
+        var secours = setTimeout(function(){
+          caches.match("./index.html").then(repondre);
+        }, 2500);
+
+        fetch(req).then(function(res){
+          clearTimeout(secours);
           if(res && res.ok){
-            var copy = res.clone();
-            caches.open(CACHE).then(function(c){ c.put("./index.html", copy); });
+            var copie = res.clone();
+            caches.open(CACHE).then(function(c){ c.put("./index.html", copie); });
           }
-          return res;
-        }).catch(function(){ return hit; });
-        return hit || live;
+          repondre(res);
+        }).catch(function(){
+          clearTimeout(secours);
+          caches.match("./index.html").then(function(hit){
+            repondre(hit || new Response(
+              "<h1>Fiche indisponible</h1><p>Ouvrez la fiche une fois avec du réseau.</p>",
+              { headers:{ "Content-Type":"text/html; charset=utf-8" } }));
+          });
+        });
       })
     );
     return;

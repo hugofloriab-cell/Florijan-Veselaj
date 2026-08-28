@@ -8,6 +8,7 @@ Sorties         :
   docs/index.html                       version installable, publiée sur le web
   .artifact/checklist-petit-dejeuner.html  version publication en ligne
 """
+import datetime
 import pathlib
 import re
 
@@ -46,8 +47,22 @@ def corps(source: str) -> str:
     ).strip()
 
 
+MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
+        "août", "septembre", "octobre", "novembre", "décembre"]
+
+
+def estampiller(source: str) -> str:
+    """Inscrit la date du jour dans la fiche, pour qu'on sache d'un coup d'œil
+    quelle version une tablette affiche."""
+    d = datetime.datetime.now()
+    libelle = "Mise à jour du %d %s %d à %dh%02d" % (
+        d.day, MOIS[d.month - 1], d.year, d.hour, d.minute)
+    return re.sub(r"(<!--MAJ-->)[^<]*", r"\g<1>" + libelle, source, count=1)
+
+
 def main() -> None:
-    source = SOURCE.read_text(encoding="utf-8")
+    source = estampiller(SOURCE.read_text(encoding="utf-8"))
+    SOURCE.write_text(source, encoding="utf-8")
 
     # Version publication en ligne : fragment nu, l'hôte fournit l'enveloppe.
     cible = RACINE / ".artifact" / "checklist-petit-dejeuner.html"
