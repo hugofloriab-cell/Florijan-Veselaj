@@ -80,12 +80,16 @@ signée ni enregistrée. La publication web supprime ce problème.
 
 Dans le dépôt GitHub : **Settings → Pages → Build and deployment**
 
-- *Source* : **Deploy from a branch**
-- *Branch* : la branche contenant ce dossier, et **`/docs`** comme répertoire
-- **Save**
+- *Source* : **GitHub Actions**
 
-Au bout d'une minute, la page affiche l'adresse publique, de la forme
-`https://<compte>.github.io/<dépôt>/`.
+Le workflow `.github/workflows/pages.yml` fait le reste. Cette étape demande
+d'être connecté au compte propriétaire : le jeton des Actions ne peut pas créer
+le site lui-même (l'API répond « Resource not accessible by integration »).
+
+Ce dépôt est déjà configuré ainsi (*Source : GitHub Actions*). Le site est en
+ligne à l'adresse :
+
+**https://hugofloriab-cell.github.io/Florijan-Veselaj/**
 
 ### Installation sur chaque tablette
 
@@ -99,9 +103,16 @@ conserve sur l'appareil. Seule la première ouverture demande du réseau.
 ### Mettre à jour la fiche
 
 Modifier `checklist-petit-dejeuner.html`, lancer `python3 build.py`, incrémenter
-`CACHE` dans `docs/sw.js` (`checklist-pdj-v1` vers `v2`...), puis pousser. Les
-tablettes récupèrent la nouvelle version à leur prochaine ouverture avec réseau.
-Sans changement de `CACHE`, elles gardent l'ancienne.
+`CACHE` dans `docs/sw.js` (`checklist-pdj-v1` vers `v2`...), puis pousser sur
+`main`. La publication se relance toute seule. Les tablettes récupèrent la
+nouvelle version à leur prochaine ouverture avec réseau ; sans changement de
+`CACHE`, elles gardent l'ancienne.
+
+### Visibilité
+
+Le dépôt est public, donc **la fiche est consultable par quiconque connaît
+l'adresse**. Elle ne contient qu'une procédure interne, sans donnée nominative :
+les fiches saisies restent sur la tablette et ne sont jamais publiées.
 
 ## Où sont stockées les données
 
