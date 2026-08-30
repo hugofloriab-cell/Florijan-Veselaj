@@ -25,6 +25,20 @@ struct LabelScanResult: Sendable, Equatable {
     var batchNumber: String?
     var expiryDate: Date?
     var barcode: String?
+
+    /// Allergènes repérés dans la liste d'ingrédients.
+    var allergens: Set<Allergen>
+
+    /// Une liste d'ingrédients a-t-elle été vue ?
+    ///
+    /// Sans elle, « aucun allergène » ne veut rien dire : il faut distinguer
+    /// une liste lue qui n'en contient aucun d'une photo qui ne montrait pas
+    /// la liste.
+    var sawIngredientList: Bool
+
+    /// Famille de denrée devinée. Une proposition, pas une lecture.
+    var category: FoodCategory?
+
     var recognizedLines: [String]
 
     init(
@@ -32,17 +46,46 @@ struct LabelScanResult: Sendable, Equatable {
         batchNumber: String? = nil,
         expiryDate: Date? = nil,
         barcode: String? = nil,
+        allergens: Set<Allergen> = [],
+        sawIngredientList: Bool = false,
+        category: FoodCategory? = nil,
         recognizedLines: [String] = []
     ) {
         self.productName = productName
         self.batchNumber = batchNumber
         self.expiryDate = expiryDate
         self.barcode = barcode
+        self.allergens = allergens
+        self.sawIngredientList = sawIngredientList
+        self.category = category
         self.recognizedLines = recognizedLines
     }
 
+    /// Fusionne deux lectures — le recto et le dos d'un même emballage.
+    ///
+    /// La règle est simple et vaut d'être écrite : la première valeur trouvée
+    /// gagne. Le recto est photographié en premier et porte la dénomination ;
+    /// le dos porte le code-barres, les ingrédients et la date. Chacun apporte
+    /// ce que l'autre n'a pas, et rien n'écrase rien.
+    func merged(with other: LabelScanResult) -> LabelScanResult {
+        LabelScanResult(
+            productName: productName ?? other.productName,
+            batchNumber: batchNumber ?? other.batchNumber,
+            expiryDate: expiryDate ?? other.expiryDate,
+            barcode: barcode ?? other.barcode,
+            allergens: allergens.union(other.allergens),
+            sawIngredientList: sawIngredientList || other.sawIngredientList,
+            category: category ?? other.category,
+            recognizedLines: recognizedLines + other.recognizedLines
+        )
+    }
+
     var isEmpty: Bool {
-        productName == nil && batchNumber == nil && expiryDate == nil && barcode == nil
+        productName == nil
+            && batchNumber == nil
+            && expiryDate == nil
+            && barcode == nil
+            && allergens.isEmpty
     }
 
     /// Ce qui a été trouvé, pour le dire à l'utilisateur sans lui faire
@@ -50,9 +93,11 @@ struct LabelScanResult: Sendable, Equatable {
     var summary: String {
         var found: [String] = []
         if productName != nil { found.append("dénomination") }
+        if barcode != nil { found.append("code-barres") }
         if batchNumber != nil { found.append("lot") }
         if expiryDate != nil { found.append("date") }
-        if barcode != nil { found.append("code-barres") }
+        if category != nil { found.append("famille") }
+        if !allergens.isEmpty { found.append("\(allergens.count) allergène(s)") }
         return found.isEmpty ? "" : found.joined(separator: ", ")
     }
 
@@ -136,11 +181,16 @@ enum DateOCRService {
             .compactMap(\.payloadStringValue)
             .first
 
+        let name = productName(in: observed)
+
         return LabelScanResult(
-            productName: productName(in: observed),
+            productName: name,
             batchNumber: batchNumber(in: lines, barcode: barcode),
             expiryDate: expiryDate(in: lines, reference: reference),
             barcode: barcode,
+            allergens: LabelInterpreter.allergens(in: lines),
+            sawIngredientList: LabelInterpreter.containsIngredientList(lines),
+            category: LabelInterpreter.category(name: name, lines: lines),
             recognizedLines: lines
         )
     }

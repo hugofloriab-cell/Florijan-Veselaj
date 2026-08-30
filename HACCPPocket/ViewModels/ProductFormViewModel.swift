@@ -203,15 +203,25 @@ final class ProductFormViewModel {
 
     // MARK: - Scan d'étiquette
 
-    /// Analyse une photo d'étiquette et pré-remplit DLC et code-barres.
-    /// Les champs déjà renseignés par l'utilisateur ne sont jamais écrasés.
+    /// Analyse une photo d'étiquette et pré-remplit ce qu'elle porte.
+    ///
+    /// Les champs déjà renseignés par l'utilisateur ne sont jamais écrasés :
+    /// une reconnaissance propose, une personne décide.
     func scanLabel(imageData: Data) async {
         isScanning = true
         errorMessage = nil
-        labelPhotoData = imageData
+
+        // La première photo est conservée comme photo de la fiche : c'est le
+        // recto qui permet de reconnaître le produit d'un coup d'œil. La
+        // seconde apporte des informations, pas une meilleure illustration.
+        if labelPhotoData == nil { labelPhotoData = imageData }
 
         do {
-            let result = try await DateOCRService.scan(imageData: imageData)
+            let scan = try await DateOCRService.scan(imageData: imageData)
+
+            // Deux photos du même emballage se complètent : le recto porte la
+            // dénomination, le dos le code-barres, les ingrédients et la date.
+            let result = lastScanResult.map { $0.merged(with: scan) } ?? scan
             lastScanResult = result
 
             if let date = result.expiryDate, !hasSupplierExpiry {
@@ -234,6 +244,19 @@ final class ProductFormViewModel {
                 batchNumber = lot
             }
 
+            // La famille entraîne la durée de vie et la zone de stockage :
+            // trois champs pour une seule reconnaissance. On ne l'applique
+            // que si l'utilisateur n'a pas déjà choisi, sa décision primant
+            // toujours sur une devinette.
+            if let scannedCategory = result.category, category == nil {
+                apply(scannedCategory)
+            }
+
+            // Les allergènes s'ajoutent au lieu de remplacer : une deuxième
+            // photo peut en révéler que la première ne montrait pas, et une
+            // saisie manuelle ne doit jamais disparaître.
+            allergens.formUnion(result.allergens)
+
             if result.isEmpty {
                 errorMessage = "Rien n'a été reconnu sur cette étiquette. Cadrez-la de plus près, à plat et bien éclairée — ou saisissez les informations à la main."
             }
@@ -242,6 +265,16 @@ final class ProductFormViewModel {
         }
 
         isScanning = false
+    }
+
+    /// Efface la lecture en cours pour repartir de zéro.
+    ///
+    /// Sans ça, une photo ratée resterait fusionnée avec la suivante et
+    /// continuerait de proposer ses erreurs.
+    func resetScan() {
+        lastScanResult = nil
+        labelPhotoData = nil
+        errorMessage = nil
     }
 
     // MARK: - Enregistrement

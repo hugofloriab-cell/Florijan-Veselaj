@@ -59,6 +59,10 @@ struct LabelContent: Identifiable, Sendable {
     /// Précisions, réunies sur une ligne : lot, fournisseur, opérateur.
     let details: [String]
 
+    /// Allergènes, imprimés en gras sur une ligne à part quand la place le
+    /// permet. Vide s'il n'y en a pas à signaler.
+    let allergens: String
+
     /// Charge du QR code, si l'étiquette en porte un.
     let qrPayload: String?
 
@@ -68,6 +72,7 @@ struct LabelContent: Identifiable, Sendable {
         caption: String,
         highlight: String,
         details: [String] = [],
+        allergens: String = "",
         qrPayload: String? = nil
     ) {
         self.id = id
@@ -75,14 +80,22 @@ struct LabelContent: Identifiable, Sendable {
         self.caption = caption
         self.highlight = highlight
         self.details = details
+        self.allergens = allergens
         self.qrPayload = qrPayload
     }
 }
 
 extension TrackedProduct {
 
+    /// Étiquette à coller sur le contenant.
+    ///
+    /// L'ordre des précisions suit ce qu'on cherche dessus, dans une cuisine
+    /// pressée : d'abord quand il a été ouvert, puis où il va, puis les
+    /// allergènes — qui sont la seule information à porter une conséquence
+    /// immédiate pour un client.
     var labelContent: LabelContent {
         var details = ["Ouvert le \(AppFormatters.shortDate(openedAt))"]
+        details.append(storage.label)
         if !batchNumber.isEmpty { details.append("Lot \(batchNumber)") }
         if !supplier.isEmpty { details.append(supplier) }
 
@@ -92,6 +105,7 @@ extension TrackedProduct {
             caption: "À CONSOMMER AVANT LE",
             highlight: AppFormatters.shortDate(effectiveLimitDate),
             details: details,
+            allergens: allergens.isEmpty ? "" : Allergen.summary(of: allergens),
             qrPayload: LabelPayload.encode(self)
         )
     }
@@ -271,11 +285,25 @@ enum LabelRenderer {
             lines: 1
         )
 
-        _ = drawText(
+        y += drawText(
             content.details.joined(separator: " · "),
             font: detailFont,
             color: .darkGray,
             rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.13),
+            lines: 1
+        )
+
+        // Les allergènes ne passent que si le format a la largeur pour les
+        // rendre lisibles — voir `fitsAllergenLine`. Sur une 40 × 30, la
+        // ligne serait écrasée, et le format le dit lui-même plutôt que de
+        // laisser un seuil chiffré vivre en double ici.
+        guard !content.allergens.isEmpty, format.fitsAllergenLine else { return }
+
+        _ = drawText(
+            "ALLERGÈNES : " + content.allergens.uppercased(with: AppFormatters.locale),
+            font: UIFont.systemFont(ofSize: height * 0.085, weight: .bold),
+            color: .black,
+            rect: CGRect(x: rect.minX, y: y, width: rect.width, height: height * 0.12),
             lines: 1
         )
     }

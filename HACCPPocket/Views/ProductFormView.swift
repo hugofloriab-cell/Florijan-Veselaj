@@ -214,18 +214,35 @@ struct ProductFormView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
-            #if canImport(UIKit)
-            if CameraPicker.isAvailable {
-                Button {
-                    isPresentingCamera = true
-                } label: {
-                    Label("Photographier l'étiquette", systemImage: "camera")
-                }
-            }
-            #endif
+            // Deux photos valent bien mieux qu'une : le recto porte la
+            // dénomination en gros, le dos porte le code-barres, la liste
+            // d'ingrédients et la date. Aucune des deux ne suffit seule, et
+            // l'écran le dit au lieu de laisser deviner.
+            captureStep(
+                number: 1,
+                title: "Le devant de l'emballage",
+                detail: "La dénomination, en gros caractères.",
+                isDone: viewModel.lastScanResult?.productName != nil
+            )
+
+            captureStep(
+                number: 2,
+                title: "Le dos de l'emballage",
+                detail: "Le code-barres, la liste d'ingrédients et la date limite.",
+                isDone: viewModel.lastScanResult?.sawIngredientList == true
+                    || viewModel.lastScanResult?.barcode != nil
+            )
 
             PhotosPicker(selection: $photoItem, matching: .images) {
-                Label("Choisir une photo", systemImage: "photo.on.rectangle")
+                Label("Choisir une photo existante", systemImage: "photo.on.rectangle")
+            }
+
+            if viewModel.lastScanResult != nil {
+                Button(role: .destructive) {
+                    viewModel.resetScan()
+                } label: {
+                    Label("Recommencer la lecture", systemImage: "arrow.counterclockwise")
+                }
             }
 
             if viewModel.isScanning {
@@ -248,6 +265,19 @@ struct ProductFormView: View {
                 .fixedSize(horizontal: false, vertical: true)
             }
 
+            // Une absence d'allergène ne veut rien dire tant qu'aucune liste
+            // d'ingrédients n'a été lue : la distinction est ce qui sépare
+            // « il n'y en a pas » de « je n'ai pas regardé ».
+            if let scan = viewModel.lastScanResult, scan.productName != nil, !scan.sawIngredientList {
+                Label(
+                    "Aucune liste d'ingrédients n'a été lue : photographiez le dos pour les allergènes.",
+                    systemImage: "info.circle"
+                )
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let message = viewModel.errorMessage {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .font(.caption)
@@ -256,7 +286,7 @@ struct ProductFormView: View {
         } header: {
             Text("Étiquette")
         } footer: {
-            Text("La photo est analysée sur l'appareil : dénomination, lot, DLC et code-barres. Aucune image n'est envoyée sur Internet. La dénomination et le lot sont devinés — relisez-les, ils se trompent plus souvent que la date.")
+            Text("Les photos sont analysées sur l'appareil : dénomination, code-barres, allergènes, date limite, et la famille de denrée qui entraîne la durée de vie et la zone de stockage. Aucune image n'est envoyée sur Internet.\n\nCe qui est lu doit être relu : les allergènes engagent votre responsabilité, pas celle de l'application.")
         }
     }
 
@@ -285,6 +315,69 @@ struct ProductFormView: View {
     private func loadPhoto(_ item: PhotosPickerItem?) async {
         guard let item, let data = try? await item.loadTransferable(type: Data.self) else { return }
         await viewModel.scanLabel(imageData: data)
+    }
+
+    /// Une des deux étapes de la lecture guidée.
+    ///
+    /// La coche verte n'est pas décorative : sans elle, personne ne sait
+    /// quelle face a déjà été photographiée, et on prend deux fois le recto.
+    private func captureStep(
+        number: Int,
+        title: String,
+        detail: String,
+        isDone: Bool
+    ) -> some View {
+        Button {
+            isPresentingCamera = true
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(isDone ? Color.green : Color.brand.opacity(0.15))
+                        .frame(width: 28, height: 28)
+
+                    if isDone {
+                        Image(systemName: "checkmark")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("\(number)")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(Color.brand)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.primary)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "camera")
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 2)
+        }
+        .buttonStyle(.plain)
+        // Sans appareil photo — simulateur, Mac, ou clé caméra absente — les
+        // deux étapes sont inertes : c'est « Choisir une photo existante »
+        // qui prend le relais, juste en dessous.
+        .disabled(!isCameraUsable)
+        .opacity(isCameraUsable ? 1 : 0.5)
+    }
+
+    private var isCameraUsable: Bool {
+        #if canImport(UIKit)
+        CameraPicker.isAvailable
+        #else
+        false
+        #endif
     }
 
     private func platformImage(from data: Data) -> Image? {

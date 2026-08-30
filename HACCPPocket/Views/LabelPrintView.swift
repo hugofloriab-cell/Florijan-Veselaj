@@ -50,8 +50,16 @@ struct LabelPrintView: View {
                 "calendar.badge.exclamationmark"
             )
         ]
+        lines.append(("Stockage", product.storage.label, product.storage.systemImage))
         if !product.batchNumber.isEmpty {
             lines.append(("Lot", product.batchNumber, "number"))
+        }
+        if !product.allergens.isEmpty {
+            lines.append((
+                "Allergènes",
+                Allergen.summary(of: product.allergens),
+                "exclamationmark.triangle"
+            ))
         }
 
         self.init(
@@ -150,12 +158,24 @@ struct LabelPrintView: View {
         } header: {
             Text("Format")
         } footer: {
-            if format.supportsQRCode && content.qrPayload != nil {
-                Text("Un QR code de traçabilité est imprimé : le scanner depuis l'app rouvre la fiche du produit.")
-            } else if content.qrPayload == nil {
-                Text("Cette étiquette ne porte pas de QR code : seul le texte est imprimé.")
-            } else {
-                Text("Ce format est trop petit pour un QR code lisible : seul le texte est imprimé.")
+            VStack(alignment: .leading, spacing: 4) {
+                if format.supportsQRCode && content.qrPayload != nil {
+                    Text("Un QR code de traçabilité est imprimé : le scanner depuis l'app rouvre la fiche du produit.")
+                } else if content.qrPayload == nil {
+                    Text("Cette étiquette ne porte pas de QR code : seul le texte est imprimé.")
+                } else {
+                    Text("Ce format est trop petit pour un QR code lisible : seul le texte est imprimé.")
+                }
+
+                // Se taire ici laisserait croire qu'un produit sans ligne
+                // d'allergènes n'en contient pas.
+                if !content.allergens.isEmpty && !format.fitsAllergenLine {
+                    Label(
+                        "Ce format est trop étroit pour la ligne d'allergènes. Choisissez 50 mm de large ou plus si vous voulez les voir imprimés.",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .foregroundStyle(.orange)
+                }
             }
         }
     }

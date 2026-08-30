@@ -26,6 +26,8 @@ struct SheetLayout: Equatable {
 enum LabelFormat: String, CaseIterable, Identifiable, Sendable {
 
     /// Rouleaux les plus répandus en cuisine.
+    case roll100x50
+    case roll62x40
     case roll62x29
     case roll57x32
     case roll50x30
@@ -37,6 +39,8 @@ enum LabelFormat: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
+        case .roll100x50: "Rouleau 100 × 50 mm"
+        case .roll62x40:  "Rouleau 62 × 40 mm"
         case .roll62x29:  "Rouleau 62 × 29 mm"
         case .roll57x32:  "Rouleau 57 × 32 mm"
         case .roll50x30:  "Rouleau 50 × 30 mm"
@@ -47,6 +51,8 @@ enum LabelFormat: String, CaseIterable, Identifiable, Sendable {
 
     var detail: String {
         switch self {
+        case .roll100x50: "Grand format : allergènes lisibles à un mètre"
+        case .roll62x40:  "Brother DK-11208 — la place pour les allergènes"
         case .roll62x29:  "Brother DK-11209 et équivalents"
         case .roll57x32:  "Rouleau thermique standard"
         case .roll50x30:  "Rouleau thermique compact"
@@ -64,6 +70,8 @@ enum LabelFormat: String, CaseIterable, Identifiable, Sendable {
     /// Dimensions d'une étiquette, en millimètres.
     var labelSizeMM: CGSize {
         switch self {
+        case .roll100x50: CGSize(width: 100, height: 50)
+        case .roll62x40:  CGSize(width: 62, height: 40)
         case .roll62x29:  CGSize(width: 62, height: 29)
         case .roll57x32:  CGSize(width: 57, height: 32)
         case .roll50x30:  CGSize(width: 50, height: 30)
@@ -115,5 +123,15 @@ enum LabelFormat: String, CaseIterable, Identifiable, Sendable {
     /// scannable : en dessous, on privilégie le texte.
     var supportsQRCode: Bool {
         labelSizeMM.height >= 29
+    }
+
+    /// L'étiquette a-t-elle la place d'une ligne d'allergènes lisible ?
+    ///
+    /// La contrainte est la LARGEUR, pas la hauteur : « lait, œufs, moutarde,
+    /// fruits à coque » tient sur 62 mm, se serre sur 50, et devient illisible
+    /// sur 40. Un allergène illisible est pire qu'un allergène absent — il
+    /// donne l'illusion d'une information vérifiée.
+    var fitsAllergenLine: Bool {
+        labelSizeMM.width >= 50 && labelSizeMM.height >= 29
     }
 }
