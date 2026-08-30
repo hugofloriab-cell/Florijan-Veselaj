@@ -24,8 +24,15 @@ struct CameraPicker: UIViewControllerRepresentable {
 
     /// Faux sur simulateur et sur Mac : les vues appelantes masquent alors
     /// le bouton de prise de vue.
+    ///
+    /// La clé `NSCameraUsageDescription` est exigée en plus du matériel :
+    /// présenter cet écran sans elle fait arrêter l'application par iOS, ce
+    /// qui ressemble à un plantage alors que c'est un réglage manquant dans
+    /// la cible Xcode. Mieux vaut masquer le bouton que perdre l'utilisateur.
     static var isAvailable: Bool {
-        UIImagePickerController.isSourceTypeAvailable(.camera)
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else { return false }
+        let reason = Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") as? String
+        return !(reason ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {

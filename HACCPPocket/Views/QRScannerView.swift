@@ -37,10 +37,34 @@ struct QRScannerView: View {
         AVCaptureDevice.default(for: .video) != nil
     }
 
+    /// La cible Xcode déclare-t-elle la raison d'usage de la caméra ?
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI CE CONTRÔLE EXISTE
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Sans la clé `NSCameraUsageDescription`, iOS ne refuse pas l'accès : il
+    /// **arrête l'application** à la seconde où `requestAccess` est appelé.
+    /// Pas d'alerte, pas d'erreur récupérable, pas de `try` qui tienne — le
+    /// processus est tué par le système.
+    ///
+    /// Du point de vue de l'utilisateur, ça ressemble exactement à un plantage
+    /// de l'application, alors que le code est correct et qu'il manque une
+    /// ligne dans les réglages de la cible Xcode.
+    ///
+    /// On vérifie donc la présence de la clé AVANT de demander quoi que ce
+    /// soit. Si elle manque, l'écran l'explique au lieu de disparaître.
+    private var hasCameraUsageDescription: Bool {
+        let value = Bundle.main.object(forInfoDictionaryKey: "NSCameraUsageDescription") as? String
+        return !(value ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     var body: some View {
         NavigationStack {
             Group {
-                if !isCameraAvailable {
+                if !hasCameraUsageDescription {
+                    misconfiguredView
+                } else if !isCameraAvailable {
                     unavailableView
                 } else {
                     switch permission {
@@ -65,6 +89,7 @@ struct QRScannerView: View {
             .task {
                 // Une autorisation accordée depuis les réglages iOS pendant
                 // que l'écran est ouvert doit être prise en compte.
+                guard hasCameraUsageDescription else { return }
                 permission = AVCaptureDevice.authorizationStatus(for: .video)
                 if permission == .notDetermined { await requestAccess() }
             }
@@ -92,6 +117,25 @@ struct QRScannerView: View {
             Label("Caméra indisponible", systemImage: "camera.metering.unknown")
         } description: {
             Text("Le scan nécessite un appareil réel : le simulateur n'a pas de caméra. Testez sur votre iPhone.")
+        }
+    }
+
+    /// Affiché quand la clé manque dans la cible Xcode.
+    ///
+    /// Ce message ne s'adresse pas au restaurateur mais à celui qui construit
+    /// l'application : c'est une erreur de configuration, pas un incident
+    /// d'usage. Il ne peut apparaître qu'en développement — une cible sans
+    /// cette clé est refusée à la publication sur l'App Store.
+    private var misconfiguredView: some View {
+        ContentUnavailableView {
+            Label("Caméra non déclarée", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text("""
+            La cible Xcode ne déclare pas pourquoi l'application utilise la caméra. Sans cette déclaration, iOS arrête l'application dès qu'on demande l'autorisation.
+
+            À faire une seule fois, dans Xcode :
+            cible HACCPPocket → onglet Info → ajouter la clé « Privacy - Camera Usage Description », avec une phrase expliquant l'usage.
+            """)
         }
     }
 
@@ -129,6 +173,11 @@ struct QRScannerView: View {
     // MARK: - Autorisation
 
     private func requestAccess() async {
+        // Deuxième filet : `requestAccess` sans la clé tue le processus, et
+        // ce bouton est atteignable par un chemin que le contrôle d'affichage
+        // ne couvrirait pas.
+        guard hasCameraUsageDescription else { return }
+
         isRequesting = true
         let granted = await AVCaptureDevice.requestAccess(for: .video)
         permission = granted ? .authorized : .denied
