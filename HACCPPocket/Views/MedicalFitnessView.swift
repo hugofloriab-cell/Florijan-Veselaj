@@ -268,7 +268,7 @@ struct MedicalPersonView: View {
     }
 
     private var hasConfidentialContent: Bool {
-        visits.contains(\.hasConfidentialContent)
+        visits.contains(where: \.hasConfidentialContent)
     }
 
     @ViewBuilder
