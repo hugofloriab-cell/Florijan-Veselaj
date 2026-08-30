@@ -148,12 +148,19 @@ struct ProductListView: View {
             .listRowBackground(Color.clear)
 
             ForEach(displayed) { product in
-                Button {
-                    editedProduct = product
-                } label: {
-                    row(for: product)
+                // Deux boutons voisins plutôt qu'un bouton imbriqué dans un
+                // autre : dans une liste, un bouton placé à l'intérieur du
+                // libellé d'un autre ne reçoit pas ses propres appuis.
+                HStack(spacing: 0) {
+                    Button {
+                        editedProduct = product
+                    } label: {
+                        row(for: product)
+                    }
+                    .buttonStyle(.plain)
+
+                    printButton(for: product)
                 }
-                .buttonStyle(.plain)
                 .swipeActions(edge: .trailing) {
                     if !subscription.canWrite {
                         Button {
@@ -219,6 +226,25 @@ struct ProductListView: View {
                 emptyState(for: viewModel.filter)
             }
         }
+    }
+
+    /// Bouton d'impression, sur la ligne elle-même.
+    ///
+    /// L'étiquette se colle sur le contenant au moment où on l'entame :
+    /// l'enfouir dans un glissement latéral revenait à ce que personne ne
+    /// l'imprime.
+    private func printButton(for product: TrackedProduct) -> some View {
+        Button {
+            labelProduct = product
+        } label: {
+            Image(systemName: "printer")
+                .font(.body)
+                .foregroundStyle(Color.brand)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Imprimer l'étiquette de \(product.name)")
     }
 
     private func row(for product: TrackedProduct) -> some View {

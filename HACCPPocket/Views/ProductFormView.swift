@@ -21,6 +21,7 @@ struct ProductFormView: View {
     @State private var viewModel: ProductFormViewModel
     @State private var photoItem: PhotosPickerItem?
     @State private var isPresentingCamera = false
+    @State private var savedForPrinting: TrackedProduct?
 
     init(product: TrackedProduct? = nil, prefill: ProductPrefill? = nil, context: ModelContext) {
         _viewModel = State(
@@ -40,6 +41,7 @@ struct ProductFormView: View {
                 labelSection
                 allergenSection
                 notesSection
+                printSection
             }
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
@@ -68,6 +70,35 @@ struct ProductFormView: View {
                 .ignoresSafeArea()
             }
             #endif
+            // L'écran d'impression s'ouvre sur le produit enregistré, et la
+            // fiche se referme derrière lui : le geste naturel est « je note,
+            // j'imprime, je colle », pas « je note, j'imprime, je reviens
+            // dans un formulaire que j'ai déjà validé ».
+            .sheet(item: $savedForPrinting, onDismiss: { dismiss() }) { product in
+                LabelPrintView(product: product)
+            }
+        }
+    }
+
+    /// Enregistrer et imprimer dans le même geste.
+    ///
+    /// Imprimer avant d'enregistrer produirait une étiquette collée sur un
+    /// contenant que le registre ignore : l'étagère et la traçabilité se
+    /// mettraient à diverger dès le premier produit.
+    private var printSection: some View {
+        Section {
+            Button {
+                guard let saved = viewModel.save() else { return }
+                savedForPrinting = saved
+            } label: {
+                Label("Enregistrer et imprimer l'étiquette", systemImage: "printer")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(!viewModel.canSave)
+            .listRowBackground(Color.clear)
+        } footer: {
+            Text("Sept formats sont proposés, du petit rouleau thermique à la planche A4. L'étiquette porte la dénomination, la date de retrait en gros, la zone de stockage et les allergènes.")
         }
     }
 
