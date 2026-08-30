@@ -377,6 +377,67 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,select:focus-vis
   font-family:"IBM Plex Mono",monospace;font-size:.75rem;color:var(--ink-3);
 }
 
+/* ---------- Sondes de température ---------- */
+.probes{margin-top:14px}
+.probes-bar{
+  display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.probes-intro{margin:0;font-size:.92rem;color:var(--ink-2);max-width:64ch}
+.probes-actions{display:flex;gap:8px;flex-wrap:wrap}
+.probes-actions button.btn{min-height:40px;font-size:.7rem}
+.pbanner{
+  display:flex;gap:12px;align-items:flex-start;
+  background:var(--red-soft);border:1px solid var(--red);border-left-width:4px;border-radius:3px;
+  padding:12px 16px;margin-bottom:14px;font-size:.92rem;color:var(--red);font-weight:600;
+}
+.pbanner ul{margin:6px 0 0;padding-left:20px;font-weight:400;color:var(--ink)}
+.pbanner.avert{background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber)}
+.pgrid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(288px,1fr))}
+.pcard{
+  background:var(--surface);border:1px solid var(--line);border-radius:3px;
+  padding:14px 16px 11px;display:flex;flex-direction:column;gap:10px;
+}
+.pcard.ko{border-color:var(--red);background:var(--red-soft)}
+/* Sur fond d'alerte, la pastille a la même couleur que la carte : on lui rend
+   le fond de la page pour qu'elle reste lisible comme une pastille. */
+.pcard.ko .pill.ko{background:var(--surface)}
+.pcard.muet{border-style:dashed}
+.phead{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.pnom{font-family:Archivo,sans-serif;font-weight:600;font-size:1rem;line-height:1.25}
+.pnom span{
+  display:block;font-family:"IBM Plex Mono",monospace;font-size:.68rem;font-weight:500;
+  letter-spacing:.06em;color:var(--ink-3);margin-top:3px;text-transform:uppercase;
+}
+.pnow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ptemp{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:2.05rem;
+  line-height:1;letter-spacing:-.02em;
+}
+.ptemp.ko{color:var(--red)}
+.ptemp.vide{color:var(--ink-3);font-size:1.05rem;font-weight:500}
+.page{font-family:"IBM Plex Mono",monospace;font-size:.78rem;color:var(--ink-3)}
+.pstats{display:flex;gap:16px;flex-wrap:wrap;font-family:"IBM Plex Mono",monospace;font-size:.76rem;color:var(--ink-3)}
+.pstats b{font-weight:600;color:var(--ink)}
+.pstats .ko{color:var(--red)}
+.pspark{display:block;width:100%;height:48px}
+.pbatt{display:flex;align-items:center;gap:9px;font-family:"IBM Plex Mono",monospace;font-size:.76rem;color:var(--ink-2)}
+.pjauge{flex:1;min-width:56px;height:6px;background:var(--sunken);border-radius:3px;overflow:hidden}
+.pjauge i{display:block;height:100%;background:var(--green)}
+.pjauge i.bas{background:var(--amber)}
+.pjauge i.vide{background:var(--red)}
+.pfoot{display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:9px}
+.plink{
+  font:inherit;font-size:.78rem;background:none;border:0;padding:0;cursor:pointer;
+  color:var(--navy-2);text-decoration:underline;text-underline-offset:3px;
+}
+.plink.danger{color:var(--red)}
+.pempty{
+  border:1px dashed var(--line-strong);border-radius:3px;padding:22px 20px;
+  color:var(--ink-3);font-size:.95rem;text-align:center;
+}
+.pnote{margin:12px 0 0;font-size:.82rem;color:var(--ink-3)}
+
 /* ---------- Historique ---------- */
 .history{margin-top:36px}
 .hlist{display:grid;gap:8px;margin-top:12px}
@@ -512,6 +573,8 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 @media print{
   body{background:#fff;color:#000;padding:0;font-size:11pt}
   .actionbar,.themebtn,.nowbtn,.clearsig,.history,.toast,dialog{display:none !important}
+  .probes-actions,.pfoot{display:none !important}
+  .pcard{break-inside:avoid;border:1px solid #BFC8D6}
   .sheet{max-width:none;padding:0}
   .masthead{background:#12336B !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .slot,.extra,.validation,.missions{break-inside:avoid}
@@ -657,7 +720,24 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     </div>
   </section>
 
-  <h2 class="section-title"><span class="num">2.</span> Validation &amp; transmission de fin de service <span class="rule"></span></h2>
+  <h2 class="section-title"><span class="num">2.</span> Sondes de température <span class="rule"></span></h2>
+
+  <section class="probes">
+    <div class="probes-bar">
+      <p class="probes-intro">Relevé automatique toutes les 30 minutes dans chaque enceinte, jour et nuit.
+        Appuyez sur <b>Relever les sondes</b> en fin de service : l'historique est rapatrié sur la tablette
+        et part avec la fiche. Les sondes gardent 10 jours de mesures en réserve.</p>
+      <div class="probes-actions">
+        <button type="button" class="btn primary" id="probe-sync">Relever les sondes</button>
+        <button type="button" class="btn" id="probe-add">Appairer une sonde</button>
+      </div>
+    </div>
+    <div id="probe-banner"></div>
+    <div class="pgrid" id="probe-grid"></div>
+    <p class="pnote" id="probe-note"></p>
+  </section>
+
+  <h2 class="section-title"><span class="num">3.</span> Validation &amp; transmission de fin de service <span class="rule"></span></h2>
 
   <section class="validation">
     <div class="vhead">Fin de service — 11h00</div>
@@ -698,7 +778,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 
   <p class="quote">« La satisfaction client et l'esprit d'équipe reposent sur la rigueur de chacun. La cuisine et la plonge doivent être rendues parfaitement propres et prêtes pour le service du midi. »</p>
 
-  <p class="version"><!--MAJ-->Mise à jour du 28 août 2026 à 10h31</p>
+  <p class="version"><!--MAJ-->Mise à jour du 30 août 2026 à 13h49</p>
 
   <section class="history">
     <h2 class="section-title">Fiches enregistrées <span class="rule"></span></h2>
@@ -926,6 +1006,9 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     });
     loadSignature();
     refresh();
+    /* Les cartes de sondes montrent le bilan de la date affichée : elles
+       suivent donc le changement de fiche. */
+    sondesRendu();
   }
 
   /* ============ Persistance ============ */
@@ -1090,6 +1173,703 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     });
   }
 
+  /* ============ Sondes de température ============ */
+  /* Les sondes sont des enregistreurs sur piles : elles mesurent toutes les
+     30 minutes et gardent tout en mémoire. La tablette vient chercher
+     l'historique, elle ne reçoit rien en continu. Voir sondes/README.md.
+
+     Le format des trames est figé dans sondes/PROTOCOLE-BLE.md : toute
+     modification ici doit être reportée dans le firmware, et inversement.
+
+     Ce bloc est écrit en ES5 comme le reste de la fiche, promesses comprises.
+     Pas de async/await : sur une vieille tablette, cette syntaxe ferait échouer
+     l'analyse du script entier — et la check-list avec. */
+
+  var SONDE_SERVICE = "e9ea0001-6d2c-4f8b-9a35-0b7c1d4e5f60";
+  var SONDE_ETAT    = "e9ea0002-6d2c-4f8b-9a35-0b7c1d4e5f60";
+  var SONDE_HISTO   = "e9ea0003-6d2c-4f8b-9a35-0b7c1d4e5f60";
+  var SONDE_CMD     = "e9ea0004-6d2c-4f8b-9a35-0b7c1d4e5f60";
+
+  var T_INVALIDE  = -32768;   /* mesure ratée, marquée par le capteur    */
+  var MAX_RELEVES = 3000;     /* ~62 jours à 30 minutes, par sonde       */
+  var PILE_BASSE  = 20;       /* seuil d'alerte, en pourcentage          */
+
+  /* Normes de la fiche (créneau 06h00–08h00), en centièmes de degré. */
+  var TYPES = {
+    positif: { nom:"Positif +1 à +4 °C",   min:100,   max:400   },
+    negatif: { nom:"Négatif -23 à -18 °C", min:-2300, max:-1800 }
+  };
+
+  var SONDES = null;
+  var syncEnCours = false;
+
+  function sondesListe(){
+    if(!SONDES){
+      var l = store.get("sondes", []);
+      SONDES = (Object.prototype.toString.call(l) === "[object Array]") ? l : [];
+      SONDES.forEach(function(s){ if(!s.releves) s.releves = []; });
+    }
+    return SONDES;
+  }
+  function sondesEnregistrer(){ store.set("sondes", SONDES || []); }
+
+  function typeDe(s){ return TYPES[s.type] || TYPES.positif; }
+  function sondeSeuils(s){
+    var t = typeDe(s);
+    return { min:(typeof s.min === "number" ? s.min : t.min),
+             max:(typeof s.max === "number" ? s.max : t.max) };
+  }
+  function horsSeuils(s, centi){
+    if(centi == null || centi === T_INVALIDE) return false;
+    var b = sondeSeuils(s);
+    return centi < b.min || centi > b.max;
+  }
+
+  /* ---- Mise en forme ---- */
+  function degres(centi){
+    if(centi == null || centi === T_INVALIDE) return "—";
+    var v = centi / 100;
+    var s = Math.abs(v).toFixed(1).replace(".", ",");
+    return (v > 0 ? "+" : v < 0 ? "-" : "") + s + " °C";
+  }
+  function ilYA(ms){
+    if(!ms) return "jamais relevée";
+    var d = Date.now() - ms;
+    if(d < 0) return "à l'instant";
+    if(d < 90000) return "à l'instant";
+    var m = Math.round(d / 60000);
+    if(m < 60) return "il y a " + m + " min";
+    var h = Math.round(m / 60);
+    if(h < 36) return "il y a " + h + " h";
+    return "il y a " + Math.round(h / 24) + " j";
+  }
+  function dureeJours(j){
+    if(j == null) return null;
+    if(j < 45) return j + " jours";
+    var mois = Math.round(j / 30.4);
+    if(mois < 24) return mois + " mois";
+    return (Math.round(j / 36.5) / 10).toFixed(1).replace(".", ",") + " ans";
+  }
+  function bornesJour(iso){
+    var p = (iso || "").split("-");
+    if(p.length !== 3) return null;
+    var d = new Date(+p[0], +p[1] - 1, +p[2], 0, 0, 0, 0);
+    if(isNaN(d.getTime())) return null;
+    return [d.getTime(), d.getTime() + 86400000];
+  }
+
+  /* ---- Relevés ---- */
+  /* Un relevé tient en trois nombres : [horodatage ms, centi-°C, pile %].
+     Compact, parce que tout cela vit dans le localStorage de la tablette. */
+  function sondeRanger(s, nouveaux){
+    var vus = {}, tout = (s.releves || []).slice();
+    tout.forEach(function(r){ vus[Math.round(r[0] / 60000)] = 1; });
+    nouveaux.forEach(function(r){
+      var cle = Math.round(r[0] / 60000);
+      if(vus[cle]) return;                       /* déjà rapatrié */
+      vus[cle] = 1;
+      tout.push(r);
+    });
+    tout.sort(function(a, b){ return a[0] - b[0]; });
+    if(tout.length > MAX_RELEVES) tout = tout.slice(tout.length - MAX_RELEVES);
+    s.releves = tout;
+  }
+
+  /* Recalage de l'horloge de la sonde. Sans quartz, son oscillateur dérive de
+     quelques pour cent — jusqu'à une demi-heure par jour. Elle horodate donc en
+     « tics » (ses propres secondes) et c'est la tablette qui rétablit l'heure
+     réelle, par interpolation entre deux synchronisations. */
+  function sondeDateur(s, tics, maintenant){
+    var t0 = s.refTics, r0 = s.refAt;
+    if(typeof t0 === "number" && typeof r0 === "number" &&
+       tics > t0 + 3600 && maintenant > r0){
+      var pente = (maintenant - r0) / ((tics - t0) * 1000);
+      if(pente > 0.8 && pente < 1.25){
+        return function(t){ return Math.round(r0 + (t - t0) * 1000 * pente); };
+      }
+    }
+    /* Première synchronisation, ou sonde redémarrée : cadence nominale. */
+    return function(t){ return maintenant - (tics - t) * 1000; };
+  }
+
+  /* Autonomie restante, déduite de la pente de décharge réellement observée
+     plutôt que d'un abaque. Une pile lithium a un palier très plat : il faut
+     deux bonnes semaines de recul avant que l'estimation veuille dire
+     quelque chose. */
+  function sondeAutonomie(s){
+    var r = s.releves || [];
+    if(r.length < 2) return null;
+    var fin = r[r.length - 1], debut = r[0], i;
+    for(i = 0; i < r.length; i++){
+      if(fin[0] - r[i][0] <= 60 * 86400000){ debut = r[i]; break; }
+    }
+    var jours = (fin[0] - debut[0]) / 86400000;
+    var perte = debut[2] - fin[2];
+    if(jours < 14 || perte < 2) return null;     /* pas assez de recul */
+    return Math.max(0, Math.round(fin[2] / (perte / jours)));
+  }
+
+  /* Bilan d'une journée pour une sonde : c'est ce qui part dans la fiche.
+     Un écart n'est retenu qu'au bout de deux relevés consécutifs hors normes,
+     soit une heure : une porte ouverte ou un dégivrage ne compte pas. */
+  function sondeJournee(s, iso){
+    var b = bornesJour(iso);
+    if(!b) return null;
+    var r = (s.releves || []).filter(function(x){
+      return x[0] >= b[0] && x[0] < b[1] && x[1] !== T_INVALIDE;
+    });
+    if(!r.length) return null;
+    var min = r[0][1], max = r[0][1], somme = 0, suite = 0, ecarts = 0;
+    r.forEach(function(x){
+      if(x[1] < min) min = x[1];
+      if(x[1] > max) max = x[1];
+      somme += x[1];
+      if(horsSeuils(s, x[1])){ suite++; if(suite === 2) ecarts++; }
+      else suite = 0;
+    });
+    return { n:r.length, min:min, max:max, moy:Math.round(somme / r.length),
+             ecarts:ecarts, debut:r[0][0], fin:r[r.length - 1][0] };
+  }
+
+  /* ---- Trames ---- */
+  function lireEtat(dv){
+    if(dv.byteLength < 20) throw new Error("Trame d'état incomplète.");
+    return {
+      version:dv.getUint8(0),   drapeaux:dv.getUint8(1),
+      mv:dv.getUint16(2, true), pile:dv.getUint8(4),
+      intervalle:dv.getUint8(5), centi:dv.getInt16(6, true),
+      attente:dv.getUint16(8, true), tics:dv.getUint32(10, true),
+      unixRef:dv.getUint32(14, true), offset:dv.getInt16(18, true)
+    };
+  }
+  function trameU16(code, valeur){
+    var t = new Uint8Array(3);
+    t[0] = code; t[1] = valeur & 0xFF; t[2] = (valeur >> 8) & 0xFF;
+    return t;
+  }
+  function trameU32(code, valeur){
+    var t = new Uint8Array(5);
+    t[0] = code;
+    t[1] = valeur & 0xFF; t[2] = (valeur >>> 8) & 0xFF;
+    t[3] = (valeur >>> 16) & 0xFF; t[4] = (valeur >>> 24) & 0xFF;
+    return t;
+  }
+
+  /* ---- Bluetooth ---- */
+  function bleDispo(){
+    return !!(window.navigator && navigator.bluetooth && navigator.bluetooth.requestDevice);
+  }
+  function bleMessage(){
+    if(!window.isSecureContext)
+      return "Le Bluetooth demande une adresse sécurisée. Ouvrez la fiche depuis son adresse web (https).";
+    if(restricted)
+      return "Le Bluetooth est bloqué dans cette fenêtre d'aperçu. Ouvrez la fiche dans Chrome sur la tablette.";
+    return "Ce navigateur ne gère pas le Bluetooth. Utilisez Chrome ou Edge sur la tablette.";
+  }
+  function appareilsConnus(){
+    if(!navigator.bluetooth || !navigator.bluetooth.getDevices) return Promise.resolve([]);
+    try{ return navigator.bluetooth.getDevices().catch(function(){ return []; }); }
+    catch(e){ return Promise.resolve([]); }
+  }
+  function choisirAppareil(){
+    return navigator.bluetooth.requestDevice({ filters:[{ services:[SONDE_SERVICE] }] });
+  }
+
+  /* Séquence complète de synchronisation d'une sonde. Rend le nombre de
+     relevés rapatriés. Voir le § 5 de sondes/PROTOCOLE-BLE.md. */
+  function sondeSynchroniser(s, appareil){
+    var ctx = { recus:[], dernier:-1 };
+    var t0 = Date.now();
+
+    function fermer(){
+      try{ if(appareil.gatt && appareil.gatt.connected) appareil.gatt.disconnect(); }catch(e){}
+    }
+
+    return Promise.resolve()
+      .then(function(){
+        return (appareil.gatt && appareil.gatt.connected) ? appareil.gatt : appareil.gatt.connect();
+      })
+      .then(function(serveur){ return serveur.getPrimaryService(SONDE_SERVICE); })
+      .then(function(service){
+        ctx.service = service;
+        return service.getCharacteristic(SONDE_ETAT);
+      })
+      .then(function(c){ return c.readValue(); })
+      .then(function(dv){
+        ctx.etat = lireEtat(dv);
+        if(ctx.etat.version !== 1)
+          throw new Error("Sonde en version " + ctx.etat.version + ", non reconnue par cette fiche.");
+        return ctx.service.getCharacteristic(SONDE_CMD);
+      })
+      .then(function(c){
+        ctx.cmd = c;
+        /* On donne l'heure à la sonde : elle servira de repère au prochain
+           recalage, même si c'est une autre tablette qui vient. */
+        return c.writeValue(trameU32(0x01, Math.floor(Date.now() / 1000)));
+      })
+      .then(function(){ return ctx.service.getCharacteristic(SONDE_HISTO); })
+      .then(function(c){
+        return new Promise(function(resoudre, rejeter){
+          var fini = false;
+          var minuteur = setTimeout(function(){
+            if(fini) return;
+            fini = true;
+            try{ c.removeEventListener("characteristicvaluechanged", surTrame); }catch(e){}
+            rejeter(new Error("La sonde n'a pas répondu à temps."));
+          }, 45000);
+
+          function terminer(err){
+            if(fini) return;
+            fini = true;
+            clearTimeout(minuteur);
+            try{ c.removeEventListener("characteristicvaluechanged", surTrame); }catch(e){}
+            if(err) rejeter(err); else resoudre();
+          }
+
+          function surTrame(ev){
+            var dv = ev.target.value;
+            if(!dv || dv.byteLength < 4) return;
+            var index = dv.getUint16(0, true), n = dv.getUint16(2, true);
+            if(n === 0){ terminer(null); return; }      /* paquet de fin */
+            for(var k = 0; k < n && 4 + k * 8 + 8 <= dv.byteLength; k++){
+              var o = 4 + k * 8;
+              ctx.recus.push([ dv.getUint32(o, true), dv.getInt16(o + 4, true), dv.getUint8(o + 6) ]);
+              ctx.dernier = index + k;
+            }
+          }
+
+          c.addEventListener("characteristicvaluechanged", surTrame);
+          c.startNotifications()
+            .then(function(){ return ctx.cmd.writeValue(trameU16(0x02, 0xFFFF)); })
+            .then(null, terminer);
+        });
+      })
+      .then(function(){
+        /* Écriture d'abord, acquittement ensuite : si la synchronisation casse
+           en route, la sonde garde tout et on recommencera. */
+        var dater = sondeDateur(s, ctx.etat.tics, t0);
+        var rates = 0;
+        var bons = [];
+        ctx.recus.forEach(function(r){
+          if(r[1] === T_INVALIDE){ rates++; return; }
+          bons.push([ dater(r[0]), r[1], r[2] ]);
+        });
+        sondeRanger(s, bons);
+
+        s.refTics    = ctx.etat.tics;
+        s.refAt      = t0;
+        s.pile       = ctx.etat.pile;
+        s.mv         = ctx.etat.mv;
+        s.derniere   = ctx.etat.centi;
+        s.derniereAt = t0;
+        s.intervalle = ctx.etat.intervalle;
+        s.offset     = ctx.etat.offset;
+        s.drapeaux   = ctx.etat.drapeaux;
+        s.capteurRates = rates;
+        s.syncAt     = Date.now();
+        s.erreur     = "";
+        sondesEnregistrer();
+
+        if(ctx.dernier >= 0) return ctx.cmd.writeValue(trameU16(0x03, ctx.dernier));
+      })
+      .then(function(){ fermer(); return ctx.recus.length; },
+            function(err){ fermer(); throw err; });
+  }
+
+  /* ---- Actions ---- */
+  function sondeAdopter(appareil){
+    var l = sondesListe(), cle = appareil.id || appareil.name, s = null, i;
+    for(i = 0; i < l.length; i++){ if(l[i].id === cle){ s = l[i]; break; } }
+    if(!s){
+      s = { id:cle, nom:appareil.name || "Sonde", type:"positif", releves:[] };
+      l.push(s);
+    }
+    if(appareil.name) s.ble = appareil.name;
+    return s;
+  }
+
+  function sondeAppairer(){
+    if(!bleDispo()){ toast(bleMessage()); return; }
+    choisirAppareil().then(function(appareil){
+      var s = sondeAdopter(appareil);
+      var neuve = !s.syncAt;
+      sondesEnregistrer();
+      sondesRendu();
+      toast("Sonde « " + s.nom + " » trouvée, relevé en cours…");
+      return sondeSynchroniser(s, appareil).then(function(){
+        if(neuve) sondeRegler(s, true);
+        else { sondesRendu(); toast("Sonde « " + s.nom + " » à jour."); }
+      });
+    }).then(null, function(err){
+      if(err && err.name === "NotFoundError"){ toast("Aucune sonde sélectionnée."); return; }
+      toast("Appairage impossible : " + ((err && err.message) || "erreur inconnue"));
+      sondesRendu();
+    });
+  }
+
+  function sondeReleverUne(s){
+    if(!bleDispo()){ toast(bleMessage()); return; }
+    toast("Relevé de « " + s.nom + " »… passez l'aimant sur le boîtier.");
+    appareilsConnus().then(function(connus){
+      for(var i = 0; i < connus.length; i++){
+        if((connus[i].id || connus[i].name) === s.id) return connus[i];
+      }
+      return choisirAppareil().then(function(appareil){
+        s.id = appareil.id || appareil.name;     /* ré-appairage */
+        return appareil;
+      });
+    }).then(function(appareil){
+      return sondeSynchroniser(s, appareil);
+    }).then(function(n){
+      sondesRendu();
+      toast("« " + s.nom + " » : " + n + " relevé(s) rapatrié(s).");
+    }, function(err){
+      if(err && err.name === "NotFoundError"){ toast("Aucune sonde sélectionnée."); return; }
+      s.erreur = (err && err.message) || "synchronisation impossible";
+      sondesEnregistrer();
+      sondesRendu();
+      toast("« " + s.nom + " » : " + s.erreur);
+    });
+  }
+
+  function sondesRelever(){
+    var l = sondesListe();
+    if(!l.length){ toast("Aucune sonde appairée. Utilisez « Appairer une sonde »."); return; }
+    if(!bleDispo()){ toast(bleMessage()); return; }
+    if(syncEnCours) return;
+
+    syncEnCours = true;
+    sondesRendu();
+
+    appareilsConnus().then(function(connus){
+      var index = {};
+      connus.forEach(function(a){ index[a.id || a.name] = a; });
+
+      var restant = l.slice(), bilan = { ok:0, ko:0, absentes:0, releves:0 };
+
+      function suivante(){
+        if(!restant.length) return Promise.resolve();
+        var s = restant.shift();
+        var appareil = index[s.id];
+        if(!appareil){
+          /* Chrome n'a pas mémorisé cette sonde : il faudra la choisir
+             à la main, un geste utilisateur par sonde. */
+          bilan.absentes++;
+          return suivante();
+        }
+        return sondeSynchroniser(s, appareil).then(function(n){
+          bilan.ok++; bilan.releves += n;
+        }, function(err){
+          bilan.ko++;
+          s.erreur = (err && err.message) || "synchronisation impossible";
+        }).then(function(){
+          sondesEnregistrer();
+          sondesRendu();
+          return suivante();
+        });
+      }
+      return suivante().then(function(){
+        var m = [];
+        if(bilan.ok) m.push(bilan.ok + " sonde(s) relevée(s), " + bilan.releves + " mesure(s)");
+        if(bilan.ko) m.push(bilan.ko + " en échec");
+        if(bilan.absentes) m.push(bilan.absentes + " à relever une par une");
+        toast(m.length ? m.join(" · ") + "." : "Rien à relever.");
+      });
+    }).then(null, function(err){
+      toast("Relevé impossible : " + ((err && err.message) || "erreur inconnue"));
+    }).then(function(){
+      syncEnCours = false;
+      sondesRendu();
+    });
+  }
+
+  function sondeRegler(s, nouvelle){
+    var nom = window.prompt("Emplacement de la sonde (ex. Chambre froide, Congélateur coffre, Banque froide) :", s.nom || "");
+    if(nom === null && !nouvelle) return;
+    if(nom) s.nom = nom.slice(0, 24);
+    var negatif = window.confirm(
+      "Quel type d'enceinte ?\n\n" +
+      "OK  →  Négatif : -23 °C à -18 °C (congélateur)\n" +
+      "Annuler  →  Positif : +1 °C à +4 °C (frigo, chambre froide)");
+    s.type = negatif ? "negatif" : "positif";
+    s.min = null; s.max = null;                 /* on repart des normes de la fiche */
+    sondesEnregistrer();
+    sondesRendu();
+    toast("« " + s.nom + " » — " + typeDe(s).nom + ".");
+  }
+
+  function sondeEtalonner(s){
+    var actuel = (s.offset || 0) / 100;
+    var rep = window.prompt(
+      "Étalonnage de « " + s.nom + " »\n\n" +
+      "Plongez la sonde dans un bain d'eau glacée avec le thermomètre de référence,\n" +
+      "attendez 5 minutes, puis indiquez l'écart lu en degrés.\n" +
+      "Exemple : la sonde affiche +0,4 °C pour une référence à 0,0 °C → saisir -0,4\n\n" +
+      "Correction actuelle (°C) :", String(actuel).replace(".", ","));
+    if(rep === null) return;
+    var v = parseFloat(String(rep).replace(",", "."));
+    if(isNaN(v) || v < -20 || v > 20){ toast("Correction non comprise (attendu : entre -20 et +20)."); return; }
+    var centi = Math.round(v * 100);
+
+    if(!bleDispo()){ toast(bleMessage()); return; }
+    appareilsConnus().then(function(connus){
+      for(var i = 0; i < connus.length; i++){
+        if((connus[i].id || connus[i].name) === s.id) return connus[i];
+      }
+      return choisirAppareil();
+    }).then(function(appareil){
+      return (appareil.gatt.connected ? Promise.resolve(appareil.gatt) : appareil.gatt.connect())
+        .then(function(serveur){ return serveur.getPrimaryService(SONDE_SERVICE); })
+        .then(function(service){ return service.getCharacteristic(SONDE_CMD); })
+        .then(function(c){ return c.writeValue(trameU16(0x05, centi & 0xFFFF)); })
+        .then(function(){
+          try{ appareil.gatt.disconnect(); }catch(e){}
+          s.offset = centi;
+          s.etalonneLe = new Date().toISOString();
+          sondesEnregistrer();
+          sondesRendu();
+          toast("Correction de " + degres(centi) + " enregistrée dans la sonde.");
+        });
+    }).then(null, function(err){
+      if(err && err.name === "NotFoundError") return;
+      toast("Étalonnage impossible : " + ((err && err.message) || "erreur inconnue"));
+    });
+  }
+
+  function sondeRetirer(s){
+    if(!window.confirm("Retirer « " + s.nom + " » de la fiche ?\n\n" +
+                       "Ses relevés déjà rapatriés seront effacés de la tablette. " +
+                       "Pensez à exporter le CSV auparavant.")) return;
+    var l = sondesListe(), i = l.indexOf(s);
+    if(i >= 0) l.splice(i, 1);
+    sondesEnregistrer();
+    sondesRendu();
+    toast("Sonde retirée.");
+  }
+
+  /* ---- Affichage ---- */
+  function sondeCourbe(s){
+    var fin = Date.now(), deb = fin - 24 * 3600000;
+    var pts = (s.releves || []).filter(function(x){ return x[0] >= deb && x[1] !== T_INVALIDE; });
+    if(pts.length < 2) return '<p class="page">Courbe affichée après quelques relevés.</p>';
+
+    var b = sondeSeuils(s), vals = pts.map(function(x){ return x[1]; });
+    var lo = Math.min.apply(null, vals.concat([b.min]));
+    var hi = Math.max.apply(null, vals.concat([b.max]));
+    var marge = Math.max(60, (hi - lo) * 0.18);
+    lo -= marge; hi += marge;
+
+    var W = 280, H = 48;
+    var px = function(t){ return ((t - deb) / (fin - deb)) * W; };
+    var py = function(c){ return H - ((c - lo) / (hi - lo)) * H; };
+    var d = pts.map(function(p, i){
+      return (i ? "L" : "M") + px(p[0]).toFixed(1) + " " + py(p[1]).toFixed(1);
+    }).join(" ");
+    var haut = py(b.max), bas = py(b.min);
+
+    return '<svg class="pspark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" ' +
+           'role="img" aria-label="Températures des 24 dernières heures">' +
+           '<rect x="0" y="' + haut.toFixed(1) + '" width="' + W + '" height="' +
+             Math.max(0, bas - haut).toFixed(1) + '" fill="currentColor" opacity=".08"></rect>' +
+           '<path d="' + d + '" fill="none" stroke="currentColor" stroke-width="1.6" ' +
+             'stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"></path>' +
+           '</svg>';
+  }
+
+  function sondeCarte(s){
+    var jour = sondeJournee(s, state ? state.date : todayISO());
+    var alerte = horsSeuils(s, s.derniere) || (jour && jour.ecarts > 0);
+    var muette = !s.syncAt || (Date.now() - s.syncAt > 36 * 3600000);
+    var pile = (typeof s.pile === "number") ? s.pile : null;
+    var jours = sondeAutonomie(s);
+
+    var pastille = alerte ? '<span class="pill ko">Écart T°</span>'
+                 : muette ? '<span class="pill wip">Hors ligne</span>'
+                 : (pile !== null && pile < PILE_BASSE) ? '<span class="pill wip">Pile faible</span>'
+                 : '<span class="pill ok">Conforme</span>';
+
+    var h = '<article class="pcard' + (alerte ? " ko" : "") + (muette ? " muet" : "") + '">';
+    h += '<div class="phead"><h3 class="pnom">' + escapeHtml(s.nom) +
+         '<span>' + escapeHtml(typeDe(s).nom) + '</span></h3>' + pastille + '</div>';
+
+    h += '<div class="pnow"><span class="ptemp' + (alerte ? " ko" : "") +
+         (s.derniere == null || s.derniere === T_INVALIDE ? " vide" : "") + '">' +
+         (s.derniere == null || s.derniere === T_INVALIDE ? "Pas de mesure" : degres(s.derniere)) +
+         '</span><span class="page">' + ilYA(s.syncAt) + '</span></div>';
+
+    if(jour){
+      h += '<div class="pstats">' +
+           '<span>mini <b>' + degres(jour.min) + '</b></span>' +
+           '<span>maxi <b>' + degres(jour.max) + '</b></span>' +
+           '<span>moy. <b>' + degres(jour.moy) + '</b></span>' +
+           '<span>' + jour.n + ' relevés</span>' +
+           (jour.ecarts ? '<span class="ko"><b>' + jour.ecarts + ' écart(s)</b></span>' : '') +
+           '</div>';
+    } else {
+      h += '<div class="pstats"><span>Aucun relevé le ' + frDate(state ? state.date : todayISO()) + '</span></div>';
+    }
+
+    h += sondeCourbe(s);
+
+    if(pile !== null){
+      var cls = pile < 10 ? "vide" : pile < PILE_BASSE ? "bas" : "";
+      h += '<div class="pbatt"><span>Pile</span>' +
+           '<span class="pjauge"><i class="' + cls + '" style="width:' + Math.max(2, pile) + '%"></i></span>' +
+           '<span>' + pile + ' %' + (s.mv ? " · " + (s.mv / 1000).toFixed(2).replace(".", ",") + " V" : "") + '</span>' +
+           '<span>' + (jours !== null ? "~" + escapeHtml(dureeJours(jours)) : "estimation en cours") + '</span></div>';
+    }
+
+    if(s.erreur) h += '<p class="page">Dernière tentative : ' + escapeHtml(s.erreur) + '</p>';
+
+    h += '<div class="pfoot">' +
+         '<button type="button" class="plink" data-sonde-act="relever" data-sonde="' + escapeHtml(s.id) + '">Relever</button>' +
+         '<button type="button" class="plink" data-sonde-act="regler" data-sonde="' + escapeHtml(s.id) + '">Emplacement</button>' +
+         '<button type="button" class="plink" data-sonde-act="etalonner" data-sonde="' + escapeHtml(s.id) + '">Étalonner</button>' +
+         '<button type="button" class="plink danger" data-sonde-act="retirer" data-sonde="' + escapeHtml(s.id) + '">Retirer</button>' +
+         '</div></article>';
+    return h;
+  }
+
+  function sondesAlertes(){
+    var l = sondesListe(), graves = [], avertis = [];
+    l.forEach(function(s){
+      var jour = sondeJournee(s, state ? state.date : todayISO());
+      if(horsSeuils(s, s.derniere))
+        graves.push(s.nom + " à " + degres(s.derniere) + " — hors norme " + typeDe(s).nom.toLowerCase());
+      else if(jour && jour.ecarts)
+        graves.push(s.nom + " — " + jour.ecarts + " écart(s) de température aujourd'hui (mini " +
+                    degres(jour.min) + ", maxi " + degres(jour.max) + ")");
+      if(typeof s.pile === "number" && s.pile < PILE_BASSE){
+        var j = sondeAutonomie(s);
+        avertis.push("Pile de « " + s.nom + " » à " + s.pile + " %" +
+                     (j !== null ? " — environ " + dureeJours(j) + " restants" : "") +
+                     ". Relever la sonde avant de changer les piles.");
+      }
+      if(s.syncAt && Date.now() - s.syncAt > 72 * 3600000)
+        avertis.push("« " + s.nom + " » n'a pas été relevée depuis " + ilYA(s.syncAt).replace("il y a ", "") + ".");
+      if(s.drapeaux & 0x10) avertis.push("Capteur de « " + s.nom + " » illisible — vérifier le câble.");
+      if(s.drapeaux & 0x08) avertis.push("Mémoire de « " + s.nom + " » saturée : des relevés anciens ont été perdus.");
+    });
+    return { graves:graves, avertis:avertis };
+  }
+
+  function sondesRendu(){
+    var grille = document.getElementById("probe-grid");
+    var banniere = document.getElementById("probe-banner");
+    var note = document.getElementById("probe-note");
+    if(!grille) return;
+
+    var l = sondesListe();
+
+    if(!l.length){
+      grille.innerHTML = '<p class="pempty">Aucune sonde appairée.<br>' +
+        'Passez l\'aimant sur le boîtier d\'une sonde, puis appuyez sur <b>Appairer une sonde</b>.<br>' +
+        'Montage et nomenclature : dossier <b>sondes/</b> du dépôt.</p>';
+    } else {
+      grille.innerHTML = l.map(sondeCarte).join("");
+    }
+
+    var a = sondesAlertes(), b = "";
+    if(a.graves.length){
+      b += '<div class="pbanner"><span>⚠</span><div>Températures non conformes' +
+           '<ul>' + a.graves.map(function(x){ return "<li>" + escapeHtml(x) + "</li>"; }).join("") + '</ul>' +
+           '<p style="margin:8px 0 0;font-weight:400;color:var(--ink)">' +
+           'Contrôler l\'enceinte, vérifier les produits, et consigner dans « Observations &amp; anomalies ».</p></div></div>';
+    }
+    if(a.avertis.length){
+      b += '<div class="pbanner avert"><span>i</span><div>À prévoir' +
+           '<ul>' + a.avertis.map(function(x){ return "<li>" + escapeHtml(x) + "</li>"; }).join("") + '</ul></div></div>';
+    }
+    banniere.innerHTML = b;
+
+    var etat = [];
+    if(syncEnCours) etat.push("Relevé en cours…");
+    else if(!bleDispo()) etat.push(bleMessage());
+    else if(l.length) etat.push(l.length + " sonde(s) appairée(s), relevé toutes les " +
+                                ((l[0] && l[0].intervalle) || 30) + " minutes.");
+    if(a.graves.length || a.avertis.length){
+      if(window.Notification && Notification.permission === "default")
+        etat.push('<button type="button" class="plink" id="probe-notif">Être prévenu par une notification</button>');
+    }
+    note.innerHTML = etat.join(" ");
+
+    var bn = document.getElementById("probe-notif");
+    if(bn) bn.addEventListener("click", function(){
+      try{ Notification.requestPermission().then(function(){ sondesRendu(); sondesNotifier(); }); }catch(e){}
+    });
+
+    var sync = document.getElementById("probe-sync");
+    if(sync){ sync.disabled = syncEnCours; sync.textContent = syncEnCours ? "Relevé…" : "Relever les sondes"; }
+  }
+
+  /* Notification locale. Une page web ne peut pas prévenir tablette éteinte :
+     l'alerte n'apparaît qu'à l'ouverture de la fiche. Pour être réveillé la
+     nuit, activer l'option Wi-Fi des sondes (voir sondes/README.md § 7). */
+  var derniereNotif = 0;
+  function sondesNotifier(){
+    if(!window.Notification || Notification.permission !== "granted") return;
+    var a = sondesAlertes();
+    if(!a.graves.length) return;
+    if(Date.now() - derniereNotif < 3600000) return;
+    derniereNotif = Date.now();
+    try{
+      new Notification("Température non conforme", {
+        body: a.graves.join("\n"),
+        tag: "haccp-sondes"
+      });
+    }catch(e){}
+  }
+
+  /* Deux sondes fictives, pour valider l'écran et l'export sans matériel :
+     ouvrir la fiche avec ?demo=1 à la fin de l'adresse. */
+  function sondesDemo(){
+    var maintenant = Date.now(), l = sondesListe();
+    if(l.some(function(s){ return s.demo; })) return;
+    [{ nom:"Chambre froide", type:"positif", base:250, pile:74 },
+     { nom:"Congélateur coffre", type:"negatif", base:-2050, pile:18 }].forEach(function(cfg, k){
+      var r = [], i, t, c;
+      /* Trois semaines de relevés : assez pour que la pente de décharge donne
+         une autonomie, comme sur une vraie sonde. */
+      for(i = 21 * 48; i >= 0; i--){
+        t = maintenant - i * 1800000;
+        c = cfg.base + Math.round(Math.sin(i / 5.5) * 70 + (Math.random() - 0.5) * 60);
+        /* Panne simulée sur le congélateur, il y a une trentaine d'heures. */
+        if(k === 1 && i > 4 && i < 12) c = cfg.base + 900 + (12 - i) * 40;
+        r.push([t, c, Math.min(100, cfg.pile + Math.round(i / 48 * 0.25))]);
+      }
+      l.push({ id:"demo-" + k, demo:true, nom:cfg.nom, type:cfg.type, releves:r,
+               pile:cfg.pile, mv:3900 + k * 300, derniere:r[r.length - 1][1],
+               derniereAt:maintenant, syncAt:maintenant, intervalle:30, offset:0, drapeaux:0 });
+    });
+    sondesEnregistrer();
+  }
+
+  function sondesInit(){
+    var grille = document.getElementById("probe-grid");
+    if(!grille) return;
+
+    if(/[?&]demo=1/.test(window.location.search)) sondesDemo();
+
+    document.getElementById("probe-sync").addEventListener("click", sondesRelever);
+    document.getElementById("probe-add").addEventListener("click", sondeAppairer);
+
+    grille.addEventListener("click", function(ev){
+      var b = ev.target.closest ? ev.target.closest("[data-sonde-act]") : null;
+      if(!b) return;
+      var l = sondesListe(), id = b.getAttribute("data-sonde"), s = null, i;
+      for(i = 0; i < l.length; i++){ if(l[i].id === id){ s = l[i]; break; } }
+      if(!s) return;
+      var act = b.getAttribute("data-sonde-act");
+      if(act === "relever")        sondeReleverUne(s);
+      else if(act === "regler")    sondeRegler(s, false);
+      else if(act === "etalonner") sondeEtalonner(s);
+      else if(act === "retirer")   sondeRetirer(s);
+    });
+
+    sondesRendu();
+    sondesNotifier();
+  }
+
   /* ============ Export ============ */
   function plain(html){
     var d = document.createElement("div");
@@ -1113,13 +1893,26 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     return /[";\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
   }
 
+  /* Une colonne de mini, maxi et écarts par sonde : c'est ce tableau qui sert
+     de preuve d'auto-surveillance en cas de contrôle. */
   function buildCSV(){
+    var probes = sondesListe();
     var head = ["Date","Agent","Heure fin cleaning","Conformes","Taches validees","Total taches","Observations"];
     LABELS.forEach(function(l){ head.push(l.label); });
+    probes.forEach(function(s){
+      head.push(s.nom + " T mini (C)", s.nom + " T maxi (C)", s.nom + " T moy (C)", s.nom + " ecarts", s.nom + " releves");
+    });
     var rows = [head.map(csvCell).join(";")];
     fiches().slice().reverse().forEach(function(f){
       var r = [ frDate(f.date), f.agent, f.endTime, f.conforme, countDone(f), TOTAL, (f.notes||"").replace(/\r?\n/g," ") ];
       LABELS.forEach(function(l){ r.push(f.checks[l.id] ? "OUI" : "NON"); });
+      probes.forEach(function(s){
+        var j = sondeJournee(s, f.date);
+        if(!j){ r.push("","","","",""); return; }
+        /* Virgule décimale : le tableur français attend ce format. */
+        var d = function(c){ return (c/100).toFixed(1).replace(".", ","); };
+        r.push(d(j.min), d(j.max), d(j.moy), j.ecarts, j.n);
+      });
       rows.push(r.map(csvCell).join(";"));
     });
     return "﻿" + rows.join("\r\n");
@@ -1130,7 +1923,21 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       document:"Check-list & Hygiène Petit Déjeuner — Hôtel Ibis Sisteron",
       exporte_le:new Date().toISOString(),
       total_taches:TOTAL,
-      fiches:fiches()
+      fiches:fiches(),
+      sondes:sondesListe().map(function(s){
+        var b = sondeSeuils(s);
+        return {
+          nom:s.nom, type:s.type, seuil_min_c:b.min/100, seuil_max_c:b.max/100,
+          pile_pct:s.pile, pile_mv:s.mv, offset_etalonnage_c:(s.offset||0)/100,
+          etalonnee_le:s.etalonneLe || null,
+          autonomie_jours_estimee:sondeAutonomie(s),
+          derniere_synchro:s.syncAt ? new Date(s.syncAt).toISOString() : null,
+          /* [horodatage ISO, température °C, niveau de pile %] */
+          releves:(s.releves||[]).map(function(r){
+            return [new Date(r[0]).toISOString(), r[1]/100, r[2]];
+          })
+        };
+      })
     }, null, 2);
   }
 
@@ -1151,6 +1958,31 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     if(missing.length) missing.forEach(function(m){ L.push("  - " + m); });
     else L.push("  Aucune : la totalité de la check-list a été validée.");
     L.push("");
+    var probes = sondesListe();
+    if(probes.length){
+      L.push("SONDES DE TEMPÉRATURE — RELEVÉS AUTOMATIQUES (30 min)");
+      probes.forEach(function(s){
+        var j = sondeJournee(s, f.date);
+        var b = sondeSeuils(s);
+        if(!j){
+          L.push("  - " + s.nom + " : aucun relevé ce jour-là.");
+          return;
+        }
+        L.push("  - " + s.nom + " (" + typeDe(s).nom + ") : " +
+               "mini " + degres(j.min) + ", maxi " + degres(j.max) + ", moyenne " + degres(j.moy) +
+               " sur " + j.n + " relevés.");
+        if(j.ecarts){
+          L.push("      ⚠ " + j.ecarts + " écart(s) de plus d'une heure hors de la norme " +
+                 degres(b.min) + " / " + degres(b.max) + ".");
+        }
+        if(typeof s.pile === "number" && s.pile < PILE_BASSE){
+          var jours = sondeAutonomie(s);
+          L.push("      Pile à " + s.pile + " %" +
+                 (jours !== null ? " — environ " + dureeJours(jours) + " restants" : "") + ".");
+        }
+      });
+      L.push("");
+    }
     L.push("OBSERVATIONS & ANOMALIES");
     L.push(f.notes && f.notes.trim() ? f.notes.trim() : "  Aucune observation signalée.");
     L.push("");
@@ -1379,6 +2211,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
     bind();
     setupSignature();
     showNotice();
+    sondesInit();
 
     var startDate = todayISO();
     els.date.value = startDate;

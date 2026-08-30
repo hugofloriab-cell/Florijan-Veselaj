@@ -11,6 +11,7 @@ conçue pour la tablette de la cuisine.
 | `docs/` | **Version installable publiée sur le web** (voir ci-dessous). Générée. |
 | `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
+| `sondes/` | **Sondes de température autonomes** : nomenclature à commander, programme, protocole. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -26,6 +27,34 @@ Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 - Historique des fiches enregistrées, consultables et rouvrables.
 - Export **CSV** (ouvrable dans Excel) et **JSON** (sauvegarde complète), plus impression / PDF.
 - Mode clair et mode sombre (le service commence à 6h00).
+
+## Sondes de température
+
+La section **2. Sondes de température** de la fiche affiche les relevés
+d'enregistreurs autonomes posés sur les enceintes froides : un point toutes les
+30 minutes, jour et nuit, week-ends compris.
+
+- Bouton **Relever les sondes** en fin de service : la tablette va chercher
+  l'historique de chaque sonde en Bluetooth. Aucun serveur, aucun compte —
+  les données ne sortent pas de l'hôtel.
+- Une carte par enceinte : température, mini/maxi/moyenne du jour, courbe des
+  24 heures, niveau de pile et **autonomie restante estimée**.
+- Bandeau rouge dès qu'une température sort des normes de la fiche
+  (+1 à +4 °C en positif, −23 à −18 °C en négatif) pendant plus d'une heure —
+  la durée évite de compter une porte ouverte ou un dégivrage.
+- Bandeau orange quand une pile passe sous 20 %, plusieurs semaines avant la
+  panne. Les relevés partent dans le CSV, le JSON et le récapitulatif transmis
+  à la direction.
+
+Le Bluetooth demande l'adresse web en `https` : depuis un fichier local, la
+section reste visible mais le relevé est indisponible.
+
+**Pour voir la section sans matériel**, ajoutez `?demo=1` à l'adresse : deux
+sondes fictives apparaissent, avec trois semaines de relevés et un incident de
+congélateur.
+
+Tout le reste — quoi commander, comment le monter, l'autonomie, l'étalonnage et
+ce qu'en dit la réglementation — est dans **[`sondes/README.md`](sondes/README.md)**.
 
 ## Transmission à la direction
 
