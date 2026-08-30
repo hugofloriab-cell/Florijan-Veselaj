@@ -223,9 +223,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Logo
-
-    @ViewBuilder
     // MARK: - Contact
 
     private var contactSection: some View {
@@ -257,6 +254,11 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Logo
+
+    // `@ViewBuilder` est indispensable ici : le corps est un `if let` sans
+    // `else`, donc sans lui la propriété ne renvoie rien sur un des chemins.
+    @ViewBuilder
     private var logoSection: some View {
         if let establishment {
             Section {
