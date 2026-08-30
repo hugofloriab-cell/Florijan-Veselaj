@@ -23,10 +23,7 @@
 //
 
 import SwiftUI
-
-#if canImport(MessageUI)
 import MessageUI
-#endif
 
 struct MailComposeView: UIViewControllerRepresentable {
 
@@ -43,11 +40,7 @@ struct MailComposeView: UIViewControllerRepresentable {
     /// Un appareil sans compte de messagerie configuré ne peut pas composer.
     /// C'est le cas du simulateur, et de certains téléphones d'entreprise.
     static var canSendMail: Bool {
-        #if canImport(MessageUI)
         MFMailComposeViewController.canSendMail()
-        #else
-        false
-        #endif
     }
 
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
