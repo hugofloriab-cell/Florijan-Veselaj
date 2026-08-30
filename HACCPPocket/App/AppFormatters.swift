@@ -41,6 +41,15 @@ enum AppFormatters {
         date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).year().locale(locale))
     }
 
+    /// Ex. « 22/08 »
+    ///
+    /// Sans l'année, pour les étiquettes : trois centimètres de large ne
+    /// laissent pas la place de quatre chiffres qui n'apprennent rien sur un
+    /// produit dont la durée de vie se compte en jours.
+    static func dayAndMonth(_ date: Date) -> String {
+        date.formatted(.dateTime.day(.twoDigits).month(.twoDigits).locale(locale))
+    }
+
     /// Ex. « 08:30 »
     static func time(_ date: Date) -> String {
         date.formatted(.dateTime.hour().minute().locale(locale))

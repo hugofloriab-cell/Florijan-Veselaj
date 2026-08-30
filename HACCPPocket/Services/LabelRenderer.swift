@@ -94,10 +94,13 @@ extension TrackedProduct {
     /// allergènes — qui sont la seule information à porter une conséquence
     /// immédiate pour un client.
     var labelContent: LabelContent {
-        var details = ["Ouvert le \(AppFormatters.shortDate(openedAt))"]
+        // Volontairement court. Une étiquette de trois centimètres n'a pas la
+        // place d'une phrase, et l'année d'ouverture n'apprend rien sur un
+        // produit qui vivra trois jours. Le fournisseur reste sur la fiche,
+        // où il sert à quelque chose.
+        var details = ["Ouv. \(AppFormatters.dayAndMonth(openedAt))"]
         details.append(storage.label)
         if !batchNumber.isEmpty { details.append("Lot \(batchNumber)") }
-        if !supplier.isEmpty { details.append(supplier) }
 
         return LabelContent(
             id: "product-\(identifier.uuidString)",
@@ -244,14 +247,27 @@ enum LabelRenderer {
         let dateFont = UIFont.systemFont(ofSize: height * 0.24, weight: .heavy)
         let detailFont = UIFont.systemFont(ofSize: height * 0.095, weight: .regular)
 
-        // Le QR occupe la colonne de droite quand l'étiquette est assez haute.
+        // ─────────────────────────────────────────────────────────────────
+        // DEUX ZONES, ET NON UNE COLONNE UNIQUE
+        // ─────────────────────────────────────────────────────────────────
+        //
+        // Le QR était centré sur toute la hauteur et amputait donc TOUTES les
+        // lignes de trente pour cent de largeur, y compris celles du bas.
+        // « Ouvert le 30/08/2026 · Frigo positif · Lot… » n'avait aucune
+        // chance de tenir dans ce qu'il en restait.
+        //
+        // Il n'occupe plus que le bandeau supérieur, à côté de la
+        // dénomination et de la date. Les précisions et les allergènes
+        // courent sur toute la largeur, là où ils ont la place d'être lus.
+        let topBandHeight = height * 0.60
         var textWidth = rect.width
+
         if format.supportsQRCode, let payload = content.qrPayload {
-            let side = min(height * 0.62, rect.width * 0.3)
+            let side = min(topBandHeight * 0.9, rect.width * 0.26)
             if let qr = qrImage(for: payload, side: side) {
                 qr.draw(in: CGRect(
                     x: rect.maxX - side,
-                    y: rect.minY + (height - side) / 2,
+                    y: rect.minY + (topBandHeight - side) / 2,
                     width: side,
                     height: side
                 ))
@@ -265,7 +281,7 @@ enum LabelRenderer {
             content.title.uppercased(with: AppFormatters.locale),
             font: nameFont,
             color: .black,
-            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.22),
+            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.20),
             lines: 1
         )
 
@@ -273,7 +289,7 @@ enum LabelRenderer {
             content.caption,
             font: captionFont,
             color: .darkGray,
-            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.13),
+            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.11),
             lines: 1
         )
 
@@ -281,16 +297,19 @@ enum LabelRenderer {
             content.highlight,
             font: dateFont,
             color: .black,
-            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.3),
+            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.29),
             lines: 1
         )
 
-        y += drawText(
+        // À partir d'ici, toute la largeur — et sur deux lignes si besoin.
+        // Forcer les précisions sur une seule ligne les réduisait à quatre
+        // points sur une 40 × 30, c'est-à-dire à rien.
+        y += drawWrapped(
             content.details.joined(separator: " · "),
             font: detailFont,
             color: .darkGray,
-            rect: CGRect(x: rect.minX, y: y, width: textWidth, height: height * 0.13),
-            lines: 1
+            rect: CGRect(x: rect.minX, y: y, width: rect.width, height: height * 0.21),
+            maxLines: 2
         )
 
         // Les allergènes ne passent que si le format a la largeur pour les
@@ -303,13 +322,106 @@ enum LabelRenderer {
             "ALLERGÈNES : " + content.allergens.uppercased(with: AppFormatters.locale),
             font: UIFont.systemFont(ofSize: height * 0.085, weight: .bold),
             color: .black,
-            rect: CGRect(x: rect.minX, y: y, width: rect.width, height: height * 0.12),
+            rect: CGRect(x: rect.minX, y: y, width: rect.width, height: height * 0.13),
             lines: 1
         )
     }
 
-    /// Dessine une ligne en la rétrécissant si besoin pour qu'elle tienne,
-    /// et renvoie la hauteur consommée.
+    /// Dessine un texte qui peut occuper plusieurs lignes, en réduisant la
+    /// taille jusqu'à ce qu'il tienne dans le nombre de lignes accordé.
+    ///
+    /// Utile là où la ligne est longue par nature : « Ouv. 30/08 · Frigo
+    /// positif · Lot L24-0917 » ne rentre pas sur une seule ligne d'une
+    /// étiquette de quatre centimètres, et la forcer revenait à l'imprimer
+    /// en corps quatre.
+    @discardableResult
+    private static func drawWrapped(
+        _ string: String,
+        font: UIFont,
+        color: UIColor,
+        rect: CGRect,
+        maxLines: Int
+    ) -> CGFloat {
+        guard !string.isEmpty else { return rect.height }
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+
+        let chosen = wrappedFont(
+            for: string,
+            font: font,
+            width: rect.width,
+            maxLines: maxLines,
+            paragraph: paragraph
+        )
+
+        NSAttributedString(
+            string: string,
+            attributes: [
+                .font: chosen,
+                .foregroundColor: color,
+                .paragraphStyle: paragraph
+            ]
+        )
+        .draw(with: rect, options: [.usesLineFragmentOrigin], context: nil)
+
+        return rect.height
+    }
+
+    /// La plus grande taille à laquelle le texte tient dans `maxLines` lignes.
+    private static func wrappedFont(
+        for string: String,
+        font: UIFont,
+        width: CGFloat,
+        maxLines: Int,
+        paragraph: NSParagraphStyle,
+        minimumSize: CGFloat = 5
+    ) -> UIFont {
+        guard width > 0 else { return font }
+
+        var size = font.pointSize
+
+        while size > minimumSize {
+            let candidate = font.withSize(size)
+            let bounding = (string as NSString).boundingRect(
+                with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin],
+                attributes: [.font: candidate, .paragraphStyle: paragraph],
+                context: nil
+            )
+
+            // Une demi-ligne de tolérance : l'arrondi du calcul de hauteur
+            // ferait sinon rejeter une taille qui tient parfaitement.
+            if bounding.height <= candidate.lineHeight * (CGFloat(maxLines) + 0.5) {
+                return candidate
+            }
+            size -= 0.5
+        }
+
+        return font.withSize(minimumSize)
+    }
+
+    /// Dessine une ligne en la rétrécissant jusqu'à ce qu'elle tienne.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// CE QUI A ÉTÉ CORRIGÉ LE 30 AOÛT 2026
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Le commentaire annonçait un rétrécissement, le code posait
+    /// `.byTruncatingTail` et tronquait. Résultat imprimé sur une planche A4 :
+    ///
+    ///     À CONSOMMER AVANT LE
+    ///     02/09/2…
+    ///
+    /// Une date de retrait coupée est pire qu'une étiquette absente : elle
+    /// donne l'illusion d'une information, et personne ne peut savoir si le
+    /// produit est bon jusqu'au 2 septembre ou jusqu'au 2 septembre de
+    /// l'année suivante.
+    ///
+    /// La taille est donc réduite jusqu'à ce que la ligne entre, et la
+    /// troncature n'intervient plus que si même la taille plancher ne suffit
+    /// pas — cas qui ne se produit plus depuis que les lignes du bas occupent
+    /// toute la largeur de l'étiquette.
     @discardableResult
     private static func drawText(
         _ string: String,
@@ -326,13 +438,41 @@ enum LabelRenderer {
         let attributed = NSAttributedString(
             string: string,
             attributes: [
-                .font: font,
+                .font: fittedFont(for: string, font: font, width: rect.width),
                 .foregroundColor: color,
                 .paragraphStyle: paragraph
             ]
         )
         attributed.draw(with: rect, options: [.usesLineFragmentOrigin], context: nil)
         return rect.height
+    }
+
+    /// La plus grande taille à laquelle la ligne tient dans la largeur donnée.
+    ///
+    /// La descente se fait par demi-points : au point entier, une date passe
+    /// de tout juste trop large à nettement trop petite, ce qui se voit sur
+    /// une étiquette de trois centimètres.
+    private static func fittedFont(
+        for string: String,
+        font: UIFont,
+        width: CGFloat,
+        minimumSize: CGFloat = 5
+    ) -> UIFont {
+        guard width > 0 else { return font }
+
+        var size = font.pointSize
+
+        while size > minimumSize {
+            let candidate = font.withSize(size)
+            let measured = (string as NSString)
+                .size(withAttributes: [.font: candidate])
+                .width
+
+            if measured <= width { return candidate }
+            size -= 0.5
+        }
+
+        return font.withSize(minimumSize)
     }
 
     // MARK: QR code
