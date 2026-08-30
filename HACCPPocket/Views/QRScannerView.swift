@@ -200,13 +200,25 @@ struct QRScannerView: View {
 
             Spacer()
 
-            Text("Visez un QR d'étiquette ou le code-barres du produit")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(.black.opacity(0.55), in: Capsule())
-                .padding(.bottom, 40)
+            VStack(spacing: 6) {
+                Text("Visez un QR d'étiquette ou le code-barres du produit")
+                    .font(.subheadline.weight(.semibold))
+
+                // Le libellé précédent laissait croire que la lecture d'un
+                // code-barres donnait le nom du produit. Un code-barres n'est
+                // qu'un numéro : il ne porte aucune dénomination.
+                Text("Pour lire une dénomination, un lot ou une DLC, utilisez « Photographier l'étiquette » dans la fiche produit.")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .frame(maxWidth: 420)
+            .background(.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
         }
     }
 }
@@ -247,6 +259,18 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.bounds
+        updatePreviewRotation()
+    }
+
+    /// La rotation doit suivre l'appareil, y compris pendant le pivotement.
+    override func viewWillTransition(
+        to size: CGSize,
+        with coordinator: UIViewControllerTransitionCoordinator
+    ) {
+        super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate { [weak self] _ in
+            self?.updatePreviewRotation()
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -285,6 +309,46 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
         layer.frame = view.bounds
         view.layer.addSublayer(layer)
         previewLayer = layer
+
+        updatePreviewRotation()
+    }
+
+    // MARK: - Orientation de l'aperçu
+
+    /// Aligne l'image sur l'orientation réelle de l'appareil.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI IL FAUT L'ÉCRIRE À LA MAIN
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Une session de capture ne suit pas l'interface : sans réglage, elle
+    /// livre toujours son orientation d'origine, le portrait. Sur un iPhone
+    /// tenu droit ça ne se remarque pas, mais un iPad posé en paysage — la
+    /// position normale sur un plan de travail — affiche l'image tournée d'un
+    /// quart de tour.
+    ///
+    /// Le réglage doit être refait à chaque changement d'orientation : la
+    /// valeur n'est pas recalculée toute seule.
+    private func updatePreviewRotation() {
+        guard let connection = previewLayer?.connection else { return }
+
+        let angle = previewRotationAngle
+        guard connection.isVideoRotationAngleSupported(angle) else { return }
+        connection.videoRotationAngle = angle
+    }
+
+    /// Angle attendu par AVFoundation, en degrés.
+    ///
+    /// La référence est le paysage à droite : c'est l'orientation naturelle
+    /// du capteur, d'où le 0 qui surprend au premier regard.
+    private var previewRotationAngle: CGFloat {
+        switch view.window?.windowScene?.interfaceOrientation {
+        case .portrait:           return 90
+        case .portraitUpsideDown: return 270
+        case .landscapeLeft:      return 180
+        case .landscapeRight:     return 0
+        default:                  return 90
+        }
     }
 
     /// `startRunning()` est bloquant : il ne doit jamais tourner sur le thread
