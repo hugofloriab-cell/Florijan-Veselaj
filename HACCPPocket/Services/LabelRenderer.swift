@@ -18,18 +18,77 @@ import CoreImage.CIFilterBuiltins
 /// chaîne est brève, plus le QR reste gros et lisible sur une petite étiquette.
 enum LabelPayload {
 
-    private static let prefix = "HACCP:P:"
+    /// Forme actuelle, courte.
+    private static let prefix = "HP:"
 
+    /// Forme d'origine, conservée en lecture seule : les étiquettes déjà
+    /// collées sur des contenants doivent continuer à se scanner. Elles
+    /// vivront encore quelques semaines dans les frigos.
+    private static let legacyPrefix = "HACCP:P:"
+
+    /// Encode l'identifiant en 25 caractères au lieu de 44.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI LA LONGUEUR COMPTE AUTANT
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Un QR ne grandit pas quand la charge s'allonge : c'est le nombre de
+    /// modules — les petits carrés — qui augmente, dans la même surface
+    /// imprimée. Chaque module devient donc plus petit.
+    ///
+    /// « HACCP:P: » suivi d'un UUID avec ses tirets fait 44 caractères, ce qui
+    /// demande 33 modules de côté. Sur une étiquette de 62 mm où le QR occupe
+    /// 16 mm, cela donne 0,49 mm par module : sous le seuil de lecture d'un
+    /// appareil photo de téléphone, et c'est exactement pourquoi le scan
+    /// échouait.
+    ///
+    /// Le préfixe passe à trois caractères et l'UUID est encodé en base64url
+    /// — 22 caractères au lieu de 36, sans perte. Total 25 caractères, soit
+    /// 25 modules de côté, soit 0,74 mm par module au même endroit.
     static func encode(_ product: TrackedProduct) -> String {
-        prefix + product.identifier.uuidString
+        prefix + compact(product.identifier)
     }
 
     /// Extrait l'identifiant produit d'un QR scanné, `nil` si ce n'est pas
     /// une étiquette HACCP Pocket.
     static func decode(_ scanned: String) -> UUID? {
         let trimmed = scanned.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.hasPrefix(prefix) else { return nil }
-        return UUID(uuidString: String(trimmed.dropFirst(prefix.count)))
+
+        if trimmed.hasPrefix(prefix) {
+            return uuid(fromCompact: String(trimmed.dropFirst(prefix.count)))
+        }
+
+        if trimmed.hasPrefix(legacyPrefix) {
+            return UUID(uuidString: String(trimmed.dropFirst(legacyPrefix.count)))
+        }
+
+        return nil
+    }
+
+    // MARK: Encodage compact
+
+    /// Les seize octets de l'UUID en base64url, sans remplissage.
+    private static func compact(_ identifier: UUID) -> String {
+        var raw = identifier.uuid
+        let data = withUnsafeBytes(of: &raw) { Data($0) }
+
+        return data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
+
+    private static func uuid(fromCompact string: String) -> UUID? {
+        var base64 = string
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+
+        // Le remplissage a été retiré à l'encodage pour gagner deux
+        // caractères : il faut le remettre pour décoder.
+        while base64.count % 4 != 0 { base64 += "=" }
+
+        guard let data = Data(base64Encoded: base64), data.count == 16 else { return nil }
+        return data.withUnsafeBytes { UUID(uuid: $0.loadUnaligned(as: uuid_t.self)) }
     }
 }
 
@@ -263,9 +322,12 @@ enum LabelRenderer {
         var textWidth = rect.width
 
         if format.supportsQRCode, let payload = content.qrPayload {
-            let side = min(topBandHeight * 0.9, rect.width * 0.26)
+            // 30 % de la largeur, et non 26 : à 26 %, les modules tombaient à
+            // un demi-millimètre sur une étiquette de 62 mm, c'est-à-dire
+            // sous le seuil de lecture d'un appareil photo de téléphone.
+            let side = min(topBandHeight * 0.95, rect.width * 0.30)
             if let qr = qrImage(for: payload, side: side) {
-                qr.draw(in: CGRect(
+                drawQRCode(qr, in: CGRect(
                     x: rect.maxX - side,
                     y: rect.minY + (topBandHeight - side) / 2,
                     width: side,
@@ -479,6 +541,20 @@ enum LabelRenderer {
 
     /// Génère le QR à la taille demandée. `CIQRCodeGenerator` produit une image
     /// minuscule : on l'agrandit sans interpolation pour garder des bords nets.
+    /// Produit l'image du QR, nette et prête à imprimer.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// LE PIÈGE DE L'AGRANDISSEMENT
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Le générateur rend un QR minuscule — un pixel par module. L'agrandir
+    /// avec l'interpolation par défaut lisse les bords : chaque carré noir
+    /// se fond dans le blanc voisin, et un lecteur ne distingue plus les
+    /// modules. À l'œil l'image paraît correcte, simplement un peu douce ;
+    /// pour un scanner elle est illisible.
+    ///
+    /// `samplingNearest()` conserve des bords francs. C'est la différence
+    /// entre un QR décoratif et un QR qui fonctionne.
     static func qrImage(for string: String, side: CGFloat) -> UIImage? {
         let filter = CIFilter.qrCodeGenerator()
         filter.message = Data(string.utf8)
@@ -486,12 +562,34 @@ enum LabelRenderer {
 
         guard let output = filter.outputImage else { return nil }
 
-        let scale = side / output.extent.width
-        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        // Marge de sécurité : on agrandit vers une taille supérieure à celle
+        // demandée, puis on dessine dans le cadre voulu. Une image plus dense
+        // que sa destination reste nette à l'impression, quelle que soit la
+        // résolution de l'imprimante.
+        let renderedSide = max(side * 4, 256)
+        let scale = renderedSide / output.extent.width
+
+        let scaled = output
+            .samplingNearest()
+            .transformed(by: CGAffineTransform(scaleX: scale, y: scale))
 
         let context = CIContext()
         guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
         return UIImage(cgImage: cgImage)
+    }
+
+    /// Dessine le QR avec la zone de silence que la norme exige.
+    ///
+    /// Un QR collé contre du texte ne se lit pas : le lecteur a besoin d'une
+    /// bordure blanche pour repérer les trois carrés d'orientation. Le
+    /// générateur en fournit une, mais trop mince dès que l'étiquette est
+    /// dense — d'où ce fond blanc explicite.
+    private static func drawQRCode(_ image: UIImage, in frame: CGRect) {
+        UIColor.white.setFill()
+        UIBezierPath(rect: frame).fill()
+
+        let quietZone = frame.width * 0.08
+        image.draw(in: frame.insetBy(dx: quietZone, dy: quietZone))
     }
 
     /// Écrit le PDF dans un fichier temporaire, prêt pour `ShareLink`.

@@ -291,6 +291,7 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
             return
         }
         session.addInput(input)
+        configureFocus(on: device)
 
         let output = AVCaptureMetadataOutput()
         guard session.canAddOutput(output) else { return }
@@ -348,6 +349,45 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
         case .landscapeLeft:      return 180
         case .landscapeRight:     return 0
         default:                  return 90
+        }
+    }
+
+    /// Règle la mise au point pour lire de près.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI CE RÉGLAGE CHANGE TOUT
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Par défaut, l'appareil photo fait le point sur toute la plage de
+    /// distances. Devant une étiquette tenue à quinze centimètres, il hésite,
+    /// part chercher le mur du fond, revient — et pendant ce va-et-vient le QR
+    /// reste flou. L'utilisateur conclut que le scanner ne marche pas.
+    ///
+    /// Restreindre la plage au proche supprime cette hésitation : le point se
+    /// fait immédiatement sur ce qu'on lui présente. C'est le réglage qu'on
+    /// attend d'un lecteur de codes, et il ne coûte rien.
+    private func configureFocus(on device: AVCaptureDevice) {
+        do {
+            try device.lockForConfiguration()
+            defer { device.unlockForConfiguration() }
+
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+
+            if device.isAutoFocusRangeRestrictionSupported {
+                device.autoFocusRangeRestriction = .near
+            }
+
+            // Un bain de friture ou une chambre froide sont mal éclairés :
+            // laisser l'exposition suivre évite un QR noyé dans l'ombre.
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+        } catch {
+            // Un appareil qui refuse d'être configuré fonctionne quand même,
+            // simplement avec ses réglages par défaut. Rien à signaler à
+            // l'utilisateur, qui n'y peut rien.
         }
     }
 
