@@ -14,6 +14,7 @@
 //  jamais en validation automatique.
 //
 
+import CoreGraphics
 import Foundation
 import Vision
 
@@ -112,74 +113,149 @@ enum DateOCRService {
             throw LabelScanError.visionFailed(error.localizedDescription)
         }
 
-        let lines = (textRequest.results ?? [])
-            .compactMap { $0.topCandidates(1).first?.string }
+        // La géométrie est conservée : sur un emballage, la dénomination est
+        // le texte le plus grand. Sans cette information il ne reste que la
+        // longueur de la ligne, et la ligne la plus longue d'une étiquette
+        // est presque toujours une mention nutritionnelle.
+        var observed: [RecognizedLine] = []
+
+        for observation in textRequest.results ?? [] {
+            guard let candidate = observation.topCandidates(1).first else { continue }
+            observed.append(
+                RecognizedLine(
+                    text: candidate.string,
+                    height: observation.boundingBox.height,
+                    verticalPosition: observation.boundingBox.midY
+                )
+            )
+        }
+
+        let lines = observed.map(\.text)
 
         let barcode = (barcodeRequest.results ?? [])
             .compactMap(\.payloadStringValue)
             .first
 
         return LabelScanResult(
-            productName: productName(in: lines),
-            batchNumber: batchNumber(in: lines),
+            productName: productName(in: observed),
+            batchNumber: batchNumber(in: lines, barcode: barcode),
             expiryDate: expiryDate(in: lines, reference: reference),
             barcode: barcode,
             recognizedLines: lines
         )
     }
 
-    // MARK: - Extraction du numéro de lot
+    /// Une ligne reconnue, avec ce qu'il faut pour la juger.
+    struct RecognizedLine: Sendable {
+        let text: String
+        /// Hauteur du texte, rapportée à celle de l'image.
+        let height: CGFloat
+        /// 1 en haut de l'image, 0 en bas.
+        let verticalPosition: CGFloat
+    }
 
-    /// Mots et abréviations qui annoncent un numéro de lot sur un emballage.
-    private static let batchKeywords = ["lot", "l.", "l:", "batch", "lot n", "n lot"]
+    // MARK: - Extraction du numéro de lot
 
     /// Cherche le numéro de lot.
     ///
-    /// Sur un emballage, il suit presque toujours le mot « LOT » ou un « L »
-    /// isolé. On récupère ce qui vient après, en s'arrêtant au premier blanc
-    /// significatif : un lot est un bloc, pas une phrase.
-    static func batchNumber(in lines: [String]) -> String? {
+    /// ─────────────────────────────────────────────────────────────────────
+    /// CE QUI A ÉTÉ CORRIGÉ LE 30 AOÛT 2026
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// La première version cherchait « lot », « l. » ou « l: » n'importe où
+    /// dans la ligne, y compris au milieu d'un mot. Sur un sachet de thé
+    /// matcha, elle a rendu le code-barres — 3560467100042 — comme numéro de
+    /// lot. Un code-barres identifie une référence commerciale, jamais un
+    /// lot de fabrication : les confondre rendrait un retrait impossible.
+    ///
+    /// Le mot clé doit désormais être un mot entier, le code-barres déjà lu
+    /// est refusé, et une suite de 12 à 14 chiffres — la forme d'un EAN — est
+    /// écartée même sans code-barres détecté.
+    static func batchNumber(in lines: [String], barcode: String? = nil) -> String? {
         for line in lines {
-            let normalized = normalize(line)
-            guard batchKeywords.contains(where: { normalized.contains($0) }) else { continue }
-
-            // On travaille sur la ligne d'origine : un numéro de lot contient
-            // des majuscules qui font partie de sa valeur.
+            guard hasBatchKeyword(line) else { continue }
             guard let candidate = trailingToken(of: line) else { continue }
-            if isPlausibleBatch(candidate) { return candidate }
+            guard isPlausibleBatch(candidate, barcode: barcode) else { continue }
+            return candidate
         }
         return nil
     }
 
-    /// Renvoie ce qui suit le dernier séparateur de la ligne.
-    private static func trailingToken(of line: String) -> String? {
-        let separators = CharacterSet(charactersIn: " :.-—#")
-        let parts = line
-            .components(separatedBy: separators)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-
-        // Le mot clé lui-même ne nous intéresse pas : on prend le morceau
-        // suivant, donc le dernier une fois les vides retirés.
-        guard parts.count >= 2 else { return nil }
-        return parts.last
+    /// Le mot clé doit être isolé : « lot » dans « pilotage » n'annonce rien.
+    private static func hasBatchKeyword(_ line: String) -> Bool {
+        let normalized = normalize(line)
+        let patterns = [
+            "\\blot\\b",
+            "\\bbatch\\b",
+            "\\bl\\s*[:.]",
+            "\\bn\\s*lot\\b"
+        ]
+        return patterns.contains { pattern in
+            normalized.range(of: pattern, options: .regularExpression) != nil
+        }
     }
 
-    /// Écarte les faux positifs les plus courants : une date, une masse, un
-    /// prix. Un lot mêle en général chiffres et lettres, ou n'est que des
-    /// chiffres mais assez long.
-    private static func isPlausibleBatch(_ token: String) -> Bool {
+    /// Renvoie la valeur qui suit le mot clé.
+    ///
+    /// Découper sur les tirets couperait « L24-0917 » en deux et ne garderait
+    /// que « 0917 » : beaucoup de lots portent un tiret, et un lot tronqué ne
+    /// permet aucun retrait.
+    private static func trailingToken(of line: String) -> String? {
+        let normalized = normalize(line)
+        let patterns = ["\\blot\\b", "\\bbatch\\b", "\\bn\\s*lot\\b", "\\bl\\s*[:.]"]
+
+        var cut: String.Index?
+        for pattern in patterns {
+            if let range = normalized.range(of: pattern, options: .regularExpression) {
+                cut = range.upperBound
+                break
+            }
+        }
+
+        guard let cut else { return nil }
+
+        // `normalize` conserve le nombre de caractères : la position trouvée
+        // sur la version normalisée vaut pour la ligne d'origine, dont on a
+        // besoin car un lot contient des majuscules qui font sa valeur.
+        guard normalized.count == line.count else { return nil }
+        let offset = normalized.distance(from: normalized.startIndex, to: cut)
+        let start = line.index(line.startIndex, offsetBy: offset)
+
+        let remainder = line[start...]
+            .trimmingCharacters(in: CharacterSet(charactersIn: " :.-—#°"))
+
+        // « LOT N° AB-2024-117 » : sans ce saut, on renverrait « N° ».
+        let markers: Set<String> = ["n", "no", "n°", "num", "numero", "num."]
+        let tokens = remainder
+            .split(separator: " ")
+            .map { String($0).trimmingCharacters(in: CharacterSet(charactersIn: ":.-—#°")) }
+            .filter { !$0.isEmpty }
+
+        for token in tokens where !markers.contains(normalize(token)) {
+            return token
+        }
+        return nil
+    }
+
+    /// Écarte les faux positifs : code-barres, date, masse, prix.
+    private static func isPlausibleBatch(_ token: String, barcode: String?) -> Bool {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 3, trimmed.count <= 24 else { return false }
 
-        // Une date déguisée en lot : on la laisse à l'extracteur de dates.
-        if trimmed.contains("/") || trimmed.contains("\\") { return false }
+        // Le code-barres déjà reconnu n'est pas un lot.
+        if let barcode, trimmed == barcode { return false }
 
-        let hasDigit = trimmed.contains { $0.isNumber }
-        guard hasDigit else { return false }
+        // Une suite de 12 à 14 chiffres est un code article, pas un lot.
+        let digitsOnly = trimmed.allSatisfy { $0.isNumber }
+        if digitsOnly && trimmed.count >= 12 { return false }
+
+        // Une date déguisée en lot : on la laisse à l'extracteur de dates.
+        if trimmed.contains("/") { return false }
+
+        guard trimmed.contains(where: { $0.isNumber }) else { return false }
 
         let normalized = normalize(trimmed)
-        let units = ["kg", "g", "ml", "cl", "eur", "€", "%"]
+        let units = ["kg", "g", "ml", "cl", "l", "eur", "€", "%"]
         if units.contains(where: { normalized.hasSuffix($0) }) { return false }
 
         return true
@@ -187,46 +263,102 @@ enum DateOCRService {
 
     // MARK: - Extraction de la dénomination
 
-    /// Lignes à ignorer quand on cherche le nom du produit.
-    private static let namingNoise = [
-        "lot", "dlc", "ddm", "consommer", "jusqu", "avant", "exp", "peremption",
-        "conserver", "poids", "net", "kg", "eur", "prix", "www", "tel",
-        "ingredient", "valeurs", "energie", "matieres", "glucides", "proteines",
-        "sel", "fabrique", "emballe"
+    /// Mentions longues et sans ambiguïté : leur simple présence dans la
+    /// ligne suffit à l'écarter.
+    private static let strongNoise = [
+        "consommer", "peremption", "conservation", "apres ouverture",
+        "ingredient", "nutritionnel", "valeurs nutrition", "energie",
+        "matieres grasses", "glucides", "carbohydrate", "proteines", "protein",
+        "lipides", "sucres", "sugar", "fibres", "sodium", "including",
+        "portion", "fabrique", "emballe", "distribue", "agriculture biologique",
+        "www", "@"
+    ]
+
+    /// Mots courts qui n'écartent la ligne que s'ils y figurent seuls.
+    ///
+    /// « eur » cherché en sous-chaîne rejetait « Beurre doux », et « sel »
+    /// rejetait « Sel de Guérande » — deux produits parfaitement ordinaires.
+    /// Le classement se faisant désormais sur la taille du texte, ce filtre
+    /// n'a plus besoin d'être agressif : il ne sert qu'à départager.
+    private static let wordNoise = [
+        "lot", "dlc", "ddm", "exp", "net", "poids", "contenance", "volume",
+        "eur", "prix", "tel", "kcal", "kj", "dont", "traces", "origine",
+        "importe", "certifie", "organisme"
     ]
 
     /// Devine la dénomination du produit.
     ///
-    /// Sur une étiquette, le nom est la ligne la plus longue composée surtout
-    /// de lettres, dans le premier tiers du texte reconnu — Vision restitue
-    /// les lignes de haut en bas. Cette heuristique se trompe, d'où le
-    /// pré-remplissage plutôt que la validation automatique.
-    static func productName(in lines: [String]) -> String? {
-        let candidates = lines.prefix(max(3, lines.count / 2))
+    /// ─────────────────────────────────────────────────────────────────────
+    /// CE QUI A ÉTÉ CORRIGÉ LE 30 AOÛT 2026
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// La première version prenait la ligne la plus longue du haut du texte.
+    /// Sur un sachet de matcha, elle a rendu :
+    ///
+    ///     « de ras situres/including saturated (atty acids »
+    ///
+    /// c'est-à-dire une ligne du tableau nutritionnel, mal lue. Une ligne de
+    /// tableau nutritionnel est longue par nature : la longueur était le
+    /// mauvais critère depuis le début.
+    ///
+    /// Le bon critère est la TAILLE du texte. Sur un emballage, la
+    /// dénomination est ce qui est écrit en plus gros — c'est même la seule
+    /// règle typographique que tous les conditionnements respectent.
+    ///
+    /// À défaut de candidat convaincant, la fonction ne rend rien. Sur un
+    /// registre sanitaire, un champ vide se remarque et se corrige ; une
+    /// dénomination fausse est recopiée telle quelle et fait foi.
+    static func productName(in lines: [RecognizedLine]) -> String? {
+        let candidates = lines.filter { isPlausibleName($0.text) }
+        guard !candidates.isEmpty else { return nil }
 
-        var best: String?
-        var bestScore = 0
-
-        for line in candidates {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard trimmed.count >= 4, trimmed.count <= 60 else { continue }
-
-            let normalized = normalize(trimmed)
-            if namingNoise.contains(where: { normalized.contains($0) }) { continue }
-
-            let letters = trimmed.filter { $0.isLetter }.count
-            let digits = trimmed.filter { $0.isNumber }.count
-
-            // Une ligne majoritairement chiffrée est un code, pas un nom.
-            guard letters > digits * 2 else { continue }
-
-            if letters > bestScore {
-                bestScore = letters
-                best = trimmed
+        // À taille comparable, la ligne la plus haute l'emporte : une
+        // dénomination est en tête de l'emballage, les mentions de service
+        // sont en bas. Le seuil de 15 % évite de départager sur du bruit de
+        // mesure.
+        let best = candidates.max { left, right in
+            if abs(left.height - right.height) > max(left.height, right.height) * 0.15 {
+                return left.height < right.height
             }
+            return left.verticalPosition < right.verticalPosition
         }
 
-        return best.map { cleanedName($0) }
+        guard let best else { return nil }
+
+        // Un texte minuscule n'est jamais une dénomination : sous ce seuil,
+        // c'est du texte de tableau, et mieux vaut ne rien proposer.
+        guard best.height >= 0.02 else { return nil }
+
+        return cleanedName(best.text)
+    }
+
+    private static func isPlausibleName(_ raw: String) -> Bool {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3, trimmed.count <= 48 else { return false }
+
+        // Une ligne bilingue séparée par une barre oblique vient du tableau
+        // nutritionnel, jamais de la dénomination.
+        if trimmed.contains("/") { return false }
+
+        let normalized = normalize(trimmed)
+        if strongNoise.contains(where: { normalized.contains($0) }) { return false }
+        if wordNoise.contains(where: { containsWord($0, in: normalized) }) { return false }
+
+        let letters = trimmed.filter(\.isLetter).count
+        let digits = trimmed.filter(\.isNumber).count
+        guard letters >= 3, letters > digits * 2 else { return false }
+
+        // Trop de caractères qui ne sont ni lettre, ni chiffre, ni espace :
+        // la ligne est mal lue, et la recopier serait pire que rien.
+        let noise = trimmed.filter { !$0.isLetter && !$0.isNumber && !$0.isWhitespace }.count
+        guard noise * 4 <= trimmed.count else { return false }
+
+        return true
+    }
+
+    /// Le mot figure-t-il seul, et non au milieu d'un autre ?
+    private static func containsWord(_ word: String, in text: String) -> Bool {
+        text.range(of: "\\b" + word + "\\b", options: .regularExpression) != nil
     }
 
     /// Une dénomination tout en majuscules se lit mal dans une liste.
