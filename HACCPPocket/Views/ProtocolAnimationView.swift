@@ -402,9 +402,9 @@ struct ProtocolAnimationView: View {
     /// réglage du système. Elle peut seulement dire où aller — et se taire
     /// dès que c'est fait, ou dès que la personne a compris.
     ///
-    /// Le panneau s'appelle « Lire et énoncer » sur les versions récentes
-    /// d'iOS, et non « Contenu énoncé » : envoyer quelqu'un vers un nom
-    /// d'écran qui n'existe pas est pire que ne rien dire.
+    /// L'indication ne donne pas la marche à suivre : elle renvoie à l'écran
+    /// « Voix », où elle est écrite une seule fois. Deux textes qui disent la
+    /// même chose finissent toujours par diverger.
     @ViewBuilder
     private var voiceHint: some View {
         if narrationEnabled && narrator.usesCompactVoice && !hasDismissedVoiceHint {
@@ -412,7 +412,7 @@ struct ProtocolAnimationView: View {
                 Image(systemName: "waveform")
                     .foregroundStyle(Color.brand)
 
-                Text("Voix « \(narrator.voiceName) ». Une voix plus naturelle se télécharge gratuitement dans Réglages → Accessibilité → Lire et énoncer → Voix. Touchez « Voix » en haut de cet écran pour choisir celle qui parle ici.")
+                Text("Voix « \(narrator.voiceName) », la version d'origine. Une voix bien plus naturelle se télécharge gratuitement : touchez « Voix » en haut de cet écran, la marche à suivre y est.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

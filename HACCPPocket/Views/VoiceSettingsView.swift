@@ -2,30 +2,38 @@
 //  VoiceSettingsView.swift
 //  HACCPPocket
 //
-//  Choix de la voix qui commente les modes opératoires.
+//  La voix qui commente les modes opératoires.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  POURQUOI CET ÉCRAN EXISTE
+//  UNE VOIX, PAS UNE LISTE
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  Parce qu'une voix choisie dans les réglages d'iOS peut très bien ne pas
-//  se faire entendre ici, pour des raisons que rien n'expliquait :
+//  Première version de cet écran : une liste de toutes les voix françaises
+//  installées, à charge pour l'utilisateur de trancher. Mauvais réflexe.
+//  Quand toutes les options se valent — et les voix d'origine se valent,
+//  elles sont également mécaniques —, proposer un choix ne rend service à
+//  personne. Ça donne du travail sans donner de résultat.
 //
-//  • une voix de Siri est réservée au système, aucune application tierce ne
-//    peut la lire ;
-//  • une voix « améliorée » ou « premium » dont le téléchargement n'est pas
-//    terminé n'existe pas encore pour l'application ;
-//  • et, jusqu'à cette version, l'application imposait elle-même une voix,
-//    ce qui écrasait purement et simplement le choix fait dans les réglages.
+//  Cet écran affiche donc **une** voix : celle que l'application retient
+//  d'elle-même, la meilleure installée. Le reste est replié.
 //
-//  Le troisième point est corrigé dans `SpeechNarrator` : la voix du système
-//  est désormais respectée par défaut. Restent les deux premiers, qui ne
-//  dépendent pas de nous. Cet écran les rend visibles : il liste les voix
-//  réellement utilisables, dit laquelle parle, et permet de la forcer.
+//  ─────────────────────────────────────────────────────────────────────────
+//  CE QUI AMÉLIORE VRAIMENT LA VOIX, ET CE QUI N'Y CHANGE RIEN
+//  ─────────────────────────────────────────────────────────────────────────
 //
-//  On y règle aussi la vitesse. Le curseur « Débit vocal » des réglages
-//  système ne s'applique qu'à VoiceOver et à « Lire l'écran » : une
-//  application ne peut ni le lire ni le suivre.
+//  Le seul levier réel est la qualité de la voix installée. Les voix livrées
+//  d'origine sont dites « compactes » : elles tiennent dans quelques
+//  mégaoctets et s'entendent comme telles. Les voix « Améliorée » et
+//  « Premium » sont d'une autre facture, gratuites, et pèsent plusieurs
+//  centaines de mégaoctets — c'est pour ça qu'elles ne sont pas
+//  préinstallées.
+//
+//  Une application ne peut pas les télécharger : les voix appartiennent au
+//  système. Quand aucune n'est installée, cet écran ne propose donc pas un
+//  choix, il donne la marche à suivre. C'est la seule chose utile à faire.
+//
+//  Ni la vitesse, ni la hauteur, ni le découpage en phrases ne rattrapent
+//  une voix compacte. Ils rendent une bonne voix plus lisible, rien de plus.
 //
 
 import SwiftUI
@@ -45,21 +53,23 @@ struct VoiceSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
 
+    /// Les autres voix ne s'affichent que si on les demande.
+    @State private var showsOtherVoices = false
+
     /// Phrase d'essai.
     ///
     /// Volontairement tirée d'un vrai mode opératoire, avec ses chiffres et
     /// son unité : c'est là qu'une voix médiocre s'entend, pas sur « bonjour ».
     private static let sampleText =
-        "Relevez la température à cœur du produit. Elle doit descendre sous trois degrés en moins de deux heures."
+        "Relevez la température à cœur du produit. Elle doit descendre sous +3 °C en moins de deux heures."
 
     var body: some View {
         NavigationStack {
             Form {
-                qualityAdviceSection
                 currentVoiceSection
-                voiceChoiceSection
+                upgradeSection
+                otherVoicesSection
                 rateSection
-                downloadSection
             }
             .navigationTitle("Voix")
             .navigationBarTitleDisplayMode(.inline)
@@ -72,53 +82,39 @@ struct VoiceSettingsView: View {
         }
     }
 
-    // MARK: - Ce qu'on peut attendre d'une voix de synthèse
-
-    /// Dit franchement où est le plafond, et le seul levier qui existe.
-    ///
-    /// Reproche entendu, et fondé : « elles sont toutes les mêmes, des
-    /// génériques, aucune émotion ». C'est exact pour les voix d'origine.
-    /// Une application ne peut pas les rendre expressives : elle peut
-    /// seulement dire que les voix téléchargeables sont d'une autre facture,
-    /// et que le reste demanderait une comédienne en studio.
-    @ViewBuilder
-    private var qualityAdviceSection: some View {
-        if !narrator.hasNaturalFrenchVoice {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Seules les voix d'origine sont installées", systemImage: "exclamationmark.bubble")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.brand)
-
-                    Text("Ce sont elles qui sonnent mécaniques et interchangeables. Les voix « Améliorée » et « Premium » sont d'une tout autre qualité, gratuites, et se téléchargent depuis les Réglages — voir plus bas.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.vertical, 4)
-            }
-        }
-    }
-
-    // MARK: - Voix employée
+    // MARK: - La voix employée
 
     private var currentVoiceSection: some View {
         Section {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 Image(systemName: narrator.isSpeaking ? "waveform.circle.fill" : "speaker.wave.2.circle.fill")
-                    .font(.title2)
+                    .font(.system(size: 34))
                     .foregroundStyle(Color.brand)
+                    .symbolRenderingMode(.hierarchical)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(narrator.voiceName)
                         .font(.headline)
-                    Text(sourceDescription)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+
+                    HStack(spacing: 6) {
+                        if let quality = narrator.voiceQualityLabel {
+                            Text(quality)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.brand)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(Color.brand.opacity(0.14), in: Capsule())
+                        }
+
+                        Text(sourceDescription)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Spacer()
             }
+            .padding(.vertical, 4)
 
             Button {
                 Task { await narrator.speak(Self.sampleText) }
@@ -128,79 +124,149 @@ struct VoiceSettingsView: View {
         } header: {
             Text("Voix utilisée")
         } footer: {
-            Text("C'est cette voix qui commente les modes opératoires.")
+            Text("C'est elle qui commente les modes opératoires.")
         }
     }
 
-    /// D'où vient la voix employée : des réglages, ou d'un choix fait ici.
+    /// D'où vient la voix employée.
     private var sourceDescription: String {
-        if narrator.selectedVoiceIdentifier != nil {
-            return "Choisie dans l'application"
-        }
-        return "Voix par défaut du système"
+        if narrator.usesSystemVoice { return "Voix par défaut d'iOS" }
+        if narrator.usesRecommendedVoice { return "Choisie automatiquement" }
+        return "Choisie par vous"
     }
 
-    // MARK: - Choix de la voix
+    // MARK: - Installer une voix qui tienne la route
 
-    private var voiceChoiceSection: some View {
+    /// Quand rien de mieux qu'une voix compacte n'est installé, cet écran ne
+    /// propose pas un choix : il donne la marche à suivre.
+    @ViewBuilder
+    private var upgradeSection: some View {
+        if !narrator.hasNaturalFrenchVoice {
+            Section {
+                VStack(alignment: .leading, spacing: 10) {
+                    Label("Seule la voix d'origine est installée", systemImage: "exclamationmark.bubble.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.brand)
+
+                    Text("C'est elle qui sonne mécanique. Une voix « Premium » se télécharge gratuitement et change complètement le rendu :")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        instruction(1, "Réglages → Accessibilité")
+                        instruction(2, "Lire et énoncer → Voix → Français")
+                        instruction(3, "Touchez une voix marquée « Premium »")
+                        instruction(4, "Touchez la flèche de téléchargement ⤓")
+                        instruction(5, "Revenez ici : elle sera prise automatiquement")
+                    }
+                    .padding(.top, 2)
+
+                    Text("Comptez quelques centaines de mégaoctets et deux à trois minutes en Wi-Fi. C'est pour ce poids qu'Apple ne les préinstalle pas.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 4)
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(url)
+                    }
+                } label: {
+                    Label("Ouvrir les Réglages", systemImage: "gear")
+                }
+            } header: {
+                Text("Obtenir une voix naturelle")
+            } footer: {
+                Text("Le bouton ouvre la fiche de l'application : iOS n'autorise pas de lien direct vers un panneau d'accessibilité. Revenez à la racine des Réglages depuis là.")
+            }
+        }
+    }
+
+    private func instruction(_ number: Int, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("\(number)")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(width: 18, height: 18)
+                .background(Color.brand, in: Circle())
+
+            Text(text)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Les autres voix, sur demande
+
+    private var otherVoicesSection: some View {
         Section {
-            Button {
-                narrator.selectedVoiceIdentifier = nil
-            } label: {
+            DisclosureGroup("Choisir une autre voix", isExpanded: $showsOtherVoices) {
+                voiceRow(
+                    title: "Voix recommandée",
+                    detail: recommendedDetail,
+                    isSelected: narrator.usesRecommendedVoice
+                ) {
+                    narrator.selectedVoiceIdentifier = nil
+                }
+
                 voiceRow(
                     title: "Voix du système",
                     detail: "Celle des Réglages → Accessibilité → Lire et énoncer",
-                    isSelected: narrator.selectedVoiceIdentifier == nil
-                )
-            }
+                    isSelected: narrator.usesSystemVoice
+                ) {
+                    narrator.selectedVoiceIdentifier = SpeechNarrator.systemVoiceIdentifier
+                }
 
-            ForEach(narrator.availableFrenchVoices, id: \.identifier) { voice in
-                Button {
-                    narrator.selectedVoiceIdentifier = voice.identifier
-                } label: {
+                ForEach(narrator.availableFrenchVoices, id: \.identifier) { voice in
                     voiceRow(
                         title: voice.name,
                         detail: "\(SpeechNarrator.qualityLabel(for: voice)) · \(voice.language)",
                         isSelected: narrator.selectedVoiceIdentifier == voice.identifier
-                    )
+                    ) {
+                        narrator.selectedVoiceIdentifier = voice.identifier
+                    }
                 }
             }
-        } header: {
-            Text("Voix disponibles")
         } footer: {
-            Text(voiceChoiceFooter)
+            Text("Les voix de Siri n'apparaissent pas ici : iOS les réserve au système, aucune application ne peut les employer.")
         }
     }
 
-    private var voiceChoiceFooter: String {
-        if narrator.availableFrenchVoices.isEmpty {
-            return "Aucune voix française n'est installée sur cet appareil. Ajoutez-en une depuis les Réglages, plus bas."
+    private var recommendedDetail: String {
+        guard let voice = narrator.recommendedVoice else {
+            return "Aucune voix française installée"
         }
-        if !narrator.hasNaturalFrenchVoice {
-            return "Seule la voix française d'origine est installée. Une voix « Améliorée » ou « Premium » se télécharge gratuitement et sonne nettement plus naturelle."
-        }
-        return "Les voix de Siri n'apparaissent pas ici : iOS les réserve au système, aucune application ne peut les utiliser. Si vous en avez choisi une dans les Réglages, sélectionnez ci-dessus la voix que l'application doit employer à la place."
+        return "\(voice.name) · \(SpeechNarrator.qualityLabel(for: voice))"
     }
 
-    private func voiceRow(title: String, detail: String, isSelected: Bool) -> some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .foregroundStyle(.primary)
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+    private func voiceRow(
+        title: String,
+        detail: String,
+        isSelected: Bool,
+        select: @escaping () -> Void
+    ) -> some View {
+        Button(action: select) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .foregroundStyle(.primary)
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-            Spacer()
+                Spacer()
 
-            if isSelected {
-                Image(systemName: "checkmark")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(Color.brand)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.brand)
+                }
             }
+            .contentShape(Rectangle())
         }
-        .contentShape(Rectangle())
     }
 
     // MARK: - Vitesse
@@ -230,25 +296,7 @@ struct VoiceSettingsView: View {
         } header: {
             Text("Vitesse de lecture")
         } footer: {
-            Text("Le réglage « Débit vocal » d'iOS ne concerne que VoiceOver : il ne s'applique pas ici. La vitesse conseillée est volontairement lente, une consigne s'entend une seule fois et souvent dans le bruit.\n\nUne voix de synthèse reste une voix de synthèse : elle articule juste, elle ne joue pas. Une intonation réellement vivante demanderait des enregistrements en studio, à refaire à chaque correction de texte.")
-        }
-    }
-
-    // MARK: - Télécharger une voix
-
-    private var downloadSection: some View {
-        Section {
-            Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    openURL(url)
-                }
-            } label: {
-                Label("Ouvrir les Réglages", systemImage: "gear")
-            }
-        } header: {
-            Text("Installer une autre voix")
-        } footer: {
-            Text("Les voix appartiennent au système, l'application ne peut pas les télécharger. Le bouton ouvre les Réglages sur la fiche de l'application — iOS n'autorise pas de lien direct vers un panneau d'accessibilité. De là, revenez à la racine puis Accessibilité → Lire et énoncer → Voix → Français, et touchez la flèche de téléchargement d'une voix « Améliorée » ou « Premium ». Elle apparaîtra ensuite dans la liste ci-dessus.")
+            Text("Le réglage « Débit vocal » d'iOS ne concerne que VoiceOver : il ne s'applique pas ici. La vitesse conseillée est volontairement lente, une consigne s'entend une seule fois et souvent dans le bruit.\n\nElle ne rattrape pas une voix compacte : une synthèse articule juste, elle ne joue pas. Une intonation réellement vivante demanderait des enregistrements en studio, à refaire à chaque correction de texte.")
         }
     }
 }
