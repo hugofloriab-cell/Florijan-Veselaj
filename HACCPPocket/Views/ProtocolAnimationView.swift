@@ -123,13 +123,18 @@ struct ProtocolAnimationView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
 
-                    Spacer(minLength: 0)
-
-                    content
-                        .padding(.horizontal, 28)
-                        .frame(maxWidth: 520)
-
-                    Spacer(minLength: 0)
+                    // Défilement plutôt que troncature : la version détaillée
+                    // affiche maintenant le « pourquoi » en entier, et sur un
+                    // petit écran cela dépasse. Un texte coupé serait le même
+                    // défaut que la voix qui saute des passages.
+                    ScrollView {
+                        content
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 16)
+                            .frame(maxWidth: 520)
+                    }
+                    .defaultScrollAnchor(.center)
+                    .scrollBounceBehavior(.basedOnSize)
 
                     modePicker
                         .padding(.horizontal, 40)
@@ -296,6 +301,21 @@ struct ProtocolAnimationView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 5)
                     .background(Color.brand.opacity(0.12), in: Capsule())
+
+                // En version détaillée, le « pourquoi » est écrit en entier,
+                // parce qu'il est lu en entier. Une pastille seule laisserait
+                // la voix dire quelque chose qui n'est nulle part à l'écran.
+                if isDetailed {
+                    VStack(spacing: 6) {
+                        Text(note.title)
+                            .font(.footnote.weight(.semibold))
+                        Text(note.explanation)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -313,10 +333,22 @@ struct ProtocolAnimationView: View {
 
     // MARK: - Ce qui est prononcé
 
-    /// Le texte lu à voix haute, identique à ce qui est affiché.
+    /// Le texte lu à voix haute, strictement ce qui est affiché.
     ///
-    /// Faire lire autre chose que ce qui est écrit obligerait à tenir deux
-    /// versions du même conseil, et l'une des deux finirait par mentir.
+    /// ─────────────────────────────────────────────────────────────────────
+    /// LA VOIX NE SAUTE PLUS RIEN
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Première version : en mode Résumé, la voix ne lisait que le numéro et
+    /// le titre de l'étape, alors que l'écran affichait aussi la consigne.
+    /// Résultat entendu, et à juste titre reproché : « elle ne lit que étape
+    /// un, étape deux, elle ne lit pas les textes ». Le commentaire au-dessus
+    /// prétendait d'ailleurs l'inverse — il mentait.
+    ///
+    /// Règle désormais : **tout ce qui est écrit à l'écran est prononcé**.
+    /// Ce qui distingue les deux modes, c'est la quantité affichée, jamais un
+    /// écart entre l'œil et l'oreille. Quelqu'un qui a les mains occupées
+    /// doit pouvoir suivre sans regarder.
     private var spokenText: String {
         switch frame {
         case .intro:
@@ -324,14 +356,20 @@ struct ProtocolAnimationView: View {
 
         case .step(let index):
             let step = procedure.steps[index]
-            guard isDetailed else { return "Étape \(index + 1). \(step.title)." }
-            return "Étape \(index + 1). \(step.title). \(step.detail)"
+            var spoken = "Étape \(index + 1). \(step.title). \(step.detail)"
+
+            // Le « pourquoi » n'est affiché qu'en version détaillée : il n'est
+            // donc lu que là, pour que l'écran et la voix restent d'accord.
+            if isDetailed, let note = step.note {
+                spoken += " \(note.title) \(note.explanation)"
+            }
+            return spoken
 
         case .outro:
-            guard isDetailed, let mistake = procedure.commonMistake else {
-                return "Voilà pour l'essentiel. Le détail reste consultable à côté."
+            guard let mistake = procedure.commonMistake else {
+                return "C'est tout. Le mode opératoire détaillé reste consultable à côté."
             }
-            return "Pour finir, l'erreur à éviter. \(mistake)"
+            return "C'est tout. L'erreur à éviter : \(mistake)"
         }
     }
 

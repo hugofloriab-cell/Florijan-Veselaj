@@ -227,26 +227,50 @@ final class SpeechNarrator {
 
     // MARK: - Lecture
 
-    /// Prononce un texte et ne rend la main qu'à la fin.
+    /// Silence entre deux phrases d'un même texte.
+    ///
+    /// Sans lui, la synthèse enchaîne les phrases sans reprendre son souffle
+    /// et tout se fond en un bloc. Un tiers de seconde suffit à redonner de
+    /// la ponctuation à l'oreille.
+    private static let sentencePause: Duration = .milliseconds(320)
+
+    /// Prononce un texte, phrase par phrase, et ne rend la main qu'à la fin.
     ///
     /// L'attente est ce qui règle le rythme de l'animation : une image reste
-    /// affichée tant que sa phrase n'est pas terminée. Un texte long tient
+    /// affichée tant que son texte n'est pas terminé. Un texte long tient
     /// donc l'écran plus longtemps, ce qui est exactement ce qu'on veut.
     func speak(_ text: String) async {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        let sentences = Self.sentences(in: text)
+        guard !sentences.isEmpty else { return }
 
         prepareAudioSession()
+
+        isSpeaking = true
+        defer { isSpeaking = false }
+
+        for (index, sentence) in sentences.enumerated() {
+            if Task.isCancelled { return }
+            await speakOne(sentence)
+            if Task.isCancelled { return }
+
+            if index < sentences.count - 1 {
+                try? await Task.sleep(for: Self.sentencePause)
+            }
+        }
+    }
+
+    /// Prononce une phrase et attend qu'elle soit finie.
+    private func speakOne(_ sentence: String) async {
+        let spoken = Self.spokenForm(sentence)
+        guard !spoken.isEmpty else { return }
+
         stop()
 
-        let utterance = AVSpeechUtterance(string: trimmed)
+        let utterance = AVSpeechUtterance(string: spoken)
         utterance.voice = effectiveVoice
         utterance.rate = rate
         utterance.pitchMultiplier = Self.pitch
         utterance.postUtteranceDelay = 0
-
-        isSpeaking = true
-        defer { isSpeaking = false }
 
         await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
@@ -260,6 +284,91 @@ final class SpeechNarrator {
             Task { @MainActor in self.stop() }
         }
     }
+
+    // MARK: - Découpage en phrases
+
+    /// Découpe un texte en phrases.
+    ///
+    /// Le découpage se fait sur le texte d'origine, avant toute réécriture :
+    /// les abréviations développées plus bas contiennent des points
+    /// (« D.L.C. ») qui tromperaient le découpeur et hacheraient la lecture.
+    private static func sentences(in text: String) -> [String] {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        var result: [String] = []
+        trimmed.enumerateSubstrings(
+            in: trimmed.startIndex..<trimmed.endIndex,
+            options: [.bySentences]
+        ) { substring, _, _, _ in
+            let sentence = substring?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !sentence.isEmpty { result.append(sentence) }
+        }
+
+        return result.isEmpty ? [trimmed] : result
+    }
+
+    // MARK: - Prononciation
+
+    /// Réécrit ce qui s'écrit court mais se prononce long.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI CE PASSAGE OBLIGÉ
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Les textes des modes opératoires sont écrits pour être lus des yeux :
+    /// « +3 °C », « DLC », « n° 852/2004 », « 15 min ». Une synthèse vocale
+    /// bute sur tout cela — elle dit « degré C », épelle mal les sigles, ou
+    /// saute purement et simplement le symbole. En cuisine, une température
+    /// mal prononcée n'est pas un détail de confort : c'est la consigne qui
+    /// devient fausse.
+    ///
+    /// Les substitutions sont appliquées dans l'ordre : le signe d'abord
+    /// (« +3 » → « plus 3 »), l'unité ensuite (« °C » → « degrés »).
+    static func spokenForm(_ text: String) -> String {
+        var result = text
+        for rule in substitutions {
+            result = result.replacingOccurrences(
+                of: rule.pattern,
+                with: rule.replacement,
+                options: .regularExpression
+            )
+        }
+        return result.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static let substitutions: [(pattern: String, replacement: String)] = [
+        // Signes devant un nombre. Le « − » typographique (U+2212) utilisé
+        // pour les températures négatives n'est pas prononcé du tout.
+        //
+        // Groupe capturant plutôt que rétro-référence : une rétro-référence
+        // de longueur variable n'est pas garantie par le moteur d'iOS.
+        ("(^|[\\s(])\\+(?=\\d)", "$1plus "),
+        ("(^|[\\s(])[-\u{2212}](?=\\d)", "$1moins "),
+
+        // Unités. L'ordre compte : « n° » doit être traité avant le degré
+        // isolé, sinon « n° 852 » devient « n degrés 852 ».
+        ("\\s*°\\s*C\\b", " degrés"),
+        ("\\b[nN]\\s*°\\s*", "numéro "),
+        ("\\s*°(?![A-Za-z])", " degrés"),
+        ("\\s*%", " pour cent"),
+        ("(\\d)\\s*h\\b", "$1 heures"),
+        ("(\\d)\\s*min\\b", "$1 minutes"),
+        ("(\\d)\\s*kg\\b", "$1 kilos"),
+        ("m²", "mètres carrés"),
+
+        // Sigles du métier. Sans les points, la synthèse tente de les lire
+        // comme des mots : « dlc » devient un borborygme.
+        ("\\bDLUO\\b", "D.L.U.O."),
+        ("\\bDLC\\b", "D.L.C."),
+        ("\\bDDM\\b", "D.D.M."),
+        ("\\bHACCP\\b", "H.A.C.C.P."),
+        ("\\bPMS\\b", "P.M.S."),
+        ("\\bTIAC\\b", "T.I.A.C."),
+        ("\\bCE\\b", "C.E."),
+
+        ("\\s{2,}", " ")
+    ]
 
     func stop() {
         guard synthesizer.isSpeaking || synthesizer.isPaused else { return }

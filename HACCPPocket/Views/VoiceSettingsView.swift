@@ -55,6 +55,7 @@ struct VoiceSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                qualityAdviceSection
                 currentVoiceSection
                 voiceChoiceSection
                 rateSection
@@ -68,6 +69,34 @@ struct VoiceSettingsView: View {
                 }
             }
             .onDisappear { narrator.stop() }
+        }
+    }
+
+    // MARK: - Ce qu'on peut attendre d'une voix de synthèse
+
+    /// Dit franchement où est le plafond, et le seul levier qui existe.
+    ///
+    /// Reproche entendu, et fondé : « elles sont toutes les mêmes, des
+    /// génériques, aucune émotion ». C'est exact pour les voix d'origine.
+    /// Une application ne peut pas les rendre expressives : elle peut
+    /// seulement dire que les voix téléchargeables sont d'une autre facture,
+    /// et que le reste demanderait une comédienne en studio.
+    @ViewBuilder
+    private var qualityAdviceSection: some View {
+        if !narrator.hasNaturalFrenchVoice {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Seules les voix d'origine sont installées", systemImage: "exclamationmark.bubble")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.brand)
+
+                    Text("Ce sont elles qui sonnent mécaniques et interchangeables. Les voix « Améliorée » et « Premium » sont d'une tout autre qualité, gratuites, et se téléchargent depuis les Réglages — voir plus bas.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 4)
+            }
         }
     }
 
@@ -201,7 +230,7 @@ struct VoiceSettingsView: View {
         } header: {
             Text("Vitesse de lecture")
         } footer: {
-            Text("Le réglage « Débit vocal » d'iOS ne concerne que VoiceOver : il ne s'applique pas ici. La vitesse conseillée est volontairement lente, une consigne s'entend une seule fois et souvent dans le bruit.")
+            Text("Le réglage « Débit vocal » d'iOS ne concerne que VoiceOver : il ne s'applique pas ici. La vitesse conseillée est volontairement lente, une consigne s'entend une seule fois et souvent dans le bruit.\n\nUne voix de synthèse reste une voix de synthèse : elle articule juste, elle ne joue pas. Une intonation réellement vivante demanderait des enregistrements en studio, à refaire à chaque correction de texte.")
         }
     }
 
