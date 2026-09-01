@@ -18,6 +18,7 @@ struct ProtocolChecklistView: View {
     let procedure: OperationProtocol
 
     @State private var completedSteps: Set<String> = []
+    @State private var showsAnimation = false
 
     private var progress: Double {
         guard !procedure.steps.isEmpty else { return 0 }
@@ -29,6 +30,21 @@ struct ProtocolChecklistView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.gutter) {
                     header
+
+                    // Une personne qui découvre un geste le comprend plus vite
+                    // en images qu'en lisant huit paragraphes. La liste reste
+                    // là pour celle qui cherche une précision.
+                    Button {
+                        showsAnimation = true
+                    } label: {
+                        ActionRow(
+                            title: "Voir en images",
+                            subtitle: "\(procedure.steps.count) étapes en une vingtaine de secondes",
+                            systemImage: "play.rectangle.fill",
+                            tint: .brand
+                        )
+                    }
+                    .buttonStyle(.plain)
 
                     ForEach(Array(procedure.steps.enumerated()), id: \.element.id) { index, step in
                         stepCard(step, number: index + 1)
@@ -53,6 +69,9 @@ struct ProtocolChecklistView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fermer") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showsAnimation) {
+                ProtocolAnimationView(procedure: procedure)
             }
         }
     }
