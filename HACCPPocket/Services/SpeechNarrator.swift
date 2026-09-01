@@ -86,11 +86,18 @@ final class SpeechNarrator {
     static let minimumRate: Float = 0.34
     static let maximumRate: Float = 0.58
 
-    /// Hauteur de voix, légèrement sous la normale.
+    /// Hauteur de voix, pour les voix compactes seulement.
     ///
-    /// Une voix un peu plus grave est perçue comme plus posée et plus sûre
-    /// d'elle. Descendre davantage la rendrait caverneuse.
-    private static let pitch: Float = 0.96
+    /// Descendre un peu la hauteur rend une voix compacte plus posée, moins
+    /// pincée. Sur une voix Premium, l'effet s'inverse : le décalage est un
+    /// traitement du signal appliqué après coup, et il abîme précisément ce
+    /// qu'on est allé chercher en la téléchargeant. On n'y touche donc pas.
+    private static let compactPitch: Float = 0.96
+
+    /// Hauteur retenue pour la voix employée.
+    private var pitch: Float {
+        usesCompactVoice ? Self.compactPitch : 1.0
+    }
 
     private let synthesizer = AVSpeechSynthesizer()
     private let coordinator = Coordinator()
@@ -157,6 +164,30 @@ final class SpeechNarrator {
             .sorted { score(for: $0) > score(for: $1) }
     }
 
+    /// Voix retenues nommément, par ordre de préférence.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// POURQUOI UNE LISTE EN DUR PLUTÔT QU'UN SIMPLE CLASSEMENT
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Le classement par qualité et par genre reste un raisonnement de
+    /// machine. Une voix qu'on a écoutée et retenue vaut mieux qu'une voix
+    /// bien notée : Thomas Premium a été choisi à l'oreille, sur cette
+    /// application, avec ces textes. C'est ce jugement-là qui prime.
+    ///
+    /// Ces identifiants ne sont pas garantis d'une version d'iOS à l'autre,
+    /// et surtout la voix doit avoir été téléchargée pour exister. La liste
+    /// n'est donc qu'un premier passage : quand rien ne correspond, on
+    /// retombe sur le classement, qui, lui, marche partout.
+    private static let preferredIdentifiers = [
+        "com.apple.ttsbundle.premium.fr-FR.Thomas",
+        "com.apple.voice.premium.fr-FR.Thomas",
+        "com.apple.ttsbundle.siri_Thomas_fr-FR_premium"
+    ]
+
+    /// Repli par le nom, quand l'identifiant a changé de forme.
+    private static let preferredNames = ["Thomas"]
+
     /// La voix que l'application retient d'elle-même.
     ///
     /// ─────────────────────────────────────────────────────────────────────
@@ -173,7 +204,15 @@ final class SpeechNarrator {
     /// revenir à celle du système. Choisir pour quelqu'un est acceptable
     /// tant qu'on lui montre ce qu'on a choisi.
     var recommendedVoice: AVSpeechSynthesisVoice? {
-        availableFrenchVoices.first
+        let installed = availableFrenchVoices
+
+        for identifier in Self.preferredIdentifiers {
+            if let match = installed.first(where: { $0.identifier == identifier }) {
+                return match
+            }
+        }
+
+        return installed.first
     }
 
     /// La voix passée au synthétiseur, ou `nil` pour laisser faire le système.
@@ -229,12 +268,20 @@ final class SpeechNarrator {
         }
     }
 
-    /// Note d'une voix : qualité d'abord, puis le genre demandé, puis le
-    /// français de France avant les autres variantes.
+    /// Note d'une voix : qualité d'abord, puis les voix retenues à l'oreille,
+    /// puis le genre, puis le français de France.
     ///
-    /// L'écart entre deux qualités (30) dépasse volontairement tout le reste :
-    /// une voix Premium masculine vaut mieux qu'une compacte féminine, parce
-    /// que c'est le naturel qui manque, pas le timbre.
+    /// Les écarts sont volontairement très inégaux :
+    ///
+    /// • **Qualité (30 à 60)** — c'est le seul facteur qui s'entend vraiment.
+    ///   Une Premium masculine vaut mieux qu'une compacte féminine : ce qui
+    ///   manque à une voix compacte, c'est le naturel, pas le timbre.
+    /// • **Nom retenu (10)** — dépasse le genre, parce qu'un choix fait à
+    ///   l'écoute vaut mieux qu'une préférence exprimée dans l'abstrait.
+    ///   « Une voix féminine » avait été demandé avant d'avoir entendu quoi
+    ///   que ce soit ; Thomas Premium a été choisi après.
+    /// • **Genre (4) et variante (2)** — départagent seulement des voix par
+    ///   ailleurs équivalentes.
     private func score(for voice: AVSpeechSynthesisVoice) -> Int {
         var total = 0
 
@@ -244,8 +291,9 @@ final class SpeechNarrator {
         default:        total += 0
         }
 
-        if voice.gender == .female { total += 8 }
-        if voice.language == "fr-FR" { total += 4 }
+        if Self.preferredNames.contains(voice.name) { total += 10 }
+        if voice.gender == .female { total += 4 }
+        if voice.language == "fr-FR" { total += 2 }
 
         return total
     }
@@ -294,7 +342,7 @@ final class SpeechNarrator {
         let utterance = AVSpeechUtterance(string: spoken)
         utterance.voice = effectiveVoice
         utterance.rate = rate
-        utterance.pitchMultiplier = Self.pitch
+        utterance.pitchMultiplier = pitch
         utterance.postUtteranceDelay = 0
 
         await withTaskCancellationHandler {
