@@ -39,7 +39,7 @@ struct ProtocolChecklistView: View {
                     } label: {
                         ActionRow(
                             title: "Voir en images",
-                            subtitle: "\(procedure.steps.count) étapes en une vingtaine de secondes",
+                            subtitle: "\(procedure.steps.count) étapes, commentées à voix haute",
                             systemImage: "play.rectangle.fill",
                             tint: .brand
                         )

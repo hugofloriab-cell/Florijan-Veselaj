@@ -36,6 +36,22 @@
 //  se construit à partir des étapes déjà rédigées : ajouter un protocole
 //  ajoute son animation, sans une ligne de plus.
 //
+//  ─────────────────────────────────────────────────────────────────────────
+//  LE RYTHME SUIT LA VOIX
+//  ─────────────────────────────────────────────────────────────────────────
+//
+//  La première version enchaînait les images sur un minuteur calculé pour
+//  tenir vingt secondes. C'était trop rapide : on n'avait pas fini de lire
+//  qu'on passait à la suite.
+//
+//  Une image reste maintenant affichée tant que sa phrase n'est pas
+//  prononcée, plus une respiration. Une étape longue tient donc l'écran plus
+//  longtemps qu'une étape brève, ce qui est exactement le comportement
+//  attendu — et il n'y a plus de minuteur à régler.
+//
+//  Voix coupée, la durée se calcule sur la longueur du texte, à une vitesse
+//  de lecture confortable. Le rythme reste le même, en silence.
+//
 
 import SwiftUI
 
@@ -56,25 +72,39 @@ struct ProtocolAnimationView: View {
     @State private var frame: Frame = .intro
     @State private var isPlaying = true
     @State private var hasFinished = false
+    @State private var narrator = SpeechNarrator()
 
-    // MARK: - Minutage
+    /// La voix est active par défaut, et le choix est retenu : quelqu'un qui
+    /// la coupe une fois ne veut pas la retrouver au protocole suivant.
+    @AppStorage("haccp.protocol.narration") private var narrationEnabled = true
+    @AppStorage("haccp.protocol.voiceHintSeen") private var hasDismissedVoiceHint = false
 
-    /// Durée visée pour l'ensemble, en secondes.
-    private static let targetDuration: Double = 20
-
-    private static let introDuration: Double = 2.2
-    private static let outroDuration: Double = 2.2
-
-    /// Temps accordé à chaque étape.
+    /// Résumé ou version détaillée.
     ///
-    /// Il découle de la durée visée et du nombre d'étapes, mais reste borné :
-    /// en dessous de deux secondes on n'a pas le temps de lire, au-delà de
-    /// quatre et demie on décroche. Un protocole de douze étapes durera donc
-    /// un peu plus de vingt secondes, et c'est le bon compromis.
-    private var stepDuration: Double {
-        let count = Double(max(1, procedure.steps.count))
-        let available = Self.targetDuration - Self.introDuration - Self.outroDuration
-        return min(4.5, max(2.0, available / count))
+    /// Les deux souhaits de départ — « une vingtaine de secondes » et « une
+    /// voix qui explique chaque étape de façon claire et précise » — ne
+    /// tiennent pas ensemble : lire les explications complètes d'un mode
+    /// opératoire prend une à deux minutes. Plutôt que de trancher à la
+    /// place de l'utilisateur, l'écran propose les deux.
+    @AppStorage("haccp.protocol.detailedNarration") private var isDetailed = false
+
+    // MARK: - Rythme
+
+    /// Respiration entre deux images.
+    ///
+    /// Enchaîner à la fin exacte de la phrase donne une impression de
+    /// précipitation, même quand la lecture était au bon rythme.
+    private static let breath: Double = 0.7
+
+    /// Durée d'une image quand la voix est coupée.
+    ///
+    /// Calculée sur la longueur du texte : environ quatorze caractères par
+    /// seconde, ce qui correspond à une lecture silencieuse confortable en
+    /// français. Bornée pour qu'une phrase courte reste lisible et qu'une
+    /// longue ne bloque pas l'écran.
+    private func silentDuration(for text: String) -> Double {
+        let estimated = Double(text.count) / 14.0
+        return min(11, max(3.5, estimated))
     }
 
     var body: some View {
@@ -95,6 +125,12 @@ struct ProtocolAnimationView: View {
 
                     Spacer(minLength: 0)
 
+                    modePicker
+                        .padding(.horizontal, 40)
+                        .padding(.bottom, 12)
+
+                    voiceHint
+
                     controls
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -111,8 +147,12 @@ struct ProtocolAnimationView: View {
             // interrompu, et courir après un petit bouton les mains grasses
             // n'est pas une option.
             .contentShape(Rectangle())
-            .onTapGesture { isPlaying.toggle() }
+            .onTapGesture {
+                isPlaying.toggle()
+                if !isPlaying { narrator.stop() }
+            }
             .task(id: frameKey) { await advance() }
+            .onDisappear { narrator.stop() }
         }
     }
 
@@ -253,6 +293,30 @@ struct ProtocolAnimationView: View {
         number.isMultiple(of: 2) ? "arrow.down.circle" : procedure.systemImage
     }
 
+    // MARK: - Ce qui est prononcé
+
+    /// Le texte lu à voix haute, identique à ce qui est affiché.
+    ///
+    /// Faire lire autre chose que ce qui est écrit obligerait à tenir deux
+    /// versions du même conseil, et l'une des deux finirait par mentir.
+    private var spokenText: String {
+        switch frame {
+        case .intro:
+            return "\(procedure.title). \(procedure.subtitle)."
+
+        case .step(let index):
+            let step = procedure.steps[index]
+            guard isDetailed else { return "Étape \(index + 1). \(step.title)." }
+            return "Étape \(index + 1). \(step.title). \(step.detail)"
+
+        case .outro:
+            guard isDetailed, let mistake = procedure.commonMistake else {
+                return "Voilà pour l'essentiel. Le détail reste consultable à côté."
+            }
+            return "Pour finir, l'erreur à éviter. \(mistake)"
+        }
+    }
+
     private var transition: AnyTransition {
         reduceMotion
             ? .opacity
@@ -260,6 +324,52 @@ struct ProtocolAnimationView: View {
                 insertion: .opacity.combined(with: .scale(scale: 0.92)),
                 removal: .opacity
               )
+    }
+
+    /// Résumé ou version détaillée.
+    private var modePicker: some View {
+        Picker("Version", selection: $isDetailed) {
+            Text("Résumé").tag(false)
+            Text("Détaillé").tag(true)
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: isDetailed) { _, _ in
+            // Changer de version en cours de phrase donnerait un mélange des
+            // deux : on repart proprement de l'image courante.
+            narrator.stop()
+        }
+    }
+
+    /// Signale une fois qu'une voix plus naturelle est téléchargeable.
+    ///
+    /// L'application ne peut pas la télécharger elle-même : les voix sont un
+    /// réglage du système. Elle peut seulement dire où aller — et se taire
+    /// dès que c'est fait, ou dès que la personne a compris.
+    @ViewBuilder
+    private var voiceHint: some View {
+        if narrationEnabled && narrator.usesCompactVoice && !hasDismissedVoiceHint {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "waveform")
+                    .foregroundStyle(Color.brand)
+
+                Text("Une voix française plus naturelle se télécharge gratuitement dans Réglages → Accessibilité → Contenu énoncé → Voix.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    hasDismissedVoiceHint = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .padding(.horizontal, 20)
+            .padding(.bottom, 8)
+        }
     }
 
     // MARK: - Commandes
@@ -293,6 +403,16 @@ struct ProtocolAnimationView: View {
                     .frame(width: 44, height: 44)
             }
             .disabled(frame == .outro)
+
+            Button {
+                narrationEnabled.toggle()
+                if !narrationEnabled { narrator.stop() }
+            } label: {
+                Image(systemName: narrationEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .font(.title3)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(narrationEnabled ? "Couper la voix" : "Activer la voix")
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.brand)
@@ -300,27 +420,32 @@ struct ProtocolAnimationView: View {
 
     // MARK: - Déroulement
 
-    /// Clé qui relance l'attente : changer d'image ou reprendre la lecture
-    /// doit repartir d'un compteur neuf.
+    /// Clé qui relance le déroulé : changer d'image, reprendre la lecture ou
+    /// basculer la voix doit repartir d'une attente neuve.
     private var frameKey: String {
-        "\(currentSegment)-\(isPlaying)"
+        "\(currentSegment)-\(isPlaying)-\(narrationEnabled)-\(isDetailed)"
     }
 
+    /// Fait durer l'image le temps qu'il faut, puis passe à la suivante.
+    ///
+    /// La voix dicte le rythme quand elle est active ; sinon c'est la
+    /// longueur du texte. Dans les deux cas, l'attente est annulable : une
+    /// mise en pause ou une fermeture d'écran coupe net.
     private func advance() async {
         guard isPlaying, !hasFinished else { return }
 
-        let duration: Double = {
-            switch frame {
-            case .intro: return Self.introDuration
-            case .step:  return stepDuration
-            case .outro: return Self.outroDuration
-            }
-        }()
+        if narrationEnabled {
+            await narrator.speak(spokenText)
+        } else {
+            try? await Task.sleep(for: .seconds(silentDuration(for: spokenText)))
+        }
 
-        try? await Task.sleep(for: .seconds(duration))
         guard !Task.isCancelled, isPlaying else { return }
 
-        withAnimation(.easeInOut(duration: 0.35)) {
+        try? await Task.sleep(for: .seconds(Self.breath))
+        guard !Task.isCancelled, isPlaying else { return }
+
+        withAnimation(.easeInOut(duration: 0.45)) {
             switch frame {
             case .intro:
                 frame = procedure.steps.isEmpty ? .outro : .step(0)
@@ -336,6 +461,7 @@ struct ProtocolAnimationView: View {
     }
 
     private func goForward() {
+        narrator.stop()
         withAnimation(.easeInOut(duration: 0.25)) {
             switch frame {
             case .intro:
@@ -349,6 +475,7 @@ struct ProtocolAnimationView: View {
     }
 
     private func goBack() {
+        narrator.stop()
         withAnimation(.easeInOut(duration: 0.25)) {
             switch frame {
             case .intro:
@@ -363,6 +490,7 @@ struct ProtocolAnimationView: View {
     }
 
     private func restart() {
+        narrator.stop()
         hasFinished = false
         withAnimation(.easeInOut(duration: 0.25)) { frame = .intro }
         isPlaying = true
