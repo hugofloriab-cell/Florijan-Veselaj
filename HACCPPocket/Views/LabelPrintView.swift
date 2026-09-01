@@ -30,14 +30,23 @@ struct LabelPrintView: View {
     /// Lignes d'information rappelées en haut de l'écran.
     let summary: [(label: String, value: String, systemImage: String)]
 
+    /// Date de première ouverture, quand l'étiquette en porte une.
+    ///
+    /// Sert uniquement à reconnaître une réimpression : si le produit a été
+    /// ouvert un autre jour qu'aujourd'hui, l'étiquette qu'on édite reprend
+    /// une date passée, et il faut le dire.
+    let openedAt: Date?
+
     init(
         content: LabelContent,
         jobName: String,
-        summary: [(label: String, value: String, systemImage: String)]
+        summary: [(label: String, value: String, systemImage: String)],
+        openedAt: Date? = nil
     ) {
         self.content = content
         self.jobName = jobName
         self.summary = summary
+        self.openedAt = openedAt
     }
 
     /// Étiquette d'un produit entamé.
@@ -65,7 +74,8 @@ struct LabelPrintView: View {
         self.init(
             content: product.labelContent,
             jobName: "Étiquettes — \(product.name)",
-            summary: lines
+            summary: lines,
+            openedAt: product.openedAt
         )
     }
 
@@ -137,6 +147,39 @@ struct LabelPrintView: View {
             ForEach(summary, id: \.label) { line in
                 InfoRow(label: line.label, value: line.value, systemImage: line.systemImage)
             }
+        } footer: {
+            reprintNotice
+        }
+    }
+
+    /// Le produit a-t-il été ouvert un autre jour qu'aujourd'hui ?
+    private var isReprint: Bool {
+        guard let openedAt else { return false }
+        return !Calendar.current.isDateInToday(openedAt)
+    }
+
+    /// Avertissement affiché sur une réimpression.
+    ///
+    /// ─────────────────────────────────────────────────────────────────────
+    /// LA FAUTE QUE CET ENCART EXISTE POUR EMPÊCHER
+    /// ─────────────────────────────────────────────────────────────────────
+    ///
+    /// Un produit ouvert lundi avec trois jours de durée de vie doit sortir
+    /// jeudi. Recoller mercredi une étiquette portant « mercredi + trois
+    /// jours » le rend éternel — et le raisonnement paraît anodin à quelqu'un
+    /// qui arrive : le produit a l'air bon, on lui remet trois jours.
+    ///
+    /// L'étiquette réimprimée porte volontairement la MÊME date que la
+    /// première : c'est la protection structurelle. L'encart dit pourquoi,
+    /// pour que personne ne croie à un défaut de l'application.
+    @ViewBuilder
+    private var reprintNotice: some View {
+        if isReprint, let openedAt {
+            Label(
+                "Ce produit a été ouvert le \(AppFormatters.shortDate(openedAt)). L'étiquette reprend cette date : une réimpression ne prolonge jamais un produit. Pour un nouveau contenant, créez une nouvelle fiche.",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(.orange)
         }
     }
 

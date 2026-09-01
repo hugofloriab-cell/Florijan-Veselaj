@@ -598,6 +598,16 @@ extension OperationProtocol {
                 note: nil
             ),
             ProtocolStep(
+                id: "label.2b",
+                title: "Une nouvelle étiquette ne prolonge jamais un produit",
+                detail: "La date de retrait se compte à partir de la PREMIÈRE ouverture, une fois pour toutes. Si l'étiquette est décollée, illisible ou tachée, réimprimez-la : elle reportera la même date. Elle ne remet jamais le compteur à zéro.",
+                note: RegulatoryNote(
+                    title: "Pourquoi c'est la faute la plus grave de cette page",
+                    explanation: "Un produit ré-étiqueté tous les deux jours devient éternel. Le raisonnement paraît anodin — « il a l'air bon, je lui remets trois jours » — mais il supprime purement et simplement la notion de durée de vie, et c'est justement ce qu'un contrôleur cherche en comparant vos étiquettes à vos bons de livraison. Un écart entre les deux se lit en trente secondes.\n\nLa règle tient en une phrase : un contenant, une date d'ouverture, définitive. Ouvrir un nouveau pot, c'est une nouvelle fiche ; recoller une étiquette sur le même pot, c'est la même date.",
+                    origin: .regulation("Règlement (CE) n° 178/2002, article 18 — traçabilité")
+                )
+            ),
+            ProtocolStep(
                 id: "label.3",
                 title: "Ne dépassez jamais la DLC du fournisseur",
                 detail: "La durée après ouverture s'arrête à la DLC imprimée, jamais après. C'est le plus court des deux qui s'applique.",

@@ -23,6 +23,7 @@ struct ProductListView: View {
     @State private var showsPaywall = false
     @State private var productPendingDeletion: TrackedProduct?
     @State private var labelProduct: TrackedProduct?
+    @State private var reopenCandidate: TrackedProduct?
     @State private var isScanning = false
     @State private var scanMessage: String?
     @State private var scanPrefill: ProductPrefill?
@@ -74,6 +75,38 @@ struct ProductListView: View {
             }
             .sheet(item: $labelProduct) { product in
                 LabelPrintView(product: product)
+            }
+            // ─────────────────────────────────────────────────────────────
+            // LE SEUL GESTE QUI REMET UNE DATE D'OUVERTURE À ZÉRO
+            // ─────────────────────────────────────────────────────────────
+            //
+            // « Ré-entamer » sert à ouvrir un NOUVEAU contenant du même
+            // produit : nouveau pot de crème, nouvelle fiche, nouvelle date.
+            // Employé sur le contenant déjà ouvert, il le rend éternel — et
+            // le raisonnement paraît anodin à quelqu'un qui arrive.
+            //
+            // La confirmation ne peut pas empêcher la faute, mais elle
+            // oblige à la formuler. C'est tout ce qu'une application peut
+            // faire, et c'est déjà beaucoup pour un nouveau.
+            .confirmationDialog(
+                "S'agit-il d'un nouveau contenant ?",
+                isPresented: Binding(
+                    get: { reopenCandidate != nil },
+                    set: { if !$0 { reopenCandidate = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: reopenCandidate
+            ) { product in
+                Button("Oui, j'ouvre un nouveau contenant") {
+                    editedProduct = viewModel?.duplicate(
+                        product,
+                        shelfLifeDays: preferences.defaultShelfLifeDays
+                    )
+                    reopenCandidate = nil
+                }
+                Button("Annuler", role: .cancel) { reopenCandidate = nil }
+            } message: { product in
+                Text("Une nouvelle fiche partira d'aujourd'hui.\n\nSi c'est le même contenant, déjà ouvert le \(AppFormatters.shortDate(product.openedAt)), sa date de retrait ne change pas : un produit ré-étiqueté tous les deux jours n'expire jamais.")
             }
             .sheet(isPresented: $isScanning) {
                 QRScannerView { code in
@@ -209,10 +242,10 @@ struct ProductListView: View {
 
                     Button {
                         guard subscription.canWrite else { showsPaywall = true; return }
-                        editedProduct = viewModel.duplicate(
-                            product,
-                            shelfLifeDays: preferences.defaultShelfLifeDays
-                        )
+                        // Confirmation obligatoire : c'est le seul geste de
+                        // l'application capable de remettre une date
+                        // d'ouverture à zéro.
+                        reopenCandidate = product
                     } label: {
                         Label("Ré-entamer", systemImage: "arrow.triangle.2.circlepath")
                     }
