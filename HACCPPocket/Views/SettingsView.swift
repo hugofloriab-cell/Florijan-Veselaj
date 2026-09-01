@@ -46,6 +46,14 @@ struct SettingsView: View {
     @State private var codeSaved = false
     @State private var showsInspectorConfirmation = false
 
+    /// Narrateur des modes opératoires.
+    ///
+    /// Il n'est instancié ici que pour régler la voix et l'entendre : la
+    /// lecture réelle a lieu dans `ProtocolAnimationView`. Le choix étant
+    /// enregistré dans les préférences, les deux écrans restent d'accord.
+    @State private var narrator = SpeechNarrator()
+    @State private var showsVoiceSettings = false
+
     private var establishment: Establishment? { establishments.first }
 
     // MARK: - Abonnement
@@ -117,6 +125,7 @@ struct SettingsView: View {
                 operatorSection
                 teamSection
                 remindersSection
+                voiceSection
                 dataSection
                 inspectorSection
                 aboutSection
@@ -131,6 +140,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showsPaywall) {
                 PaywallView()
+            }
+            .sheet(isPresented: $showsVoiceSettings) {
+                VoiceSettingsView(narrator: narrator)
             }
             .task {
                 await notificationService.refreshAuthorizationStatus()
@@ -393,6 +405,33 @@ struct SettingsView: View {
         guard !trimmed.isEmpty else { return }
         preferences.rememberOperator(trimmed)
         newTeamMember = ""
+    }
+
+    // MARK: - Voix
+
+    /// Réglage de la voix qui commente les modes opératoires.
+    ///
+    /// Placé dans les réglages parce que c'est là qu'on le cherche, et
+    /// répété dans l'écran d'animation parce que c'est là qu'on entend le
+    /// problème.
+    private var voiceSection: some View {
+        Section {
+            Button {
+                showsVoiceSettings = true
+            } label: {
+                HStack {
+                    Label("Voix des modes opératoires", systemImage: "speaker.wave.2.circle")
+                    Spacer()
+                    Text(narrator.voiceName)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Voix")
+        } footer: {
+            Text("Les vidéos « Comment faire ? » utilisent par défaut la voix choisie dans Réglages → Accessibilité → Lire et énoncer. Les voix de Siri font exception : iOS les réserve au système. Cet écran permet de choisir directement la voix employée et sa vitesse.")
+        }
     }
 
     // MARK: - Données

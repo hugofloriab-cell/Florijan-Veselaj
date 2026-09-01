@@ -79,6 +79,12 @@ struct ProtocolAnimationView: View {
     @AppStorage("haccp.protocol.narration") private var narrationEnabled = true
     @AppStorage("haccp.protocol.voiceHintSeen") private var hasDismissedVoiceHint = false
 
+    /// Feuille de choix de la voix.
+    ///
+    /// Accessible depuis l'écran lui-même, et non seulement depuis les
+    /// réglages : c'est en entendant la voix qu'on décide d'en changer.
+    @State private var showsVoiceSettings = false
+
     /// Résumé ou version détaillée.
     ///
     /// Les deux souhaits de départ — « une vingtaine de secondes » et « une
@@ -139,9 +145,21 @@ struct ProtocolAnimationView: View {
             .navigationTitle(procedure.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        narrator.stop()
+                        isPlaying = false
+                        showsVoiceSettings = true
+                    } label: {
+                        Label("Voix", systemImage: "speaker.wave.2.circle")
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fermer") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showsVoiceSettings) {
+                VoiceSettingsView(narrator: narrator)
             }
             // Un appui n'importe où met en pause : en cuisine on est
             // interrompu, et courir après un petit bouton les mains grasses
@@ -345,6 +363,10 @@ struct ProtocolAnimationView: View {
     /// L'application ne peut pas la télécharger elle-même : les voix sont un
     /// réglage du système. Elle peut seulement dire où aller — et se taire
     /// dès que c'est fait, ou dès que la personne a compris.
+    ///
+    /// Le panneau s'appelle « Lire et énoncer » sur les versions récentes
+    /// d'iOS, et non « Contenu énoncé » : envoyer quelqu'un vers un nom
+    /// d'écran qui n'existe pas est pire que ne rien dire.
     @ViewBuilder
     private var voiceHint: some View {
         if narrationEnabled && narrator.usesCompactVoice && !hasDismissedVoiceHint {
@@ -352,7 +374,7 @@ struct ProtocolAnimationView: View {
                 Image(systemName: "waveform")
                     .foregroundStyle(Color.brand)
 
-                Text("Une voix française plus naturelle se télécharge gratuitement dans Réglages → Accessibilité → Contenu énoncé → Voix.")
+                Text("Voix « \(narrator.voiceName) ». Une voix plus naturelle se télécharge gratuitement dans Réglages → Accessibilité → Lire et énoncer → Voix. Touchez « Voix » en haut de cet écran pour choisir celle qui parle ici.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

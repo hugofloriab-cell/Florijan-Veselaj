@@ -19,32 +19,72 @@
 //  Tout se passe sur l'appareil : ni réseau, ni coût.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  CE QUE VAUT LA VOIX, HONNÊTEMENT
+//  QUELLE VOIX EST UTILISÉE — ET POURQUOI CELLE DES RÉGLAGES NE L'ÉTAIT PAS
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  iOS embarque d'origine une voix française « compacte », correcte mais
-//  reconnaissable comme synthétique. Les voix « améliorée » et « premium »
-//  sont nettement plus naturelles et se téléchargent gratuitement dans
-//  Réglages → Accessibilité → Contenu énoncé → Voix.
+//  Première version : l'application notait chaque voix française installée
+//  (qualité, genre, variante) et gardait la mieux classée. Erreur de
+//  conception. Choisir une voix « objectivement meilleure » écrase le choix
+//  fait dans Réglages → Accessibilité → Lire et énoncer → Voix : la personne
+//  sélectionne une voix, l'application en impose une autre, et rien n'en
+//  informe.
 //
-//  Ce fichier prend automatiquement la meilleure voix installée. Il ne peut
-//  pas la télécharger à la place de l'utilisateur — c'est un réglage système,
-//  hors de portée d'une application. L'écran le signale une fois.
+//  Règle retenue : par défaut on ne fixe aucune voix. `utterance.voice` reste
+//  `nil`, et `AVSpeechSynthesizer` prend la voix par défaut du système —
+//  celle des Réglages. L'application ne décide plus à la place de personne.
+//
+//  Deux exceptions, toutes deux nécessaires :
+//
+//  • Si la langue par défaut du système n'est pas le français, laisser `nil`
+//    ferait lire un texte français avec une voix anglaise : incompréhensible.
+//    Dans ce seul cas on retombe sur une voix française installée.
+//
+//  • Si l'utilisateur choisit explicitement une voix dans l'application
+//    (écran « Voix »), c'est cette voix-là, et elle est retenue.
+//
+//  ─────────────────────────────────────────────────────────────────────────
+//  CE QU'UNE APPLICATION NE PEUT PAS FAIRE, ET QU'IL FAUT DIRE
+//  ─────────────────────────────────────────────────────────────────────────
+//
+//  Le panneau « Voix » des réglages propose aussi les voix de Siri. Elles
+//  sont réservées au système : `AVSpeechSynthesisVoice.speechVoices()` ne
+//  les renvoie pas, et aucune application tierce ne peut les utiliser. Une
+//  voix Siri sélectionnée dans les réglages ne s'entendra donc jamais ici —
+//  ce n'est pas un défaut de l'application, c'est une limite d'iOS.
+//
+//  De même, une voix « améliorée » ou « premium » doit être téléchargée pour
+//  exister ; tant que le téléchargement n'est pas terminé, elle n'apparaît
+//  nulle part. L'écran « Voix » de l'application liste exactement les voix
+//  réellement utilisables, ce qui rend la différence visible au lieu de la
+//  laisser deviner.
 //
 
 import AVFoundation
+import Foundation
 import Observation
 
 @MainActor
 @Observable
 final class SpeechNarrator {
 
-    /// Vitesse de lecture.
+    // MARK: - Clés de préférences
+
+    private static let voiceKey = "haccp.voice.identifier"
+    private static let rateKey = "haccp.voice.rate"
+
+    /// Vitesse de lecture par défaut.
     ///
-    /// La valeur par défaut d'iOS est trop rapide pour une consigne qu'on
+    /// La valeur d'origine d'iOS est trop rapide pour une consigne qu'on
     /// entend une seule fois, en cuisine, avec du bruit autour. On ralentit
     /// nettement : mieux vaut une phrase de plus que deux relectures.
-    private static let rate: Float = 0.46
+    ///
+    /// Le curseur « Débit vocal » des réglages système ne s'applique qu'à
+    /// VoiceOver et à « Lire l'écran » ; il n'est pas lisible par une
+    /// application. D'où un réglage propre, exposé dans l'écran « Voix ».
+    static let defaultRate: Float = 0.46
+
+    static let minimumRate: Float = 0.34
+    static let maximumRate: Float = 0.58
 
     /// Hauteur de voix, légèrement sous la normale.
     ///
@@ -57,24 +97,133 @@ final class SpeechNarrator {
 
     private(set) var isSpeaking = false
 
-    /// Voix retenue, `nil` si le système n'en propose aucune en français.
-    let voice: AVSpeechSynthesisVoice?
+    // MARK: - Choix de l'utilisateur
+
+    /// Identifiant de la voix choisie dans l'application.
+    ///
+    /// `nil` — le cas normal — signifie « voix du système », c'est-à-dire
+    /// celle des réglages. On ne mémorise une valeur que si quelqu'un a
+    /// délibérément forcé une autre voix ici.
+    var selectedVoiceIdentifier: String? {
+        didSet {
+            guard selectedVoiceIdentifier != oldValue else { return }
+            let defaults = UserDefaults.standard
+            if let identifier = selectedVoiceIdentifier {
+                defaults.set(identifier, forKey: Self.voiceKey)
+            } else {
+                defaults.removeObject(forKey: Self.voiceKey)
+            }
+            stop()
+        }
+    }
+
+    /// Vitesse retenue, modifiable depuis l'écran « Voix ».
+    var rate: Float {
+        didSet {
+            guard rate != oldValue else { return }
+            UserDefaults.standard.set(rate, forKey: Self.rateKey)
+        }
+    }
 
     init() {
-        self.voice = Self.bestFrenchVoice()
+        let defaults = UserDefaults.standard
+        self.selectedVoiceIdentifier = defaults.string(forKey: Self.voiceKey)
+        // `object(forKey:)` sert uniquement à distinguer « jamais réglé » de
+        // « réglé à zéro » : `float(forKey:)` renvoie 0 dans les deux cas.
+        if defaults.object(forKey: Self.rateKey) != nil {
+            self.rate = defaults.float(forKey: Self.rateKey)
+        } else {
+            self.rate = Self.defaultRate
+        }
         synthesizer.delegate = coordinator
     }
 
-    /// La voix installée est-elle la version compacte d'origine ?
+    // MARK: - Voix effectivement employée
+
+    /// Toutes les voix françaises réellement utilisables par l'application.
+    ///
+    /// Triées de la plus naturelle à la plus mécanique : c'est l'ordre dans
+    /// lequel on veut les voir proposées.
+    var availableFrenchVoices: [AVSpeechSynthesisVoice] {
+        AVSpeechSynthesisVoice.speechVoices()
+            .filter { $0.language.hasPrefix("fr") }
+            .sorted { left, right in
+                let leftRank = Self.qualityRank(left.quality)
+                let rightRank = Self.qualityRank(right.quality)
+                if leftRank != rightRank { return leftRank > rightRank }
+                return left.name.localizedCaseInsensitiveCompare(right.name) == .orderedAscending
+            }
+    }
+
+    /// La voix passée au synthétiseur, ou `nil` pour laisser faire le système.
+    var effectiveVoice: AVSpeechSynthesisVoice? {
+        if let identifier = selectedVoiceIdentifier,
+           let chosen = AVSpeechSynthesisVoice(identifier: identifier) {
+            return chosen
+        }
+
+        // Le système lit en français : on ne touche à rien, sa voix est la
+        // bonne — c'est celle des réglages.
+        if AVSpeechSynthesisVoice.currentLanguageCode().hasPrefix("fr") {
+            return nil
+        }
+
+        // Appareil configuré dans une autre langue : sans repli, le texte
+        // français serait lu avec l'accent de cette langue.
+        return fallbackFrenchVoice
+    }
+
+    /// Repli utilisé uniquement quand le système ne lit pas en français.
+    private var fallbackFrenchVoice: AVSpeechSynthesisVoice? {
+        availableFrenchVoices.first ?? AVSpeechSynthesisVoice(language: "fr-FR")
+    }
+
+    /// Nom affichable de la voix employée à cet instant.
+    var voiceName: String {
+        if let identifier = selectedVoiceIdentifier,
+           let chosen = AVSpeechSynthesisVoice(identifier: identifier) {
+            return chosen.name
+        }
+        if let fallback = effectiveVoice {
+            return fallback.name
+        }
+        return "Voix du système"
+    }
+
+    /// La voix employée est-elle la version compacte d'origine ?
     ///
     /// Sert à proposer une fois le téléchargement d'une voix plus naturelle,
-    /// sans harceler quelqu'un qui l'a déjà fait.
+    /// sans harceler quelqu'un qui l'a déjà fait. Quand la voix vient du
+    /// système, on ne peut pas connaître sa qualité : dans le doute on se
+    /// tait plutôt que d'afficher un conseil peut-être inutile.
     var usesCompactVoice: Bool {
-        guard let voice else { return false }
+        guard let voice = effectiveVoice else { return false }
         return voice.quality == .default
     }
 
-    var voiceName: String { voice?.name ?? "Voix système" }
+    /// Y a-t-il au moins une voix française plus naturelle installée ?
+    ///
+    /// Si non, l'écran « Voix » le dit au lieu d'afficher une liste d'une
+    /// seule ligne sans expliquer pourquoi.
+    var hasNaturalFrenchVoice: Bool {
+        availableFrenchVoices.contains { $0.quality != .default }
+    }
+
+    static func qualityLabel(for voice: AVSpeechSynthesisVoice) -> String {
+        switch voice.quality {
+        case .premium:  return "Premium"
+        case .enhanced: return "Améliorée"
+        default:        return "Compacte"
+        }
+    }
+
+    private static func qualityRank(_ quality: AVSpeechSynthesisVoiceQuality) -> Int {
+        switch quality {
+        case .premium:  return 2
+        case .enhanced: return 1
+        default:        return 0
+        }
+    }
 
     // MARK: - Lecture
 
@@ -91,8 +240,8 @@ final class SpeechNarrator {
         stop()
 
         let utterance = AVSpeechUtterance(string: trimmed)
-        utterance.voice = voice
-        utterance.rate = Self.rate
+        utterance.voice = effectiveVoice
+        utterance.rate = rate
         utterance.pitchMultiplier = Self.pitch
         utterance.postUtteranceDelay = 0
 
@@ -130,41 +279,6 @@ final class SpeechNarrator {
         try? session.setCategory(.playback, mode: .spokenAudio, options: [.mixWithOthers, .duckOthers])
         try? session.setActive(true, options: [])
         #endif
-    }
-
-    // MARK: - Choix de la voix
-
-    /// La meilleure voix française installée, féminine de préférence.
-    ///
-    /// L'ordre de préférence est explicite : qualité d'abord — une voix
-    /// premium féminine bat une compacte féminine —, puis le genre demandé,
-    /// puis le français de France avant les autres variantes.
-    private static func bestFrenchVoice() -> AVSpeechSynthesisVoice? {
-        let french = AVSpeechSynthesisVoice.speechVoices()
-            .filter { $0.language.hasPrefix("fr") }
-
-        guard !french.isEmpty else {
-            return AVSpeechSynthesisVoice(language: "fr-FR")
-        }
-
-        return french.max { left, right in
-            score(for: left) < score(for: right)
-        }
-    }
-
-    private static func score(for voice: AVSpeechSynthesisVoice) -> Int {
-        var total = 0
-
-        switch voice.quality {
-        case .premium:  total += 60
-        case .enhanced: total += 40
-        default:        total += 10
-        }
-
-        if voice.gender == .female { total += 25 }
-        if voice.language == "fr-FR" { total += 10 }
-
-        return total
     }
 
     // MARK: - Passerelle vers le délégué
