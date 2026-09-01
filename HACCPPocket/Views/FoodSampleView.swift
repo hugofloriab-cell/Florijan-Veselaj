@@ -64,7 +64,7 @@ struct FoodSampleListView: View {
                 } header: {
                     Text("En conservation")
                 } footer: {
-                    Text("Appui long sur un prélèvement pour imprimer son étiquette : nom du plat, date d'élimination possible, service et opérateur. Cinq formats sont proposés, du petit rouleau thermique à la planche A4.")
+                    Text("L'icône d'imprimante à droite de chaque ligne édite l'étiquette : nom du plat, date d'élimination possible, service et opérateur. Sept formats sont proposés, du petit rouleau thermique à la planche A4.")
                 }
             }
 
@@ -97,7 +97,29 @@ struct FoodSampleListView: View {
         }
     }
 
+    /// Bouton d'impression, sur la ligne elle-même.
+    ///
+    /// Même raisonnement que pour les produits entamés : l'étiquette se colle
+    /// sur le bac au moment du prélèvement. Le glissement et l'appui long
+    /// restent disponibles, mais aucun des deux ne se découvre tout seul.
+    private func printButton(for sample: FoodSample) -> some View {
+        Button {
+            labelSample = sample
+        } label: {
+            Image(systemName: "printer")
+                .font(.body)
+                .foregroundStyle(Color.brand)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Imprimer l'étiquette de \(sample.displayName)")
+    }
+
     private func row(_ sample: FoodSample) -> some View {
+        // Deux boutons voisins : dans une liste, un bouton placé à
+        // l'intérieur du libellé d'un autre ne reçoit pas ses propres appuis.
+        HStack(spacing: 0) {
         Button {
             editedSample = sample
         } label: {
@@ -133,6 +155,9 @@ struct FoodSampleListView: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
+
+            printButton(for: sample)
+        }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) { delete(sample) } label: {
                 Label("Supprimer", systemImage: "trash")
@@ -215,6 +240,8 @@ struct FoodSampleEditorView: View {
     @State private var storageLocation: String
     @State private var operatorName: String
     @State private var comment: String
+    @State private var createdSample: FoodSample?
+    @State private var savedForPrinting: FoodSample?
     @State private var isDiscarded: Bool
     @State private var discardedAt: Date
 
@@ -248,16 +275,34 @@ struct FoodSampleEditorView: View {
             Form {
                 Section { ProtocolLink(procedure: .foodSample) }
 
-                Section("Plat prélevé") {
+                Section {
                     TextField("Nom du plat", text: $dishName)
                     TextField("Service (midi, soir, banquet…)", text: $serviceLabel)
                     Stepper("Quantité : \(quantityGrams) g", value: $quantityGrams, in: 50...300, step: 10)
-                    Stepper(
-                        coverCount > 0 ? "Couverts servis : \(coverCount)" : "Couverts servis : non précisé",
-                        value: $coverCount,
-                        in: 0...2000,
-                        step: 10
-                    )
+
+                    // Le nombre de couverts se tape.
+                    //
+                    // Il avançait de dix en dix : 22 couverts — un service
+                    // parfaitement ordinaire — étaient tout simplement
+                    // impossibles à saisir. Le pas passe à un, et surtout le
+                    // champ accepte la frappe directe : personne n'appuie
+                    // vingt-deux fois sur un bouton.
+                    HStack {
+                        Text("Couverts servis")
+                        Spacer(minLength: 8)
+
+                        TextField("0", value: $coverCount, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 80)
+
+                        Stepper("", value: $coverCount, in: 0...2000)
+                            .labelsHidden()
+                    }
+                } header: {
+                    Text("Plat prélevé")
+                } footer: {
+                    Text("Le nombre de couverts n'est pas obligatoire, mais il permet de mesurer l'ampleur d'un cas si plusieurs convives se déclarent malades.")
                 }
 
                 Section {
@@ -289,6 +334,20 @@ struct FoodSampleEditorView: View {
                     }
                 }
 
+                Section {
+                    Button {
+                        savedForPrinting = save()
+                    } label: {
+                        Label("Enregistrer et imprimer l'étiquette", systemImage: "printer")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(dishName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .listRowBackground(Color.clear)
+                } footer: {
+                    Text("L'étiquette porte le nom du plat et la date d'élimination possible en gros — au fond d'un frigo, la seule question utile est « est-ce que je peux le jeter ? ».")
+                }
+
                 Section("Détails") {
                     OperatorField(name: $operatorName)
                     TextField("Commentaire", text: $comment, axis: .vertical)
@@ -302,18 +361,30 @@ struct FoodSampleEditorView: View {
                     Button("Annuler") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") { save() }
-                        .disabled(dishName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("Enregistrer") {
+                        save()
+                        dismiss()
+                    }
+                    .disabled(dishName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .onAppear {
                 if operatorName.isEmpty { operatorName = preferences.operatorName }
             }
+            // La fiche se referme derrière l'écran d'impression : le geste
+            // est « je prélève, j'imprime, je colle ».
+            .sheet(item: $savedForPrinting, onDismiss: { dismiss() }) { sample in
+                LabelPrintView(sample: sample)
+            }
         }
     }
 
-    private func save() {
-        let target = sample ?? FoodSample()
+    @discardableResult
+    private func save() -> FoodSample {
+        // `createdSample` évite qu'un second appel — enregistrer puis
+        // imprimer — crée un deuxième prélèvement au lieu de compléter le
+        // premier.
+        let target = sample ?? createdSample ?? FoodSample()
 
         target.dishName = dishName.trimmingCharacters(in: .whitespacesAndNewlines)
         target.serviceLabel = serviceLabel
@@ -326,8 +397,12 @@ struct FoodSampleEditorView: View {
         target.comment = comment
         target.discardedAt = isDiscarded ? discardedAt : nil
 
-        if sample == nil { context.insert(target) }
+        if sample == nil, createdSample == nil {
+            context.insert(target)
+            createdSample = target
+        }
+
         try? context.save()
-        dismiss()
+        return target
     }
 }

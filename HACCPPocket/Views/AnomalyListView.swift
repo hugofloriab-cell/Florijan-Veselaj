@@ -69,8 +69,30 @@ struct AnomalyListView: View {
         products.filter { $0.status == .inUse && $0.urgency() == .expired }
     }
 
+    /// Produits dont la DLC secondaire arrive à échéance sous 48 heures.
+    ///
+    /// Cette catégorie manquait, alors que l'accueil la comptait déjà dans
+    /// son total : le compteur annonçait une anomalie que la liste ne
+    /// montrait pas. Un écran qui compte autrement qu'il n'affiche fait
+    /// douter de tout le reste.
+    private var expiringProducts: [TrackedProduct] {
+        products
+            .filter { product in
+                guard product.status == .inUse else { return false }
+                let urgency = product.urgency()
+                return urgency == .critical || urgency == .warning
+            }
+            .sorted { $0.effectiveLimitDate < $1.effectiveLimitDate }
+    }
+
     private var totalOpen: Int {
-        undocumentedReadings.count + failedThermal.count + failedOil.count + expiredProducts.count
+        var total = 0
+        total += undocumentedReadings.count
+        total += failedThermal.count
+        total += failedOil.count
+        total += expiredProducts.count
+        total += expiringProducts.count
+        return total
     }
 
     var body: some View {
@@ -118,6 +140,28 @@ struct AnomalyListView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+            }
+
+            if !expiringProducts.isEmpty {
+                Section {
+                    ForEach(expiringProducts) { product in
+                        Button {
+                            editedProduct = product
+                        } label: {
+                            row(
+                                title: product.name,
+                                subtitle: "À retirer le \(AppFormatters.shortDate(product.effectiveLimitDate)) · \(product.storage.label)",
+                                systemImage: "clock.badge.exclamationmark",
+                                tint: product.urgency() == .critical ? .orange : .yellow
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                } header: {
+                    Text("À utiliser en priorité")
+                } footer: {
+                    Text("Leur DLC secondaire arrive à échéance sous 48 heures. Ce n'est pas encore une non-conformité : c'est le moment de les passer avant qu'elle en devienne une.")
                 }
             }
 

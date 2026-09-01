@@ -263,8 +263,17 @@ struct DashboardView: View {
                 .buttonStyle(.plain)
 
                 if showsAlerts {
+                    // Chaque alerte mène à la liste : voir « 1 produit à
+                    // utiliser en priorité » et ne pas pouvoir appuyer dessus
+                    // est le genre de détail qui fait croire que l'écran est
+                    // cassé.
                     ForEach(dashboard.alerts) { alert in
-                        AlertCard(alert: alert)
+                        NavigationLink {
+                            AnomalyListView()
+                        } label: {
+                            AlertCard(alert: alert)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .transition(.opacity.combined(with: .move(edge: .top)))
 
