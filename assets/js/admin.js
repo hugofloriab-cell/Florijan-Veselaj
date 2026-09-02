@@ -82,8 +82,18 @@
         await Serveur.connexion(email, input.value);
       } catch (e) {
         loggingIn = false;
-        err.textContent =
-          e.statut === 400 ? "E-mail ou mot de passe incorrect." : "Connexion impossible : " + e.message;
+        // Un diagnostic utile vaut mieux qu'un « Failed to fetch » opaque.
+        if (e.statut === 400) {
+          err.textContent = "E-mail ou mot de passe incorrect.";
+        } else if (e.statut === undefined) {
+          err.textContent =
+            "Serveur injoignable. Vérifiez votre connexion, l'adresse du projet, " +
+            "ou que le projet Supabase n'est pas en pause.";
+        } else if (e.statut === 401 || e.statut === 403) {
+          err.textContent = "Clé du projet refusée. Vérifiez la clé publique dans la configuration.";
+        } else {
+          err.textContent = "Connexion impossible : " + e.message;
+        }
         input.value = "";
         input.focus();
         return;
