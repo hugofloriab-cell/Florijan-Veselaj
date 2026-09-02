@@ -119,8 +119,10 @@ window.APP_CONFIG = {
    * serveur/schema.sql qui protègent les données, pas son secret.
    * ---------------------------------------------------------------- */
   serveur: {
-    url: null,        // ex. "https://xxxxxxxx.supabase.co"
-    cleAnon: null     // clé « anon public » du projet
+    url: null,       // ex. "https://xxxxxxxx.supabase.co"
+    // Clé publique du projet : « sb_publishable_… » (format actuel) ou
+    // « anon public » (ancien format JWT). Les deux fonctionnent.
+    cleAnon: null
   },
 
   /* --- Envoi optionnel des avis privés vers un autre serveur --------

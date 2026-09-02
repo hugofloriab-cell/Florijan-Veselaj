@@ -33,11 +33,13 @@ window.Serveur = (function () {
 
   function enTetes(avecSession) {
     const s = avecSession ? session() : null;
-    return {
-      apikey: conf().cleAnon,
-      Authorization: "Bearer " + (s ? s.token : conf().cleAnon),
-      "Content-Type": "application/json"
-    };
+    const h = { apikey: conf().cleAnon, "Content-Type": "application/json" };
+    // `Authorization` uniquement pour une vraie session. Les nouvelles clés
+    // « sb_publishable_… » ne sont pas des jetons JWT : les envoyer en Bearer
+    // ferait échouer la requête. Sans en-tête, le rôle « anon » est déduit de
+    // `apikey` — ce qui marche avec les deux formats de clé.
+    if (s) h.Authorization = "Bearer " + s.token;
+    return h;
   }
 
   async function reponse(r) {

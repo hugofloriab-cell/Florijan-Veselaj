@@ -260,7 +260,7 @@ Puis dans `assets/js/config.js` (ou depuis le panneau, onglet Réglages) :
 ```js
 serveur: {
   url: "https://xxxxxxxx.supabase.co",   // Settings → API → Project URL
-  cleAnon: "eyJhbGciOi..."               // Settings → API → anon public
+  cleAnon: "sb_publishable_..."          // Settings → API → clé publique
 }
 ```
 
@@ -269,8 +269,8 @@ Supabase qui vérifie, plus la page.
 
 ### Pourquoi la clé dans la page n'est pas une faille
 
-La clé « anon » est publique par conception — elle est dans le code de la
-page, visible de tous. Ce qui protège les données, ce sont les règles RLS de
+La clé publique (`sb_publishable_…`, ou `anon public` dans l'ancien format)
+l'est par conception — elle est dans le code de la page, visible de tous. Ce qui protège les données, ce sont les règles RLS de
 `schema.sql` : le public peut **déposer** un avis, jamais en **lire** un. Une
 lecture avec la seule clé publique renvoie une erreur 401. Lire, modifier ou
 supprimer exige une session ouverte avec votre compte.
