@@ -49,6 +49,7 @@
 
   /* ----------------------------------------------------- connexion */
   function sessionValid() {
+    if (window.Serveur && Serveur.actif()) return Boolean(Serveur.session());
     try {
       const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
       return s && s.until > Date.now();
@@ -72,8 +73,29 @@
     loggingIn = true;
     const input = document.getElementById("password");
     const err = document.getElementById("loginError");
-    const hash = await sha256(input.value);
 
+    if (window.Serveur && Serveur.actif()) {
+      // Vérification côté serveur : tentatives limitées, mot de passe jamais
+      // comparé dans la page.
+      const email = document.getElementById("email").value.trim();
+      try {
+        await Serveur.connexion(email, input.value);
+      } catch (e) {
+        loggingIn = false;
+        err.textContent =
+          e.statut === 400 ? "E-mail ou mot de passe incorrect." : "Connexion impossible : " + e.message;
+        input.value = "";
+        input.focus();
+        return;
+      }
+      loggingIn = false;
+      err.textContent = "";
+      openSession();
+      showDashboard();
+      return;
+    }
+
+    const hash = await sha256(input.value);
     loggingIn = false;
 
     if (hash !== cfg.admin.passwordSha256) {
@@ -96,10 +118,37 @@
   }
 
   /* -------------------------------------------------------- données */
+  let alerte = "";
+
   async function refresh() {
-    reviews = await window.ReviewStore.all();
+    const locaux = await window.ReviewStore.all();
+
+    if (window.Serveur && Serveur.actif()) {
+      try {
+        const distants = await Serveur.listerAvis();
+        // Les avis encore en local et non partis sont affichés en plus,
+        // pour que rien ne semble avoir disparu.
+        const enAttente = locaux.filter((a) => !a.envoye);
+        reviews = distants.concat(enAttente).sort((a, b) => b.createdAt - a.createdAt);
+        alerte = enAttente.length
+          ? `${enAttente.length} avis pas encore transmis (réseau) — ils repartiront tout seuls.`
+          : "";
+      } catch (e) {
+        reviews = locaux;
+        alerte = "Serveur injoignable : seuls les avis de cet appareil sont affichés.";
+      }
+    } else {
+      reviews = locaux;
+      alerte = "";
+    }
+
     renderStats();
     renderList();
+    const banniere = document.getElementById("alerte");
+    if (banniere) {
+      banniere.textContent = alerte;
+      banniere.hidden = !alerte;
+    }
   }
 
   const privateOnes = () => reviews.filter((r) => r.channel === "prive");
@@ -583,6 +632,7 @@
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
       sessionStorage.removeItem(SESSION_KEY);
+      if (window.Serveur && Serveur.actif()) Serveur.deconnexion();
       location.reload();
     });
 
@@ -608,14 +658,16 @@
       }
 
       const act = e.target.dataset.act;
+      const courant = reviews.find((r) => r.id === id);
       if (act === "read") {
-        const current = reviews.find((r) => r.id === id);
-        await window.ReviewStore.update(id, { read: !current.read });
+        if (courant && courant.distant) await Serveur.majAvis(id, { read: !courant.read });
+        else await window.ReviewStore.update(id, { read: !courant.read });
         await refresh();
       }
       if (act === "del") {
         if (!confirm("Supprimer définitivement cet avis ?")) return;
-        await window.ReviewStore.remove(id);
+        if (courant && courant.distant) await Serveur.supprimerAvis(id);
+        else await window.ReviewStore.remove(id);
         await refresh();
         toast("Avis supprimé.");
       }
@@ -645,6 +697,11 @@
   // Les surcouches (carte, liens, mot de passe) avant toute vérification :
   // un mot de passe changé depuis `contenu.json` doit être celui qui compte.
   window.Contenu.appliquer().then(() => {
+    if (window.Serveur && Serveur.actif()) {
+      document.getElementById("champEmail").hidden = false;
+      document.getElementById("loginIntro").textContent =
+        "Accès réservé. Connectez-vous avec le compte du restaurant.";
+    }
     if (sessionValid()) showDashboard();
     else document.getElementById("password").focus();
   });

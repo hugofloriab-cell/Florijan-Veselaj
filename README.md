@@ -233,6 +233,64 @@ n'est jamais bloquant : l'avis reste dans le navigateur.
 
 ---
 
+## Recevoir les avis chez vous (Supabase)
+
+**Sans serveur, les avis privés ne vous parviennent pas.** Ils sont écrits
+dans le navigateur du client, sur son téléphone à lui ; le panneau gérant lit
+la base de l'appareil sur lequel il est ouvert. Le filtrage fonctionne — rien
+n'est publié — mais la partie « pour que le gérant puisse s'améliorer » reste
+lettre morte.
+
+Brancher Supabase corrige cela, gratuitement, et apporte au passage une vraie
+authentification pour le panneau.
+
+### Mise en place — trois étapes
+
+**1. Créer le projet.** Sur [supabase.com](https://supabase.com), nouveau
+projet, région **Europe (Paris)**. La région ne peut pas être changée ensuite.
+
+**2. Créer la table.** Menu de gauche → *SQL Editor* → *New query* → coller le
+contenu de `serveur/schema.sql` → *Run*. Une seule fois.
+
+**3. Créer votre compte gérant.** *Authentication* → *Users* → *Add user* →
+votre e-mail et un mot de passe solide. Cochez *Auto Confirm User*.
+
+Puis dans `assets/js/config.js` (ou depuis le panneau, onglet Réglages) :
+
+```js
+serveur: {
+  url: "https://xxxxxxxx.supabase.co",   // Settings → API → Project URL
+  cleAnon: "eyJhbGciOi..."               // Settings → API → anon public
+}
+```
+
+Le panneau gérant demande alors un e-mail en plus du mot de passe : c'est
+Supabase qui vérifie, plus la page.
+
+### Pourquoi la clé dans la page n'est pas une faille
+
+La clé « anon » est publique par conception — elle est dans le code de la
+page, visible de tous. Ce qui protège les données, ce sont les règles RLS de
+`schema.sql` : le public peut **déposer** un avis, jamais en **lire** un. Une
+lecture avec la seule clé publique renvoie une erreur 401. Lire, modifier ou
+supprimer exige une session ouverte avec votre compte.
+
+### Rien ne se perd
+
+L'avis est d'abord écrit sur le téléphone du client, puis envoyé. Si le réseau
+manque, il reste sur place et repart tout seul au prochain passage sur la page.
+Le panneau signale les avis en attente plutôt que de faire comme s'ils
+n'existaient pas.
+
+### Vos obligations
+
+Les avis quittent le téléphone du client : vous en devenez responsable.
+`schema.sql` fournit une fonction `purge_avis_anciens()` qui efface les avis
+de plus de douze mois, à planifier ou à lancer à la main. Le champ contact
+reste facultatif et vide par défaut.
+
+---
+
 ## Modifier le contenu sans code
 
 Le panneau gérant contient un éditeur (onglet **Réglages**) qui permet de
@@ -325,6 +383,8 @@ assets/
   contenu.json           contenu publié depuis le panneau gérant
   js/config.js           ← valeurs d'usine
   js/contenu.js          superposition config.js / contenu.json / aperçu
+  js/serveur.js          liaison Supabase (facultative)
+serveur/schema.sql       table des avis, règles d'accès, purge RGPD
   js/flipbook.js         livret 3D
   js/reminder.js         rappel différé + notifications
   js/review.js           formulaire et routage des avis

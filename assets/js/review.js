@@ -153,8 +153,11 @@ window.ReviewFlow = (function () {
     };
 
     try {
+      // Toujours écrire en local d'abord : si le réseau lâche, l'avis est
+      // conservé et repartira tout seul. Rien ne se perd.
       lastRecord = await window.ReviewStore.add(record);
-      if (!isPublic) sync(lastRecord); // les avis publics n'ont pas à sortir d'ici
+      envoyerAuServeur(lastRecord);
+      if (!isPublic) sync(lastRecord); // ancien point d'intégration, optionnel
     } catch (err) {
       console.error("[Avis] enregistrement impossible :", err);
       lastRecord = record;
@@ -168,6 +171,30 @@ window.ReviewFlow = (function () {
 
     showStep(isPublic ? "public" : "prive");
     document.dispatchEvent(new CustomEvent("avis:enregistre", { detail: lastRecord }));
+  }
+
+  /** Dépose l'avis sur le serveur, et le marque comme envoyé. */
+  async function envoyerAuServeur(avis) {
+    if (!window.Serveur || !Serveur.actif() || !avis.id) return false;
+    try {
+      await Serveur.envoyerAvis(avis);
+      await window.ReviewStore.update(avis.id, { envoye: true });
+      return true;
+    } catch (err) {
+      console.warn("[Avis] envoi différé :", err.message);
+      return false;
+    }
+  }
+
+  /** Reprend les avis qu'un incident réseau avait laissés sur place. */
+  async function viderFileAttente() {
+    if (!window.Serveur || !Serveur.actif()) return 0;
+    let partis = 0;
+    for (const a of await window.ReviewStore.all()) {
+      if (a.envoye) continue;
+      if (await envoyerAuServeur(a)) partis++;
+    }
+    return partis;
   }
 
   /* --------------------------------------------------------- vues */
@@ -301,6 +328,7 @@ window.ReviewFlow = (function () {
       if (onClose) onClose();
     },
 
-    reset
+    reset,
+    viderFileAttente
   };
 })();

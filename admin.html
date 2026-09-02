@@ -24,8 +24,12 @@
       <svg viewBox="0 0 24 24"><path d="M6 11V8a6 6 0 0 1 12 0v3"/><rect x="4" y="11" width="16" height="10" rx="2"/></svg>
     </div>
     <h1>Panneau gérant</h1>
-    <p>Accès réservé. Les avis affichés ici ne sont publiés nulle part.</p>
+    <p id="loginIntro">Accès réservé. Les avis affichés ici ne sont publiés nulle part.</p>
 
+    <label class="field" id="champEmail" hidden>
+      <span class="field__label">Adresse e-mail</span>
+      <input type="email" id="email" autocomplete="username">
+    </label>
     <label class="field">
       <span class="field__label">Mot de passe</span>
       <input type="password" id="password" autocomplete="current-password" required>
@@ -55,6 +59,7 @@
   </nav>
 
   <div id="tabAvis">
+  <p class="alerte" id="alerte" hidden></p>
   <section class="stats" id="stats"></section>
 
   <section class="bars" id="bars" aria-label="Répartition des notes"></section>
@@ -189,6 +194,7 @@
 
 <script src="assets/js/config.js"></script>
 <script src="assets/js/contenu.js"></script>
+<script src="assets/js/serveur.js"></script>
 <script src="assets/js/db.js"></script>
 <script src="assets/js/admin.js"></script>
 </body>

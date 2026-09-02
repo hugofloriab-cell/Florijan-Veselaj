@@ -53,6 +53,7 @@ body.admin {
 }
 
 .login .field { text-align: left; }
+.login input[type="email"],
 .login input[type="password"] {
   width: 100%;
   padding: 13px 14px;
@@ -63,6 +64,7 @@ body.admin {
   font-size: 1rem;
   color: var(--text);
 }
+.login input[type="email"]:focus,
 .login input[type="password"]:focus {
   outline: none;
   border-color: var(--gold);
@@ -511,3 +513,14 @@ body.admin {
 }
 
 .edit__actions { display: flex; flex-direction: column; gap: 9px; margin-top: 6px; }
+
+.alerte {
+  margin: 14px 16px 0;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border-left: 3px solid var(--gold);
+  background: rgba(137, 171, 56, .12);
+  color: var(--paper-2);
+  font-size: .8rem;
+  line-height: 1.5;
+}

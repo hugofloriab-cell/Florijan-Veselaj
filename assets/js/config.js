@@ -109,7 +109,21 @@ window.APP_CONFIG = {
     sessionMinutes: 30
   },
 
-  /* --- Envoi optionnel des avis privés vers un serveur -------------
+  /* --- Serveur (Supabase) ------------------------------------------
+   * Laisser `url` à null : l'application reste 100 % locale, et les avis
+   * ne quittent pas le téléphone du client — donc ne vous parviennent pas.
+   * Renseigné, le serveur devient la source de vérité : les avis arrivent
+   * chez vous et le panneau gérant se connecte par e-mail + mot de passe.
+   *
+   * La clé « anon » est publique par nature : ce sont les règles RLS de
+   * serveur/schema.sql qui protègent les données, pas son secret.
+   * ---------------------------------------------------------------- */
+  serveur: {
+    url: null,        // ex. "https://xxxxxxxx.supabase.co"
+    cleAnon: null     // clé « anon public » du projet
+  },
+
+  /* --- Envoi optionnel des avis privés vers un autre serveur --------
    * Laisser `endpoint` à null pour un fonctionnement 100 % local.
    * Si renseigné, chaque avis privé est aussi envoyé en POST (JSON).
    * ---------------------------------------------------------------- */

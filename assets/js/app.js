@@ -351,6 +351,12 @@
       }
     });
 
+    // Avis restés en local faute de réseau : nouvelle tentative.
+    ReviewFlow.viderFileAttente();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") ReviewFlow.viderFileAttente();
+    });
+
     await initFlipbook();
     hintTimer = setTimeout(hideHint, 6000);
 
