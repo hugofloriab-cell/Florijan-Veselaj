@@ -470,7 +470,14 @@ final class SpeechNarrator {
     private final class Coordinator: NSObject, AVSpeechSynthesizerDelegate {
 
         /// Appelée une seule fois, que la phrase se termine ou soit coupée.
-        var onFinish: (() -> Void)?
+        ///
+        /// `nonisolated(unsafe)` parce que le protocole délégué est déclaré
+        /// `Sendable` et interdit donc une propriété modifiable. La sécurité
+        /// est assurée autrement, et c'est vérifiable à l'œil : un seul
+        /// synthétiseur, des rappels sérialisés, et `finish()` met la
+        /// fermeture à `nil` **avant** de l'appeler — la continuation ne peut
+        /// donc pas être reprise deux fois, ce qui serait un plantage.
+        nonisolated(unsafe) var onFinish: (() -> Void)?
 
         private func finish() {
             let callback = onFinish
