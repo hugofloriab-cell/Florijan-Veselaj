@@ -1,23 +1,30 @@
 /* ------------------------------------------------------------------
  * Contenu éditable depuis le panneau gérant
  * ------------------------------------------------------------------
- * Trois couches, de la plus faible à la plus forte :
+ * Quatre couches, de la plus faible à la plus forte :
  *
  *   1. config.js            valeurs d'usine, livrées avec le code
- *   2. assets/contenu.json  version publiée, vue par TOUS les clients
- *   3. localStorage         aperçu local, visible du seul gérant
+ *   2. assets/contenu.json  fichier déposé chez l'hébergeur
+ *   3. le serveur           publié en un geste depuis le panneau gérant
+ *   4. localStorage         aperçu local, visible du seul gérant
  *
- * Le site étant statique, le panneau gérant ne peut rien écrire sur
- * l'hébergement : il produit le fichier `contenu.json` que le gérant dépose
- * ensuite chez son hébergeur. La couche 3 permet de tout voir et régler
- * avant de publier.
+ * Sans serveur, le panneau ne peut rien écrire sur un hébergement
+ * statique : il produit alors le fichier de la couche 2, à déposer à la
+ * main. Avec un serveur, la couche 3 rend ce détour inutile — le gérant
+ * publie, et le changement est visible de tous en quelques secondes.
+ *
+ * Le serveur ne doit jamais retenir l'ouverture de la carte : sa lecture
+ * est limitée dans le temps, et la dernière version reçue est gardée en
+ * réserve pour un client hors ligne.
  * ------------------------------------------------------------------ */
 
 window.Contenu = (function () {
   const CLE_LOCALE = "resto-contenu-local";
+  const CLE_CACHE = "resto-contenu-serveur";
   const FICHIER = "assets/contenu.json";
 
   let publie = null;
+  let distant = null;
   let local = null;
 
   /** Fusion profonde : les tableaux sont remplacés, pas concaténés. */
@@ -43,6 +50,39 @@ window.Contenu = (function () {
     }
   }
 
+  function cache(valeur) {
+    try {
+      if (valeur === undefined) {
+        return JSON.parse(localStorage.getItem(CLE_CACHE) || "null");
+      }
+      if (valeur) localStorage.setItem(CLE_CACHE, JSON.stringify(valeur));
+      else localStorage.removeItem(CLE_CACHE);
+    } catch (_) {
+      /* stockage plein ou refusé : on s'en passe */
+    }
+    return null;
+  }
+
+  /** La carte publiée sur le serveur, ou la dernière connue. */
+  async function lireDistant(opts) {
+    if (opts.ignorerDistant || !window.Serveur || !Serveur.actif()) return null;
+    try {
+      const ligne = await Serveur.lireContenu(opts.delaiServeur);
+      if (ligne && ligne.donnees) {
+        cache(ligne.donnees);
+        return ligne.donnees;
+      }
+      // Le serveur répond, mais rien n'a jamais été publié : le cache
+      // deviendrait un fantôme. On l'efface.
+      cache(null);
+      return null;
+    } catch (_) {
+      // Serveur injoignable ou trop lent : la dernière version reçue vaut
+      // mieux qu'une carte périmée du dépôt.
+      return cache();
+    }
+  }
+
   return {
     /** Charge les surcouches et les applique à window.APP_CONFIG. */
     async appliquer(options) {
@@ -57,10 +97,12 @@ window.Contenu = (function () {
         publie = null; // fichier absent (cas normal) ou hors ligne
       }
 
+      distant = await lireDistant(opts);
       local = opts.ignorerLocal ? null : lireLocal();
 
       let cfg = window.APP_CONFIG;
       if (publie) cfg = fusion(cfg, publie.config || publie);
+      if (distant) cfg = fusion(cfg, distant.config || distant);
       if (local) cfg = fusion(cfg, local.config || local);
       // On remplit l'objet existant plutôt que de le remplacer : les modules
       // qui en gardent une référence continuent de voir les bonnes valeurs.
@@ -68,7 +110,11 @@ window.Contenu = (function () {
         window.APP_CONFIG[k] = cfg[k];
       });
 
-      return { publie: Boolean(publie), local: Boolean(local) };
+      return {
+        publie: Boolean(publie),
+        distant: Boolean(distant),
+        local: Boolean(local)
+      };
     },
 
     /** Enregistre l'aperçu local (visible du seul gérant). */
@@ -85,6 +131,7 @@ window.Contenu = (function () {
 
     local: lireLocal,
     publie: () => publie,
+    distant: () => distant,
 
     /** Contenu du fichier à déposer chez l'hébergeur. */
     fichier(config) {

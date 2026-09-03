@@ -70,6 +70,50 @@ alter table public.avis drop constraint if exists avis_photo_taille;
 alter table public.avis add constraint avis_photo_taille
   check (photo is null or char_length(photo) <= 700000);   -- ~500 Ko
 
+-- ==================================================================
+-- La carte publiée depuis le panneau gérant
+-- ------------------------------------------------------------------
+-- Une seule ligne, « carte », qui porte les réglages du restaurant :
+-- identité, liens d'avis, délais, et la carte elle-même si elle a été
+-- importée depuis le panneau.
+--
+-- Sens inverse des avis : ici le public LIT (il faut bien afficher la
+-- carte) et seul le gérant connecté ÉCRIT.
+-- ==================================================================
+
+create table if not exists public.contenu (
+  id      text primary key,
+  donnees jsonb       not null,
+  maj_le  timestamptz not null default now()
+);
+
+alter table public.contenu enable row level security;
+
+drop policy if exists "lecture publique" on public.contenu;
+create policy "lecture publique"
+  on public.contenu for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "depot gerant" on public.contenu;
+create policy "depot gerant"
+  on public.contenu for insert
+  to authenticated
+  with check (true);
+
+drop policy if exists "maj gerant contenu" on public.contenu;
+create policy "maj gerant contenu"
+  on public.contenu for update
+  to authenticated
+  using (true) with check (true);
+
+-- Garde-fou : chaque client télécharge cette ligne à l'ouverture de la
+-- carte. Au-delà de quelques mégaoctets, l'application deviendrait lente
+-- sur un téléphone en 4G.
+alter table public.contenu drop constraint if exists contenu_taille;
+alter table public.contenu add constraint contenu_taille
+  check (length(donnees::text) <= 6000000);   -- ~6 Mo
+
 -- ------------------------------------------------------------------
 -- Conservation limitée (RGPD)
 -- ------------------------------------------------------------------

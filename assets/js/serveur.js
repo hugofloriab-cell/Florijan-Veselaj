@@ -150,6 +150,44 @@ window.Serveur = (function () {
       return reponse(r);
     },
 
+    /** La carte publiée. Lecture ouverte : les clients doivent la voir. */
+    async lireContenu(delai) {
+      // Un serveur lent ne doit pas retenir l'ouverture de la carte : au-delà
+      // du délai, on rend la main et l'application se rabat sur ce qu'elle a.
+      const stop = new AbortController();
+      const minuteur = setTimeout(() => stop.abort(), delai || 2500);
+      try {
+        const r = await fetch(
+          base() + "/rest/v1/contenu?id=eq.carte&select=donnees,maj_le",
+          { headers: enTetes(false), signal: stop.signal, cache: "no-store" }
+        );
+        const lignes = await reponse(r);
+        return (lignes && lignes[0]) || null;
+      } finally {
+        clearTimeout(minuteur);
+      }
+    },
+
+    /** Publie la carte. Réservé au gérant connecté. */
+    async publierContenu(config) {
+      if (!session()) throw new Error("Session expirée");
+      const corps = {
+        id: "carte",
+        donnees: { majLe: new Date().toISOString(), config: config },
+        maj_le: new Date().toISOString()
+      };
+      // `resolution=merge-duplicates` : la première publication insère, les
+      // suivantes remplacent la même ligne. Pas de doublon possible.
+      const r = await fetch(base() + "/rest/v1/contenu?on_conflict=id", {
+        method: "POST",
+        headers: Object.assign(enTetes(true), {
+          Prefer: "resolution=merge-duplicates,return=minimal"
+        }),
+        body: JSON.stringify(corps)
+      });
+      return reponse(r);
+    },
+
     async supprimerAvis(id) {
       const r = await fetch(base() + `/rest/v1/avis?id=eq.${encodeURIComponent(id)}`, {
         method: "DELETE",

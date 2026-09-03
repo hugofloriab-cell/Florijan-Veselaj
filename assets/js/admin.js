@@ -258,9 +258,13 @@
   /* ==================================================================
    * ÉDITEUR DE CONTENU
    * ------------------------------------------------------------------
-   * Le site est statique : rien ne peut être écrit sur l'hébergement
-   * depuis ici. L'éditeur produit `contenu.json`, que le gérant dépose
-   * dans `assets/`. En attendant, l'aperçu local permet de tout voir.
+   * Avec un serveur, « Publier » publie vraiment : les changements
+   * partent sur Supabase et tous les clients les voient à leur prochaine
+   * ouverture. Sans serveur, le site est statique et rien ne peut être
+   * écrit sur l'hébergement : l'éditeur produit alors `contenu.json`, que
+   * le gérant dépose lui-même dans `assets/`.
+   *
+   * Dans les deux cas, l'aperçu local permet de tout voir avant.
    * ================================================================== */
 
   const PDFJS = {
@@ -424,6 +428,7 @@
     rendreLiens();
     rendreMenu();
     majPoids();
+    majPublication();
     document.getElementById("apercuStop").hidden = !window.Contenu.local();
   }
 
@@ -465,20 +470,51 @@
     return true;
   }
 
+  const surServeur = () => Boolean(window.Serveur && Serveur.actif());
+
+  /** Rappelle quand la carte a été publiée pour la dernière fois. */
+  function majPublication(date) {
+    const el = document.getElementById("publication");
+    if (!el) return;
+    if (!surServeur()) {
+      el.textContent =
+        "Aucun serveur configuré : le bouton produit un fichier à déposer vous-même.";
+      return;
+    }
+    // La date de publication voyage avec le contenu lui-même : inutile de
+    // la redemander au serveur.
+    const distant = window.Contenu.distant();
+    const d = date || derniereMaj || (distant && distant.majLe);
+    el.textContent = d
+      ? "Dernière publication : " +
+        new Date(d).toLocaleString("fr-FR", { dateStyle: "long", timeStyle: "short" })
+      : "Jamais publié depuis ce panneau.";
+    if (d) derniereMaj = d;
+  }
+
+  let derniereMaj = null;
+
   function majPoids() {
     const octets = new Blob([window.Contenu.fichier(brouillon)]).size;
     const mo = octets / 1048576;
     const taille = mo >= 1 ? `${mo.toFixed(2)} Mo` : `${Math.max(1, Math.round(octets / 1024))} Ko`;
     const el = document.getElementById("poids");
 
-    // Une carte laissée sur les fichiers d'origine ne pèse rien dans le JSON :
-    // ce sont de simples chemins. Le poids ne monte qu'après un import.
+    // Une carte laissée sur les fichiers d'origine ne pèse rien : ce sont de
+    // simples chemins. Le poids ne monte qu'après un import de pages.
     const importee = (brouillon.menu.images[0] || "").startsWith("data:");
-    el.textContent = `Fichier à déposer : ${taille}` +
+    el.textContent =
+      (surServeur() ? "À publier : " : "Fichier à déposer : ") +
+      taille +
       (importee ? "" : " (la carte reste celle déjà en ligne).");
+
     if (mo > 4) {
       el.textContent +=
-        " C'est lourd pour un téléphone en 4G — réduisez le nombre de pages ou repartez d'un PDF plus léger.";
+        surServeur()
+          ? " C'est lourd : chaque client le téléchargera à l'ouverture. Réduisez" +
+            " le nombre de pages, ou repartez d'un PDF plus léger."
+          : " C'est lourd pour un téléphone en 4G — réduisez le nombre de pages" +
+            " ou repartez d'un PDF plus léger.";
     }
   }
 
@@ -584,11 +620,47 @@
       toast("Aperçu annulé. Rechargez la carte pour revoir la version publiée.");
     });
 
+    let publication = false;
     document.getElementById("publierBtn").addEventListener("click", async () => {
+      if (publication) return;
+      publication = true;
+      const btn = document.getElementById("publierBtn");
+      const etiquette = btn.textContent;
+
       lireFormulaire();
       await appliquerMotDePasse();
+
+      if (window.Serveur && Serveur.actif() && Serveur.session()) {
+        btn.classList.add("is-loading");
+        btn.textContent = "Publication…";
+        try {
+          await Serveur.publierContenu(brouillon);
+          // L'aperçu local ferait écran à ce qu'on vient de publier :
+          // il n'a plus de raison d'être.
+          window.Contenu.supprimerLocal();
+          document.getElementById("apercuStop").hidden = true;
+          majPublication(new Date());
+          toast("Publié. Les clients verront les changements à leur prochaine ouverture.");
+        } catch (e) {
+          const raison =
+            e.statut === undefined
+              ? "serveur injoignable"
+              : e.statut === 404
+                ? "la table « contenu » n'existe pas encore sur le projet"
+                : e.message || "erreur " + e.statut;
+          toast("Publication impossible : " + raison + ".");
+        } finally {
+          btn.classList.remove("is-loading");
+          btn.textContent = etiquette;
+          publication = false;
+        }
+        majPoids();
+        return;
+      }
+
       telecharger("contenu.json", window.Contenu.fichier(brouillon), "application/json");
       majPoids();
+      publication = false;
       toast("Déposez ce fichier dans le dossier assets/ de votre site.");
     });
   }
