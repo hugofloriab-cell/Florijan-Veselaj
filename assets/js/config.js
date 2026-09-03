@@ -9,7 +9,7 @@ window.APP_CONFIG = {
   /* --- Identité du restaurant ------------------------------------ */
   restaurant: {
     name: "Restaurant Les Tilleuls",
-    tagline: "Carte d'été · Cuisine de saison",
+    tagline: "Carte d'automne · Cuisine de saison",
     // Initiales de secours, si le logo ne se charge pas
     monogram: "LT",
     logoUrl: "assets/img/logo-tilleuls.png",
@@ -38,7 +38,9 @@ window.APP_CONFIG = {
       "assets/menu/tilleuls-8.svg",
       "assets/menu/tilleuls-9.svg",
       "assets/menu/tilleuls-10.svg",
-      "assets/menu/tilleuls-11.svg"
+      "assets/menu/tilleuls-11.svg",
+      "assets/menu/tilleuls-12.svg",
+      "assets/menu/tilleuls-13.svg"
     ],
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
@@ -81,22 +83,29 @@ window.APP_CONFIG = {
     lead: "Nos desserts sortent de la cuisine, préparés du jour.",
     // Trois suggestions, reprises telles quelles de la carte
     picks: [
-      { nom: "Cœur coulant", prix: "9,00 €", note: "Crème fouettée" },
       {
-        nom: "Panna cotta coco-exotique",
-        prix: "8,00 €",
-        note: "Coulis de mangue et fruits de la passion"
+        nom: "Moelleux chocolat cœur coulant",
+        prix: "9,00 €",
+        note: "Chantilly et éclats de noisettes"
       },
       {
-        nom: "Café ou thé gourmand d'été",
-        prix: "10,00 €",
-        note: "Trois mini-douceurs fraîches de la cuisine"
+        nom: "Tarte fine aux pommes tiède",
+        prix: "9,00 €",
+        note: "Glace caramel beurre salé"
+      },
+      {
+        nom: "Crémeux vanille et poire pochée",
+        prix: "8,00 €",
+        note: "Poire au vin épicé et croustillant spéculoos"
       }
     ],
-    image: "assets/img/desserts.jpg",
+    // Une ou deux photos. Deux se placent côte à côte.
+    images: ["assets/img/dessert-moelleux.jpg", "assets/img/dessert-tarte.jpg"],
     // Texte de la notification, si le client a quitté l'onglet
     notifTitle: "Et pour finir ?",
-    notifBody: "Cœur coulant, panna cotta, café gourmand… Touchez pour voir les desserts."
+    notifBody:
+      "Moelleux chocolat cœur coulant, tarte fine aux pommes tiède… " +
+      "Touchez pour voir les desserts."
   },
 
   /* --- Affichage --------------------------------------------------- */

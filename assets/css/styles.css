@@ -896,16 +896,23 @@ body.is-fullscreen .topbar { padding-top: 7px; }
 .info-list a { color: var(--text); font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--gold); align-self: flex-start; }
 
 /* ========================= MOMENT DESSERT ======================= */
-.dessert-photo {
+.dessert-photos {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   margin: 0 0 18px;
+}
+.dessert-photos--duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dessert-photos img {
+  width: 100%;
+  /* Ratio fixé avant le chargement : la feuille ne sursaute pas quand les
+     photos arrivent. Carré comme les fichiers, pour ne rien rogner. */
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
   border-radius: var(--radius-sm);
-  overflow: hidden;
-  /* Le ratio est fixé avant le chargement : la feuille ne sursaute pas
-     quand la photo arrive. */
-  aspect-ratio: 4 / 3;
   background: rgba(36, 31, 26, .06);
 }
-.dessert-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .dessert-list { list-style: none; margin: 2px 0 20px; padding: 0; }
 .dessert-list li {

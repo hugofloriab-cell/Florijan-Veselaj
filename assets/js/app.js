@@ -122,11 +122,15 @@
     document.getElementById("dessertTitle").textContent = c.title || "Encore un peu de place ?";
     document.getElementById("dessertLead").textContent = c.lead || "";
 
+    // `images` (une ou deux) ; `image` reste accepté pour les anciennes
+    // configurations déposées depuis le panneau gérant.
+    const photos = (c.images && c.images.length ? c.images : [c.image]).filter(Boolean);
     const fig = document.getElementById("dessertFigure");
-    if (c.image) {
-      document.getElementById("dessertImage").src = c.image;
-      fig.hidden = false;
-    }
+    fig.hidden = !photos.length;
+    fig.classList.toggle("dessert-photos--duo", photos.length > 1);
+    fig.innerHTML = photos
+      .map((src) => `<img src="${echapper(src)}" alt="" decoding="async">`)
+      .join("");
 
     document.getElementById("dessertList").innerHTML = (c.picks || [])
       .map(
