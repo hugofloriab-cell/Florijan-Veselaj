@@ -33,13 +33,16 @@ window.Serveur = (function () {
 
   function enTetes(avecSession) {
     const s = avecSession ? session() : null;
-    const h = { apikey: conf().cleAnon, "Content-Type": "application/json" };
-    // `Authorization` uniquement pour une vraie session. Les nouvelles clés
-    // « sb_publishable_… » ne sont pas des jetons JWT : les envoyer en Bearer
-    // ferait échouer la requête. Sans en-tête, le rôle « anon » est déduit de
-    // `apikey` — ce qui marche avec les deux formats de clé.
-    if (s) h.Authorization = "Bearer " + s.token;
-    return h;
+    // Supabase attend la clé dans les deux en-têtes, et le client officiel
+    // fait de même : `apikey` désigne le projet, `Authorization` porte
+    // l'identité. Sans ce second en-tête, la requête n'obtient pas le rôle
+    // « anon » et se heurte aux règles RLS — « new row violates row-level
+    // security policy », même quand le dépôt public est autorisé.
+    return {
+      apikey: conf().cleAnon,
+      Authorization: "Bearer " + (s ? s.token : conf().cleAnon),
+      "Content-Type": "application/json"
+    };
   }
 
   async function reponse(r) {
@@ -69,7 +72,7 @@ window.Serveur = (function () {
     async connexion(email, motDePasse) {
       const r = await fetch(base() + "/auth/v1/token?grant_type=password", {
         method: "POST",
-        headers: { apikey: conf().cleAnon, "Content-Type": "application/json" },
+        headers: enTetes(false),
         body: JSON.stringify({ email: email, password: motDePasse })
       });
       const d = await reponse(r);

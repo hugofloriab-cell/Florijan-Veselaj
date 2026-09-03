@@ -58,6 +58,15 @@
   <pre id="res" hidden></pre>
 </section>
 
+<section>
+  <h2>Test de confidentialité</h2>
+  <p style="margin:0 0 14px;color:#9aa08e">Essaie de <em>lire</em> les avis avec
+    la seule clé publique — celle qui est dans cette page, donc à la portée de
+    n'importe qui. La bonne réponse est un refus, ou zéro ligne.</p>
+  <button id="lire">Tenter de lire les avis</button>
+  <pre id="resLire" hidden></pre>
+</section>
+
 <footer>
   Après un envoi réussi, vérifiez dans Supabase&nbsp;:
   <code>select * from public.avis;</code> — puis supprimez la ligne de test.
@@ -137,5 +146,53 @@
       );
     }
     go.disabled = false;
+  });
+
+  /* --- lecture : doit échouer, ou ne rien rendre ------------------- */
+  const resLire = document.getElementById("resLire");
+  const lire = document.getElementById("lire");
+
+  lire.addEventListener("click", async () => {
+    lire.disabled = true;
+    resLire.hidden = false;
+    resLire.className = "";
+    resLire.textContent = "Lecture en cours…";
+
+    try {
+      const r = await fetch(conf.url.replace(/\/+$/, "") + "/rest/v1/avis?select=*", {
+        headers: { apikey: cle, Authorization: "Bearer " + cle }
+      });
+      const texte = await r.text();
+
+      if (!r.ok) {
+        resLire.className = "ok";
+        resLire.textContent =
+          "REFUSÉ ✓ (c'est le bon résultat)\n\n" +
+          "Code HTTP : " + r.status + "\n" +
+          "Message   : " + texte.slice(0, 300);
+        lire.disabled = false;
+        return;
+      }
+
+      const lignes = JSON.parse(texte || "[]");
+      if (lignes.length === 0) {
+        resLire.className = "ok";
+        resLire.textContent =
+          "AUCUNE LIGNE ✓\n\n" +
+          "La clé publique ne rapporte rien. Si la table contient des avis,\n" +
+          "c'est la preuve qu'ils sont bien protégés.";
+      } else {
+        resLire.className = "ko";
+        resLire.textContent =
+          "FUITE ✗ — " + lignes.length + " avis lisible(s) avec la seule clé publique.\n\n" +
+          "Les avis privés ne sont PAS protégés. À corriger avant d'ouvrir\n" +
+          "l'application aux clients. Montrez cet écran.\n\n" +
+          JSON.stringify(lignes.slice(0, 2), null, 1).slice(0, 400);
+      }
+    } catch (e) {
+      resLire.className = "ko";
+      resLire.textContent = "Test impossible : " + (e.message || e);
+    }
+    lire.disabled = false;
   });
 </script>
