@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v3";
+const CACHE = "resto-menu-v4";
 
 const PRECACHE = [
   "./",
@@ -16,6 +16,7 @@ const PRECACHE = [
   "./assets/js/config.js",
   "./assets/js/contenu.js",
   "./assets/contenu.json",
+  "./assets/js/serveur.js",
   "./assets/js/db.js",
   "./assets/js/flipbook.js",
   "./assets/js/reminder.js",
@@ -94,7 +95,30 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Ressources : cache d'abord, puis réseau
+  // Code et feuilles de style : réseau d'abord, cache en secours.
+  //
+  // Servir le code depuis le cache sans jamais le revérifier revient à
+  // graver la version installée le premier jour : une correction ne
+  // parviendrait plus à un client qui a déjà ouvert l'application. Le
+  // cache reste le filet hors ligne, il ne décide plus de la version.
+  if (/\.(js|css)$/.test(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res && res.status === 200 && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Images, polices, pages de la carte : cache d'abord, puis réseau.
+  // Ces fichiers ne changent qu'à la faveur d'une nouvelle carte, et le
+  // gain d'affichage est immédiat.
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
