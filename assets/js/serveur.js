@@ -43,7 +43,12 @@ window.Serveur = (function () {
   }
 
   async function reponse(r) {
-    if (r.ok) return r.status === 204 ? null : r.json();
+    if (r.ok) {
+      // Un dépôt réussi ne renvoie pas de corps : `r.json()` échouerait sur
+      // une réponse vide. On lit le texte, et on ne l'analyse que s'il y en a.
+      const texte = await r.text();
+      return texte ? JSON.parse(texte) : null;
+    }
     let detail = "";
     try {
       const e = await r.json();
@@ -82,11 +87,16 @@ window.Serveur = (function () {
       sessionStorage.removeItem(CLE_SESSION);
     },
 
-    /** Dépôt d'un avis. Ouvert au public, en écriture seule. */
+    /** Dépôt d'un avis. Ouvert au public, en écriture seule.
+     *
+     * `return=minimal` est délibéré : redemander la ligne écrite obligerait
+     * le client à pouvoir la relire, donc à ouvrir la lecture au public —
+     * exactement ce que les règles RLS interdisent. On écrit, et on s'en
+     * tient là. */
     async envoyerAvis(avis) {
       const r = await fetch(base() + "/rest/v1/avis", {
         method: "POST",
-        headers: Object.assign(enTetes(false), { Prefer: "return=representation" }),
+        headers: Object.assign(enTetes(false), { Prefer: "return=minimal" }),
         body: JSON.stringify({
           note: avis.rating,
           commentaire: avis.comment || null,
