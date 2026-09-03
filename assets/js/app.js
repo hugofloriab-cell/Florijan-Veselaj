@@ -9,6 +9,15 @@
   let flipbook = null;
   let openSheets = [];
 
+  /* Les textes de la carte viennent de la configuration, qu'un gérant
+     édite : on ne les injecte jamais tels quels dans du HTML. */
+  function echapper(s) {
+    return String(s == null ? "" : s).replace(
+      /[&<>"']/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+    );
+  }
+
   /* ============================ UI ============================== */
   const UI = {
     overlay: null,
@@ -105,6 +114,50 @@
       }
     }));
     await flipbook.load();
+  }
+
+  /* ==================== Le moment dessert ======================= */
+  function construireDesserts() {
+    const c = cfg.desserts || {};
+    document.getElementById("dessertTitle").textContent = c.title || "Encore un peu de place ?";
+    document.getElementById("dessertLead").textContent = c.lead || "";
+
+    const fig = document.getElementById("dessertFigure");
+    if (c.image) {
+      document.getElementById("dessertImage").src = c.image;
+      fig.hidden = false;
+    }
+
+    document.getElementById("dessertList").innerHTML = (c.picks || [])
+      .map(
+        (d) => `
+        <li>
+          <div class="dessert-list__texte">
+            <span class="dessert-list__nom">${echapper(d.nom)}</span>
+            ${d.note ? `<span class="dessert-list__note">${echapper(d.note)}</span>` : ""}
+          </div>
+          <span class="dessert-list__fil" aria-hidden="true"></span>
+          <span class="dessert-list__prix">${echapper(d.prix || "")}</span>
+        </li>`
+      )
+      .join("");
+  }
+
+  function ouvrirDesserts() {
+    if (!cfg.desserts) return;
+    construireDesserts();
+    UI.openSheet("dessertSheet");
+  }
+
+  /** Ferme la feuille et amène la carte sur la page des desserts. */
+  function allerAuxDesserts() {
+    UI.closeSheet("dessertSheet");
+    Desserts.terminer();
+    const page = Number((cfg.desserts && cfg.desserts.page) || 0);
+    if (!flipbook || !page) return;
+    // `goTo` compte à partir de zéro ; la configuration parle en numéros
+    // de page, comme le client les voit.
+    setTimeout(() => flipbook.goTo(page - 1), 220);
   }
 
   /* ====================== Plein écran =========================== */
@@ -286,16 +339,28 @@
       UI.toast("Rappel annulé.");
     });
 
-    // Retour depuis une notification (?avis=1)
-    if (new URLSearchParams(location.search).get("avis") === "1") {
+    document.getElementById("dessertOpen").addEventListener("click", allerAuxDesserts);
+    document.getElementById("dessertLater").addEventListener("click", () => {
+      UI.closeSheet("dessertSheet");
+      Desserts.terminer();
+    });
+
+    // Retour depuis une notification (?avis=1 ou ?desserts=1)
+    const params = new URLSearchParams(location.search);
+    if (params.get("avis") === "1") {
       history.replaceState(null, "", location.pathname);
       setTimeout(() => ReviewFlow.open(), 500);
+    } else if (params.get("desserts") === "1") {
+      history.replaceState(null, "", location.pathname);
+      setTimeout(ouvrirDesserts, 500);
     }
 
-    // Le Service Worker peut demander l'ouverture du formulaire
+    // Le Service Worker peut demander l'ouverture d'une feuille
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener("message", (e) => {
-        if (e.data && e.data.type === "ouvrir-avis") ReviewFlow.open();
+        if (!e.data) return;
+        if (e.data.type === "ouvrir-avis") ReviewFlow.open();
+        if (e.data.type === "ouvrir-desserts") ouvrirDesserts();
       });
     }
   }
@@ -359,6 +424,19 @@
 
     await initFlipbook();
     hintTimer = setTimeout(hideHint, 6000);
+
+    // Le moment dessert : armé dès l'ouverture de la carte, mais jamais
+    // par-dessus une autre feuille — on attend qu'elle soit refermée.
+    Desserts.init({
+      onFire: () => {
+        if (!openSheets.length) return ouvrirDesserts();
+        const attendre = setInterval(() => {
+          if (openSheets.length) return;
+          clearInterval(attendre);
+          ouvrirDesserts();
+        }, 1200);
+      }
+    });
 
     // Pop-up d'accueil : uniquement si aucun rappel n'est déjà en cours.
     const pending = Reminder.state();

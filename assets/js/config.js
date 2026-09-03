@@ -64,6 +64,41 @@ window.APP_CONFIG = {
     confirmNotification: true
   },
 
+  /* --- Le moment dessert -------------------------------------------
+   * Un temps après l'ouverture de la carte, l'application propose les
+   * desserts et ouvre la page correspondante.
+   *
+   * À savoir : si le client a fermé l'onglet, rien ne peut lui être
+   * envoyé — aucun script ne tourne plus. La proposition l'attend alors
+   * à son retour. C'est la limite d'un site sans serveur d'envoi.
+   * ---------------------------------------------------------------- */
+  desserts: {
+    // Délai depuis l'ouverture, en minutes. 0 ou null désactive.
+    delay: 45,
+    // Page de la carte à ouvrir (1 = couverture). Les desserts sont en 5.
+    page: 5,
+    title: "Encore un peu de place ?",
+    lead: "Nos desserts sortent de la cuisine, préparés du jour.",
+    // Trois suggestions, reprises telles quelles de la carte
+    picks: [
+      { nom: "Cœur coulant", prix: "9,00 €", note: "Crème fouettée" },
+      {
+        nom: "Panna cotta coco-exotique",
+        prix: "8,00 €",
+        note: "Coulis de mangue et fruits de la passion"
+      },
+      {
+        nom: "Café ou thé gourmand d'été",
+        prix: "10,00 €",
+        note: "Trois mini-douceurs fraîches de la cuisine"
+      }
+    ],
+    image: "assets/img/desserts.jpg",
+    // Texte de la notification, si le client a quitté l'onglet
+    notifTitle: "Et pour finir ?",
+    notifBody: "Cœur coulant, panna cotta, café gourmand… Touchez pour voir les desserts."
+  },
+
   /* --- Affichage --------------------------------------------------- */
   ui: {
     // Passe en plein écran au premier geste sur la carte, pour masquer la

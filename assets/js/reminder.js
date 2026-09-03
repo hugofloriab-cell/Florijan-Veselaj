@@ -56,25 +56,28 @@ window.Reminder = (function () {
     }
   }
 
-  function contenu(titre, corps) {
+  function contenu(titre, corps, options) {
+    const o = options || {};
     return [
       titre,
       {
         body: corps,
         icon: "assets/img/icon-192.png",
         badge: "assets/img/icon-192.png",
-        tag: "avis-rappel", // même tag : la 2e notification remplace la 1re
+        // Même tag pour un même sujet : la nouvelle notification remplace
+        // la précédente au lieu de s'empiler.
+        tag: o.tag || "avis-rappel",
         renotify: true,
         requireInteraction: true,
-        data: { url: location.pathname + "?avis=1" },
+        data: { url: o.url || location.pathname + "?avis=1" },
         vibrate: [90, 60, 90]
       }
     ];
   }
 
-  async function envoyer(titre, corps) {
+  async function envoyer(titre, corps, options) {
     if (!("Notification" in window) || Notification.permission !== "granted") return false;
-    const [t, payload] = contenu(titre, corps);
+    const [t, payload] = contenu(titre, corps, options);
 
     // 1,5 s suffit : le Service Worker est enregistré au chargement de la
     // page, donc déjà actif quand le client choisit son délai.
@@ -150,6 +153,15 @@ window.Reminder = (function () {
       onFire = handlers.onFire;
       onTick = handlers.onTick;
       arm();
+    },
+
+    /**
+     * Poste une notification locale. Exposé pour que le moment dessert
+     * emprunte le même chemin — celui qui passe par le Service Worker,
+     * seul accepté par Chrome Android.
+     */
+    notifier(titre, corps, options) {
+      return envoyer(titre, corps, options);
     },
 
     /** Demande la permission de notifier. Ne bloque jamais le rappel. */

@@ -895,6 +895,51 @@ body.is-fullscreen .topbar { padding-top: 7px; }
 }
 .info-list a { color: var(--text); font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--gold); align-self: flex-start; }
 
+/* ========================= MOMENT DESSERT ======================= */
+.dessert-photo {
+  margin: 0 0 18px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  /* Le ratio est fixé avant le chargement : la feuille ne sursaute pas
+     quand la photo arrive. */
+  aspect-ratio: 4 / 3;
+  background: rgba(36, 31, 26, .06);
+}
+.dessert-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.dessert-list { list-style: none; margin: 2px 0 20px; padding: 0; }
+.dessert-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(36, 31, 26, .09);
+}
+.dessert-list li:last-child { border-bottom: 0; }
+.dessert-list__nom { font-weight: 500; color: var(--text); }
+/* Filet de conduite : l'œil relie le nom au prix sans colonne rigide. */
+.dessert-list__fil {
+  flex: 1;
+  height: 0;
+  border-bottom: 1px dotted rgba(36, 31, 26, .28);
+  transform: translateY(-3px);
+}
+.dessert-list__prix {
+  font-family: var(--font-title);
+  font-size: 1.05rem;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.dessert-list__note {
+  display: block;
+  margin-top: 2px;
+  font-size: .78rem;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+/* Le bloc de texte prend ce qu'il lui faut, le filet absorbe le reste. */
+.dessert-list__texte { flex: 0 1 auto; min-width: 0; }
+
 /* ============================= TOAST ============================ */
 .toast {
   position: fixed;

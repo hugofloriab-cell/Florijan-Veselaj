@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v4";
+const CACHE = "resto-menu-v5";
 
 const PRECACHE = [
   "./",
@@ -20,6 +20,7 @@ const PRECACHE = [
   "./assets/js/db.js",
   "./assets/js/flipbook.js",
   "./assets/js/reminder.js",
+  "./assets/js/desserts.js",
   "./assets/js/review.js",
   "./assets/js/app.js",
   "./assets/js/admin.js",
@@ -27,6 +28,7 @@ const PRECACHE = [
   "./assets/img/icon-192.png",
   "./assets/img/icon-512.png",
   "./assets/img/logo-tilleuls.png",
+  "./assets/img/desserts.jpg",
   "./assets/menu/tilleuls-1.svg",
   "./assets/menu/tilleuls-2.svg",
   "./assets/menu/tilleuls-3.svg",
@@ -133,16 +135,22 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-/* --------- Clic sur la notification de rappel --------------------- */
+/* --------- Clic sur une notification ------------------------------ */
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "./index.html?avis=1";
+  // Le tag dit de quoi il s'agit : l'onglet déjà ouvert n'est pas rechargé,
+  // il faut donc lui indiquer quelle feuille présenter.
+  const message =
+    event.notification.tag === "desserts"
+      ? { type: "ouvrir-desserts" }
+      : { type: "ouvrir-avis" };
 
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {
         if ("focus" in client) {
-          client.postMessage({ type: "ouvrir-avis" });
+          client.postMessage(message);
           return client.focus();
         }
       }

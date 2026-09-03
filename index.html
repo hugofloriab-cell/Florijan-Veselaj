@@ -250,6 +250,33 @@
   </div>
 </section>
 
+<!-- ================= LE MOMENT DESSERT ================= -->
+<section class="sheet" id="dessertSheet" role="dialog" aria-modal="true"
+         aria-labelledby="dessertTitle" hidden>
+  <div class="sheet__inner">
+    <header class="sheet__head">
+      <span class="modal__grip" aria-hidden="true"></span>
+      <button class="sheet__close" data-close-sheet type="button" aria-label="Fermer">✕</button>
+    </header>
+
+    <figure class="dessert-photo" id="dessertFigure" hidden>
+      <img id="dessertImage" alt="" decoding="async">
+    </figure>
+
+    <h2 id="dessertTitle">Encore un peu de place&nbsp;?</h2>
+    <p class="sheet__lead" id="dessertLead"></p>
+
+    <ul class="dessert-list" id="dessertList"></ul>
+
+    <button class="btn btn--primary btn--block" id="dessertOpen" type="button">
+      Voir les desserts
+    </button>
+    <button class="btn btn--quiet btn--block" id="dessertLater" type="button">
+      Une autre fois
+    </button>
+  </div>
+</section>
+
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="assets/js/config.js"></script>
@@ -258,6 +285,7 @@
 <script src="assets/js/db.js"></script>
 <script src="assets/js/flipbook.js"></script>
 <script src="assets/js/reminder.js"></script>
+<script src="assets/js/desserts.js"></script>
 <script src="assets/js/review.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
