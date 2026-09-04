@@ -140,6 +140,7 @@
         : { images: pagesDeLaCarte() };
 
     flipbook = new Flipbook(document.getElementById("flipbook"), Object.assign(source, {
+      lecture: cfg.menu.lecture || null,
       onPageChange: (i) => {
         if (i > 0) hideHint();
       }

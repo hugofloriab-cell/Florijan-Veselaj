@@ -24,6 +24,18 @@
 
   const clamp = (v, min, max) => Math.min(max, Math.max(min, v));
 
+  // Agrandissement de lecture, par défaut. Une page A4 fait 595 points de
+  // large, un téléphone 390 : le texte y perd un tiers de sa taille, et les
+  // prix deviennent pénibles à lire. Découper les pages n'y changerait rien
+  // — l'échelle ne dépend que de la largeur montrée, jamais de la hauteur.
+  // Seul le zoom agit, et `menu.lecture` dit quelle bande de la page il doit
+  // cadrer (voir config.js).
+  const ZOOM = 2.2;
+  const LECTURE = { part: 1 / ZOOM, centre: 0.5 };
+
+  const dit = (cle, secours) =>
+    window.I18n && window.I18n.T ? window.I18n.T(cle, secours) : secours;
+
   class Flipbook {
     constructor(root, options) {
       this.root = root;
@@ -32,12 +44,22 @@
           images: null,
           pdfUrl: null,
           pdfjs: PDFJS_DEFAULT,
+          lecture: null, // { part, centre } — voir config.js
           spreadMinWidth: 820, // au-delà : double page
           onPageChange: null,
           onReady: null
         },
         options || {}
       );
+
+      // Cadrage de la lecture agrandie : quelle fraction de la largeur de
+      // page montrer, et autour de quel point. Une maquette de carte pose
+      // ses prix d'un côté et ses photos de l'autre, et n'en change pas
+      // d'une page à l'autre par hasard : le cadrage se règle donc page par
+      // page (menu.lecture dans config.js).
+      const l = this.opts.lecture || {};
+      this.lectureDefaut = this._bande(l.defaut);
+      this.lecturePages = Array.isArray(l.pages) ? l.pages.map((b) => this._bande(b)) : [];
 
       this.pages = []; // URLs des pages
       this.index = 0; // page de gauche (double page) ou page courante
@@ -50,6 +72,20 @@
 
       this._buildDom();
       this._bindEvents();
+    }
+
+    /** Normalise une bande de lecture, en se gardant d'un réglage aberrant. */
+    _bande(b) {
+      const src = b && typeof b === "object" ? b : LECTURE;
+      return {
+        part: clamp(Number(src.part) || LECTURE.part, 0.35, 1),
+        centre: clamp(Number(src.centre) || LECTURE.centre, 0, 1)
+      };
+    }
+
+    /** La bande de la page affichée, ou celle par défaut. */
+    _lecture() {
+      return this.lecturePages[this.index] || this.lectureDefaut;
     }
 
     /* ---------------------------------------------------------- DOM */
@@ -76,6 +112,16 @@
             <span class="fb-loader__ring"></span>
             <span class="fb-loader__label">Chargement du menu…</span>
           </div>
+
+          <button class="fb-zoom" type="button" data-act="zoom">
+            <svg class="fb-zoom__plus" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3M11 8v6M8 11h6"/>
+            </svg>
+            <svg class="fb-zoom__moins" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-4.3-4.3M8 11h6"/>
+            </svg>
+            <span class="fb-zoom__mot"></span>
+          </button>
         </div>
 
         <div class="fb-bar">
@@ -105,6 +151,8 @@
         backShade: this.root.querySelector(".fb-face--back .fb-shade"),
         loader: this.root.querySelector(".fb-loader"),
         loaderLabel: this.root.querySelector(".fb-loader__label"),
+        zoom: this.root.querySelector(".fb-zoom"),
+        zoomMot: this.root.querySelector(".fb-zoom__mot"),
         range: this.root.querySelector(".fb-range"),
         count: this.root.querySelector(".fb-count"),
         hitPrev: this.root.querySelector(".fb-hit--prev"),
@@ -135,6 +183,7 @@
       this.el.range.max = String(this.pages.length - 1);
       this.el.loader.hidden = true;
       this.root.classList.add("is-ready");
+      this._syncZoom();
       this._fit();
       this._render();
       this._preload(0);
@@ -322,6 +371,7 @@
       // Saut direct (sans animation de tournage) au-delà d'une page d'écart
       if (Math.abs(target - this.index) > step) {
         this.index = target;
+        this._recadrer();
         this._render();
         this._preload(target);
         return;
@@ -400,6 +450,7 @@
         leaf.style.transform = "rotateY(0deg)";
         this.root.classList.remove("is-turning");
         this.el.book.style.setProperty("--fb-turn", "0");
+        this._recadrer();
         this._render();
         this._preload(this.index);
       };
@@ -453,6 +504,7 @@
         if (drag.pan) {
           this.pan.x = drag.ox + (e.clientX - drag.x);
           this.pan.y = drag.oy + (e.clientY - drag.y);
+          this._clampPan();
           this._applyZoom();
           return;
         }
@@ -532,6 +584,15 @@
         }
       });
 
+      this.el.zoom.addEventListener("click", (e) => {
+        e.stopPropagation(); // le geste de zoom ne doit pas tourner la page
+        this._toggleZoom(null);
+      });
+      // Le bouton est dans la scène : sans cela, l'appui déclencherait aussi
+      // le compte à rebours du double-tap.
+      this.el.zoom.addEventListener("pointerdown", (e) => e.stopPropagation());
+      this.el.zoom.addEventListener("pointerup", (e) => e.stopPropagation());
+
       this.root.querySelector('[data-act="prev"]').addEventListener("click", () => this.prev());
       this.root.querySelector('[data-act="next"]').addEventListener("click", () => this.next());
       this.el.range.addEventListener("input", (e) => this.goTo(Number(e.target.value)));
@@ -546,27 +607,106 @@
       window.addEventListener("resize", () => {
         const changed = this._computeSpread();
         this._fit();
+        if (this.zoom > 1) {
+          this._clampPan();
+          this._applyZoom();
+        }
         if (changed) this._render();
       });
+
+      document.addEventListener("langue:change", () => this._syncZoom());
     }
 
+    /**
+     * Bornes du déplacement : la page agrandie peut glisser sous l'écran,
+     * jamais s'en échapper. Sans cela un doigt un peu vif laisse le client
+     * devant du vide, sans moyen évident de revenir sur la carte.
+     */
+    _bornes() {
+      const stage = this.el.stage;
+      const cs = getComputedStyle(stage);
+      const dispoW =
+        stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const dispoH =
+        stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const w = parseFloat(this.el.book.style.width) || dispoW;
+      const h = parseFloat(this.el.book.style.height) || dispoH;
+      return {
+        x: Math.max(0, (w * this.zoom - dispoW) / 2),
+        y: Math.max(0, (h * this.zoom - dispoH) / 2)
+      };
+    }
+
+    _clampPan() {
+      const b = this._bornes();
+      this.pan.x = clamp(this.pan.x, -b.x, b.x);
+      this.pan.y = clamp(this.pan.y, -b.y, b.y);
+    }
+
+    /**
+     * @param {{clientX:number, clientY:number}|null} e point touché, ou
+     *   `null` pour le bouton loupe : on cadre alors le haut de la page,
+     *   là où commence la lecture.
+     */
     _toggleZoom(e) {
       if (this.zoom > 1) {
         this.zoom = 1;
         this.pan = { x: 0, y: 0 };
       } else {
-        this.zoom = 2;
+        const bande = this._lecture();
+        this.zoom = 1 / bande.part;
         const rect = this.el.book.getBoundingClientRect();
-        // Centre le zoom sur le point touché
-        this.pan = {
-          x: (rect.left + rect.width / 2 - e.clientX) * (this.zoom - 1),
-          y: (rect.top + rect.height / 2 - e.clientY) * (this.zoom - 1)
-        };
+        if (e) {
+          // Centre l'agrandissement sur le point touché
+          this.pan = {
+            x: (rect.left + rect.width / 2 - e.clientX) * (this.zoom - 1),
+            y: (rect.top + rect.height / 2 - e.clientY) * (this.zoom - 1)
+          };
+        } else {
+          // Bouton loupe : on cadre la bande de lecture, en haut de la page.
+          const largeur = parseFloat(this.el.book.style.width) || rect.width;
+          this.pan = {
+            x: (0.5 - bande.centre) * largeur * this.zoom,
+            y: this._bornes().y
+          };
+        }
+        this._clampPan();
       }
       this.root.classList.toggle("is-zoomed", this.zoom > 1);
+      this._syncZoom();
       this.el.book.style.transition = "transform 260ms ease";
       this._applyZoom();
       setTimeout(() => (this.el.book.style.transition = ""), 280);
+    }
+
+    /**
+     * Reprend le cadrage de lecture sur la page qui vient d'arriver.
+     *
+     * L'agrandissement se garde d'une page à l'autre — un client qui lit de
+     * près veut continuer ainsi — mais chaque page a sa colonne de texte, et
+     * la lecture reprend en haut : sinon la page suivante s'ouvrirait au
+     * milieu d'un plat, décalée sur une photo.
+     */
+    _recadrer() {
+      if (this.zoom <= 1) return;
+      const bande = this._lecture();
+      const largeur = parseFloat(this.el.book.style.width) || 0;
+      this.zoom = 1 / bande.part;
+      this.pan = { x: (0.5 - bande.centre) * largeur * this.zoom, y: this._bornes().y };
+      this._clampPan();
+      this._applyZoom();
+    }
+
+    /** Étiquette et intitulé du bouton loupe, dans la langue du client. */
+    _syncZoom() {
+      if (!this.el.zoom) return;
+      const agrandi = this.zoom > 1;
+      const mot = agrandi
+        ? dit("carte.reduire", "Vue d'ensemble")
+        : dit("carte.agrandir", "Agrandir");
+      this.el.zoomMot.textContent = mot;
+      this.el.zoom.setAttribute("aria-label", mot);
+      this.el.zoom.classList.toggle("is-on", agrandi);
     }
 
     _applyZoom() {

@@ -25,9 +25,16 @@ window.APP_CONFIG = {
   },
 
   /* --- Source du menu (flipbook) ---------------------------------
-   * Les pages sont le PDF du restaurant, rendu page par page à haute
-   * définition : la mise en page, les photos et les couleurs sont celles
-   * du document d'origine, à l'identique. Rien n'est recomposé.
+   * Les pages sont celles du PDF du restaurant, photographiées à haute
+   * définition (1800 px de large) et rien d'autre : même maquette, mêmes
+   * photos, mêmes couleurs, mêmes polices. L'application ne recompose
+   * jamais la carte.
+   *
+   * Un écran de téléphone ne fait que 390 points de large là où une page
+   * A4 en fait 595 : le texte y est réduit d'un tiers, quoi qu'on fasse.
+   * La lecture confortable passe donc par le zoom — bouton loupe, double
+   * touche, ou pincement — et non par un découpage qui n'y changerait
+   * rien (l'échelle ne dépend que de la largeur montrée).
    *
    * type: "images"  -> tableau `images` ci-dessous (jpg, png, webp, svg)
    * type: "pdf"     -> fichier `pdfUrl` (rendu via PDF.js)
@@ -60,6 +67,38 @@ window.APP_CONFIG = {
       "assets/menu/carte-en-8.webp",
       "assets/menu/carte-en-9.webp"
     ],
+    /* Cadrage du bouton « Agrandir », page par page.
+     *
+     * `part`   : la fraction de la largeur de page montrée une fois agrandi
+     * `centre` : autour de quel point de cette largeur (0 = bord gauche)
+     *
+     * Une page A4 réduite à la largeur d'un téléphone ramène les prix à
+     * 7 px : lisibles de justesse, pénibles à table. Cadrer la colonne de
+     * texte les remonte à 11–12 px, la taille d'un texte de site — sans
+     * toucher à la maquette, puisque le client revient à la page entière
+     * d'une seule touche.
+     *
+     * Les valeurs viennent des boîtes de texte du PDF (outils/bandes.py) :
+     * la maquette alterne les colonnes — photos à gauche page 2, à droite
+     * page 3, deux colonnes page 4 — et un cadrage unique couperait un nom
+     * de plat sur deux. `defaut` sert aux cartes importées depuis le
+     * panneau gérant, dont on ne connaît pas la maquette.
+     */
+    lecture: {
+      defaut: { part: 0.62, centre: 0.5 },
+      pages: [
+        { part: 0.62, centre: 0.421 },
+        { part: 0.544, centre: 0.644 },
+        { part: 0.62, centre: 0.39 },
+        { part: 0.62, centre: 0.39 },
+        { part: 0.62, centre: 0.39 },
+        { part: 0.62, centre: 0.39 },
+        { part: 0.62, centre: 0.39 },
+        { part: 0.62, centre: 0.42 },
+        { part: 0.62, centre: 0.39 }
+      ]
+    },
+
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
     // Où charger PDF.js (utile uniquement si type = "pdf").
@@ -95,7 +134,7 @@ window.APP_CONFIG = {
   desserts: {
     // Délai depuis l'ouverture, en minutes. 0 ou null désactive.
     delay: 45,
-    // Page de la carte à ouvrir (1 = couverture). Les desserts sont en 3.
+    // Page à ouvrir (1 = couverture). Les desserts sont sur la page 3.
     page: 3,
     title: "Encore un peu de place ?",
     lead: "Nos desserts sortent de la cuisine, préparés du jour.",

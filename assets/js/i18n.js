@@ -35,9 +35,11 @@ window.I18n = (function () {
     "nav.langue": ["English", "Français"],
     "nav.langueTitre": ["Read the menu in English", "Lire la carte en français"],
     "carte.indice": [
-      "Glissez pour tourner · double-tapez pour zoomer",
-      "Swipe to turn · double-tap to zoom"
+      "Glissez pour tourner · touchez « Agrandir » pour lire de près",
+      "Swipe to turn · tap “Zoom in” to read up close"
     ],
+    "carte.agrandir": ["Agrandir", "Zoom in"],
+    "carte.reduire": ["Vue d'ensemble", "Whole page"],
     "carte.precedent": ["Page précédente", "Previous page"],
     "carte.suivant": ["Page suivante", "Next page"],
     "carte.chargement": ["Chargement de la carte…", "Loading the menu…"],
