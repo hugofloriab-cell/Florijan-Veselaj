@@ -5,6 +5,7 @@
 | `chevalet-tilleuls-a4.pdf` | **Quatre cartes sur une A4**, avec traits de coupe. C'est celui à imprimer pour les tables. |
 | `chevalet-tilleuls-a6.pdf` | Une carte seule, au format A6 (105 × 148 mm), pour un imprimeur. |
 | `qr-tilleuls.png` | Le QR code seul, sur fond blanc — pour une affiche, le site de l'hôtel, un réseau social. |
+| `carnet-de-bord-tilleuls.pdf` | **À imprimer et à ranger.** Les adresses, les comptes, ce qu'est Supabase, les gestes du quotidien et quoi faire en cas de panne. Aucun mot de passe n'y figure : des lignes sont laissées à remplir à la main. |
 
 Le QR pointe vers `https://hugofloriab-cell.github.io/Carte-tilleuls/`.
 
