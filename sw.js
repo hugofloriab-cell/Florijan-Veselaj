@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v8";
+const CACHE = "resto-menu-v9";
 
 const PRECACHE = [
   "./",
@@ -31,32 +31,24 @@ const PRECACHE = [
   "./assets/img/logo-tilleuls.png",
   "./assets/img/dessert-moelleux.jpg",
   "./assets/img/dessert-tarte.jpg",
-  "./assets/menu/tilleuls-1.svg",
-  "./assets/menu/tilleuls-2.svg",
-  "./assets/menu/tilleuls-3.svg",
-  "./assets/menu/tilleuls-4.svg",
-  "./assets/menu/tilleuls-5.svg",
-  "./assets/menu/tilleuls-6.svg",
-  "./assets/menu/tilleuls-7.svg",
-  "./assets/menu/tilleuls-8.svg",
-  "./assets/menu/tilleuls-9.svg",
-  "./assets/menu/tilleuls-10.svg",
-  "./assets/menu/tilleuls-11.svg",
-  "./assets/menu/tilleuls-12.svg",
-  "./assets/menu/tilleuls-13.svg",
-  "./assets/menu/tilleuls-en-1.svg",
-  "./assets/menu/tilleuls-en-2.svg",
-  "./assets/menu/tilleuls-en-3.svg",
-  "./assets/menu/tilleuls-en-4.svg",
-  "./assets/menu/tilleuls-en-5.svg",
-  "./assets/menu/tilleuls-en-6.svg",
-  "./assets/menu/tilleuls-en-7.svg",
-  "./assets/menu/tilleuls-en-8.svg",
-  "./assets/menu/tilleuls-en-9.svg",
-  "./assets/menu/tilleuls-en-10.svg",
-  "./assets/menu/tilleuls-en-11.svg",
-  "./assets/menu/tilleuls-en-12.svg",
-  "./assets/menu/tilleuls-en-13.svg"
+  "./assets/menu/carte-fr-1.webp",
+  "./assets/menu/carte-fr-2.webp",
+  "./assets/menu/carte-fr-3.webp",
+  "./assets/menu/carte-fr-4.webp",
+  "./assets/menu/carte-fr-5.webp",
+  "./assets/menu/carte-fr-6.webp",
+  "./assets/menu/carte-fr-7.webp",
+  "./assets/menu/carte-fr-8.webp",
+  "./assets/menu/carte-fr-9.webp",
+  "./assets/menu/carte-en-1.webp",
+  "./assets/menu/carte-en-2.webp",
+  "./assets/menu/carte-en-3.webp",
+  "./assets/menu/carte-en-4.webp",
+  "./assets/menu/carte-en-5.webp",
+  "./assets/menu/carte-en-6.webp",
+  "./assets/menu/carte-en-7.webp",
+  "./assets/menu/carte-en-8.webp",
+  "./assets/menu/carte-en-9.webp"
 ];
 
 self.addEventListener("install", (event) => {

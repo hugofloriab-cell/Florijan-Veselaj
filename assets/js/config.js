@@ -25,6 +25,10 @@ window.APP_CONFIG = {
   },
 
   /* --- Source du menu (flipbook) ---------------------------------
+   * Les pages sont le PDF du restaurant, rendu page par page à haute
+   * définition : la mise en page, les photos et les couleurs sont celles
+   * du document d'origine, à l'identique. Rien n'est recomposé.
+   *
    * type: "images"  -> tableau `images` ci-dessous (jpg, png, webp, svg)
    * type: "pdf"     -> fichier `pdfUrl` (rendu via PDF.js)
    * ---------------------------------------------------------------- */
@@ -32,38 +36,29 @@ window.APP_CONFIG = {
     type: "images",
     pdfUrl: "assets/menu/menu.pdf",
     images: [
-      "assets/menu/tilleuls-1.svg",
-      "assets/menu/tilleuls-2.svg",
-      "assets/menu/tilleuls-3.svg",
-      "assets/menu/tilleuls-4.svg",
-      "assets/menu/tilleuls-5.svg",
-      "assets/menu/tilleuls-6.svg",
-      "assets/menu/tilleuls-7.svg",
-      "assets/menu/tilleuls-8.svg",
-      "assets/menu/tilleuls-9.svg",
-      "assets/menu/tilleuls-10.svg",
-      "assets/menu/tilleuls-11.svg",
-      "assets/menu/tilleuls-12.svg",
-      "assets/menu/tilleuls-13.svg"
+      "assets/menu/carte-fr-1.webp",
+      "assets/menu/carte-fr-2.webp",
+      "assets/menu/carte-fr-3.webp",
+      "assets/menu/carte-fr-4.webp",
+      "assets/menu/carte-fr-5.webp",
+      "assets/menu/carte-fr-6.webp",
+      "assets/menu/carte-fr-7.webp",
+      "assets/menu/carte-fr-8.webp",
+      "assets/menu/carte-fr-9.webp"
     ],
-    // Version anglaise de la carte, servie aux téléphones réglés en
-    // anglais. Tant qu'elle est vide, ces clients voient la carte
-    // française : mieux vaut une carte qu'ils lisent à moitié qu'un
-    // livret vide. Se remplit depuis le panneau gérant, onglet « English ».
+    // Version anglaise, servie aux téléphones réglés en anglais. Tant
+    // qu'elle est vide, ces clients voient la carte française : mieux vaut
+    // une carte qu'ils lisent à moitié qu'un livret vide.
     imagesEn: [
-      "assets/menu/tilleuls-en-1.svg",
-      "assets/menu/tilleuls-en-2.svg",
-      "assets/menu/tilleuls-en-3.svg",
-      "assets/menu/tilleuls-en-4.svg",
-      "assets/menu/tilleuls-en-5.svg",
-      "assets/menu/tilleuls-en-6.svg",
-      "assets/menu/tilleuls-en-7.svg",
-      "assets/menu/tilleuls-en-8.svg",
-      "assets/menu/tilleuls-en-9.svg",
-      "assets/menu/tilleuls-en-10.svg",
-      "assets/menu/tilleuls-en-11.svg",
-      "assets/menu/tilleuls-en-12.svg",
-      "assets/menu/tilleuls-en-13.svg"
+      "assets/menu/carte-en-1.webp",
+      "assets/menu/carte-en-2.webp",
+      "assets/menu/carte-en-3.webp",
+      "assets/menu/carte-en-4.webp",
+      "assets/menu/carte-en-5.webp",
+      "assets/menu/carte-en-6.webp",
+      "assets/menu/carte-en-7.webp",
+      "assets/menu/carte-en-8.webp",
+      "assets/menu/carte-en-9.webp"
     ],
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
@@ -100,8 +95,8 @@ window.APP_CONFIG = {
   desserts: {
     // Délai depuis l'ouverture, en minutes. 0 ou null désactive.
     delay: 45,
-    // Page de la carte à ouvrir (1 = couverture). Les desserts sont en 5.
-    page: 5,
+    // Page de la carte à ouvrir (1 = couverture). Les desserts sont en 3.
+    page: 3,
     title: "Encore un peu de place ?",
     lead: "Nos desserts sortent de la cuisine, préparés du jour.",
     // Trois suggestions, reprises telles quelles de la carte
