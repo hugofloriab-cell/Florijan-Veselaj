@@ -267,9 +267,20 @@
    * Dans les deux cas, l'aperçu local permet de tout voir avant.
    * ================================================================== */
 
+  /* PDF.js, la bibliothèque qui découpe un PDF en pages.
+   *
+   * Elle est déposée avec l'application plutôt que chargée depuis un CDN :
+   * c'est la seule pièce dont dépend le remplacement d'une carte, et le
+   * gérant s'en sert justement depuis le restaurant, derrière une connexion
+   * qu'on ne choisit pas. Un CDN inaccessible — réseau de l'hôtel, panne,
+   * filtrage — lui interdirait de changer sa carte, sans recours.
+   *
+   * Les deux fichiers ne sont chargés qu'au moment d'un import, et jamais
+   * mis en cache d'avance : ils ne coûtent rien aux clients.
+   */
   const PDFJS = {
-    lib: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
-    worker: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"
+    lib: "assets/vendor/pdf.min.js",
+    worker: "assets/vendor/pdf.worker.min.js"
   };
 
   let brouillon = null; // configuration en cours d'édition
@@ -280,13 +291,25 @@
 
   function initBrouillon() {
     const c = window.APP_CONFIG;
+    const menu = {
+      type: "images",
+      images: (c.menu.images || []).slice(),
+      imagesEn: (c.menu.imagesEn || []).slice()
+    };
+    // Le cadrage d'agrandissement d'une carte importée revient avec elle :
+    // sans cela, rouvrir le panneau puis republier garderait les pages et
+    // perdrait leur mesure. Celui de la carte livrée reste dehors — il
+    // appartient au code, et le publier le figerait.
+    const l = c.menu.lecture || {};
+    [["images", "pages"], ["imagesEn", "pagesEn"]].forEach(([pages, cadrage]) => {
+      if (!menu[pages].some(estImportee) || !Array.isArray(l[cadrage])) return;
+      if (!menu.lecture) menu.lecture = {};
+      menu.lecture[cadrage] = l[cadrage].slice();
+    });
+
     brouillon = {
       restaurant: copie(c.restaurant),
-      menu: {
-        type: "images",
-        images: (c.menu.images || []).slice(),
-        imagesEn: (c.menu.imagesEn || []).slice()
-      },
+      menu: menu,
       review: { threshold: c.review.threshold, publicLinks: copie(c.review.publicLinks) },
       reminder: { delays: c.reminder.delays.slice(), defaultDelay: c.reminder.defaultDelay },
       admin: { passwordSha256: c.admin.passwordSha256 }
@@ -325,6 +348,47 @@
     });
   }
 
+  /* Cadrage du bouton « Agrandir », mesuré sur une page du PDF.
+   *
+   * Une page A4 réduite à la largeur d'un téléphone ramène les prix à sept
+   * pixels. Le client agrandit, et l'application doit alors cadrer la
+   * colonne de texte — encore faut-il savoir où elle est. On la mesure ici,
+   * sur le document déposé, comme le fait outils/bandes.py sur la carte
+   * livrée : le gérant change de carte sans que personne ait à régler quoi
+   * que ce soit.
+   *
+   * La fenêtre ne se resserre jamais au-delà de la ligne la plus large :
+   * un nom de plat et son prix doivent tenir ensemble à l'écran.
+   */
+  const MARGE_BANDE = 14; // points de respiration de chaque côté
+  const BANDE_MIN = 0.5; // au plus ×2 : au-delà on ne lit qu'un mot
+  const BANDE_MAX = 0.9; // en deçà de ×1,1 le geste ne vaudrait pas la peine
+
+  async function bandeDeLecture(page, largeurPage) {
+    let texte;
+    try {
+      texte = await page.getTextContent();
+    } catch (_) {
+      return null; // page sans couche de texte : le repli fera l'affaire
+    }
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    texte.items.forEach((it) => {
+      if (!it.str || !it.str.trim() || !it.transform) return;
+      const g = it.transform[4];
+      x0 = Math.min(x0, g);
+      x1 = Math.max(x1, g + (it.width || 0));
+    });
+    if (!isFinite(x0) || x1 <= x0) return null;
+    x0 = Math.max(0, x0 - MARGE_BANDE);
+    x1 = Math.min(largeurPage, x1 + MARGE_BANDE);
+    const part = Math.min(BANDE_MAX, Math.max(BANDE_MIN, (x1 - x0) / largeurPage));
+    return {
+      part: Math.round(part * 1000) / 1000,
+      centre: Math.round(((x0 + x1) / 2 / largeurPage) * 1000) / 1000
+    };
+  }
+
   async function pdfEnImages(fichier, avance) {
     if (!window.pdfjsLib) await chargerScript(PDFJS.lib);
     if (!window.pdfjsLib) throw new Error("PDF.js introuvable");
@@ -333,6 +397,7 @@
     const buf = await fichier.arrayBuffer();
     const doc = await pdfjsLib.getDocument({ data: buf }).promise;
     const out = [];
+    const bandes = [];
     for (let i = 1; i <= doc.numPages; i++) {
       avance(`Découpage du PDF… page ${i} sur ${doc.numPages}`);
       const page = await doc.getPage(i);
@@ -346,15 +411,24 @@
       await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
       out.push(cv.toDataURL("image/jpeg", 0.66));
       cv.width = cv.height = 0;
+      bandes.push(await bandeDeLecture(page, base.width));
     }
+    // Une seule page illisible ne doit pas priver les autres de leur mesure.
+    out.bandes = bandes.some(Boolean) ? bandes.map((b) => b || null) : null;
     return out;
   }
 
   /* Les deux cartes — française et anglaise — partagent le même éditeur.
      Seuls changent le tableau visé et les identifiants dans la page. */
   const CARTES = {
-    fr: { cle: "images", pages: "menuPages", etat: "menuEtat", reset: "menuReset" },
-    en: { cle: "imagesEn", pages: "menuPagesEn", etat: "menuEtatEn", reset: "menuResetEn" }
+    fr: {
+      cle: "images", cadrage: "pages",
+      pages: "menuPages", etat: "menuEtat", reset: "menuReset"
+    },
+    en: {
+      cle: "imagesEn", cadrage: "pagesEn",
+      pages: "menuPagesEn", etat: "menuEtatEn", reset: "menuResetEn"
+    }
   };
 
   const estImportee = (src) => typeof src === "string" && src.startsWith("data:");
@@ -365,6 +439,18 @@
     return brouillon.menu[cle];
   };
 
+  /** Range (ou retire) le cadrage mesuré sur la carte d'une langue.
+   *
+   * Il suit ses pages partout : publié avec elles, effacé avec elles. Un
+   * cadrage orphelin cadrerait de travers la carte suivante. */
+  function poserCadrage(langue, bandes) {
+    const cle = CARTES[langue || "fr"].cadrage;
+    if (!brouillon.menu.lecture) brouillon.menu.lecture = {};
+    if (bandes) brouillon.menu.lecture[cle] = bandes;
+    else delete brouillon.menu.lecture[cle];
+    if (!Object.keys(brouillon.menu.lecture).length) delete brouillon.menu.lecture;
+  }
+
   async function ajouterFichiers(liste, langue) {
     const c = CARTES[langue || "fr"];
     const etat = document.getElementById(c.etat);
@@ -372,14 +458,20 @@
     if (!fichiers.length) return;
 
     const images = [];
+    // Le cadrage d'agrandissement, page à page, dans le même ordre que les
+    // images. Une page déposée en image n'en a pas : `null` renvoie au
+    // cadrage de repli.
+    const bandes = [];
     try {
       for (const f of fichiers) {
         if (f.type === "application/pdf") {
           const pages = await pdfEnImages(f, (m) => (etat.textContent = m));
           images.push.apply(images, pages);
+          pages.forEach((_, i) => bandes.push(pages.bandes ? pages.bandes[i] : null));
         } else if (f.type.startsWith("image/")) {
           etat.textContent = `Traitement de ${f.name}…`;
           images.push(await compresser(f, 1240, 0.7));
+          bandes.push(null);
         }
       }
     } catch (err) {
@@ -392,6 +484,7 @@
       return;
     }
     brouillon.menu[c.cle] = images;
+    poserCadrage(langue, bandes.some(Boolean) ? bandes : null);
     etat.textContent = `${images.length} page${images.length > 1 ? "s" : ""} prête${images.length > 1 ? "s" : ""}.`;
     rendreMenu(langue);
     majPoids();
@@ -617,8 +710,10 @@
       if (reset) {
         reset.addEventListener("click", () => {
           // Vider la liste suffit : une liste sans image importée n'est pas
-          // publiée, et l'application reprend ses propres pages.
+          // publiée, et l'application reprend ses propres pages — et son
+          // propre cadrage, dont on retire donc la mesure faite ici.
           brouillon.menu[CARTES[langue].cle] = [];
+          poserCadrage(langue, null);
           document.getElementById(CARTES[langue].etat).textContent =
             "Carte de l'application rétablie. Publiez pour que les clients la voient.";
           rendreMenu(langue);
@@ -630,13 +725,21 @@
         const b = e.target.closest("button");
         if (!b) return;
         const imgs = pagesDe(langue);
+        // Le cadrage est rangé page à page : il subit le même sort que la
+        // vignette qu'on déplace ou qu'on retire, sinon il glisserait d'une
+        // page sur l'autre.
+        const l = brouillon.menu.lecture;
+        const bandes = l && l[CARTES[langue].cadrage];
         if (b.dataset.del !== undefined) {
-          imgs.splice(Number(b.dataset.del), 1);
+          const i = Number(b.dataset.del);
+          imgs.splice(i, 1);
+          if (bandes) bandes.splice(i, 1);
         } else if (b.dataset.move) {
           const i = Number(b.dataset.i);
           const j = i + Number(b.dataset.move);
           if (j < 0 || j >= imgs.length) return;
           [imgs[i], imgs[j]] = [imgs[j], imgs[i]];
+          if (bandes) [bandes[i], bandes[j]] = [bandes[j], bandes[i]];
         }
         rendreMenu(langue);
         majPoids();

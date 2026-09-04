@@ -55,30 +55,51 @@ window.Contenu = (function () {
      Seules les premières appartiennent au gérant. */
   const estImportee = (src) => typeof src === "string" && src.startsWith("data:");
 
+  /* Chaque carte va avec son cadrage de lecture : `images` avec
+     `lecture.pages`, `imagesEn` avec `lecture.pagesEn`. Les deux se
+     gardent ou se jettent ensemble — un cadrage sans ses pages cadrerait
+     de travers celles d'à côté. */
+  const CARTES = [
+    { pages: "images", cadrage: "pages" },
+    { pages: "imagesEn", cadrage: "pagesEn" }
+  ];
+
   /**
-   * Retire d'une surcouche ce qui décrit la carte livrée avec le code.
+   * Retire d'un menu ce qui décrit la carte livrée avec le code.
    *
-   * Les listes de pages qui ne sont que des chemins, d'abord : sans cela,
-   * publier gèle la carte telle qu'elle était dans le navigateur du gérant,
-   * et cette copie l'emporte ensuite sur le code — une nouvelle carte
-   * livrée par mise à jour resterait invisible, et les clients verraient
-   * indéfiniment l'ancienne.
+   * Sans cela, publier gèle la carte telle qu'elle était dans le navigateur
+   * du gérant, et cette copie l'emporte ensuite sur le code : une nouvelle
+   * carte livrée par mise à jour resterait invisible, et les clients
+   * verraient indéfiniment l'ancienne. Le cadrage de lecture court le même
+   * risque — mesuré sur un PDF, il ne décrit que celui-là et cadrerait de
+   * travers son successeur.
    *
-   * Le cadrage de lecture ensuite, pour la même raison : il est mesuré page
-   * par page sur le PDF livré, il ne décrit que celui-là. Publié, il
-   * survivrait à la carte qu'il décrit et cadrerait de travers la suivante.
-   *
-   * Le gérant publie ses réglages, pas les fichiers de l'application.
+   * Ce que le gérant a lui-même importé reste : ses pages sont embarquées
+   * dans la surcouche (« data:… »), et le cadrage que le panneau a mesuré
+   * dessus les accompagne. Il publie sa carte et ses réglages, pas les
+   * fichiers de l'application.
    */
+  function elaguerMenu(menu) {
+    if (!menu) return;
+    CARTES.forEach(({ pages, cadrage }) => {
+      const liste = menu[pages];
+      const sienne = Array.isArray(liste) && liste.some(estImportee);
+      if (!sienne) {
+        delete menu[pages];
+        if (menu.lecture) delete menu.lecture[cadrage];
+      }
+    });
+    // Le cadrage de repli vient du code : il n'a rien à faire sur le serveur.
+    if (menu.lecture) {
+      delete menu.lecture.defaut;
+      if (!Object.keys(menu.lecture).length) delete menu.lecture;
+    }
+  }
+
   function nettoyer(surcouche) {
     if (!surcouche) return surcouche;
     const c = surcouche.config || surcouche;
-    if (!c || !c.menu) return surcouche;
-    ["images", "imagesEn"].forEach((cle) => {
-      const liste = c.menu[cle];
-      if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
-    });
-    delete c.menu.lecture;
+    if (c && c.menu) elaguerMenu(c.menu);
     return surcouche;
   }
 
@@ -187,13 +208,7 @@ window.Contenu = (function () {
      */
     pourPublication(config) {
       const c = JSON.parse(JSON.stringify(config));
-      if (c.menu) {
-        ["images", "imagesEn"].forEach((cle) => {
-          const liste = c.menu[cle];
-          if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
-        });
-        delete c.menu.lecture;
-      }
+      elaguerMenu(c.menu);
       return c;
     },
 

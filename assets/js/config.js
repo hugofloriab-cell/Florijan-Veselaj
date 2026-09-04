@@ -89,11 +89,13 @@ window.APP_CONFIG = {
      * agrandissement, celles qui étalent leurs lignes d'un bord à l'autre
      * (les vins, les bières) un plus modeste, mais gardent leurs prix.
      *
-     * `defaut` sert aux cartes importées depuis le panneau gérant, dont on
-     * ne connaît pas la maquette.
+     * Le panneau gérant mesure lui-même les pages d'un PDF qu'on y dépose :
+     * `pages` accompagne alors la carte importée. `defaut` ne sert plus
+     * qu'aux pages déposées en images, où il n'y a aucun texte à mesurer —
+     * large à dessein, pour ne couper aucun prix d'une maquette inconnue.
      */
     lecture: {
-      defaut: { part: 0.62, centre: 0.5 },
+      defaut: { part: 0.8, centre: 0.5 },
       pages: [
         { part: 0.787, centre: 0.497 },
         { part: 0.544, centre: 0.644 },
@@ -104,6 +106,19 @@ window.APP_CONFIG = {
         { part: 0.831, centre: 0.496 },
         { part: 0.773, centre: 0.496 },
         { part: 0.837, centre: 0.499 }
+      ],
+      // La carte anglaise, dont les lignes ne tombent pas tout à fait au
+      // même endroit. Absente, `pages` lui sert.
+      pagesEn: [
+        { part: 0.795, centre: 0.497 },
+        { part: 0.538, centre: 0.647 },
+        { part: 0.862, centre: 0.511 },
+        { part: 0.861, centre: 0.511 },
+        { part: 0.862, centre: 0.511 },
+        { part: 0.831, centre: 0.496 },
+        { part: 0.831, centre: 0.496 },
+        { part: 0.773, centre: 0.496 },
+        { part: 0.818, centre: 0.489 }
       ]
     },
 

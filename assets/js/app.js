@@ -139,6 +139,23 @@
     return anglais && en && en.length ? en : cfg.menu.images;
   }
 
+  /** Le cadrage de lecture qui accompagne la carte affichée.
+   *
+   * Chaque carte a le sien : les lignes de la version anglaise ne tombent
+   * pas là où tombent celles de la française. Faute de mesure anglaise, la
+   * française fait l'affaire — les deux maquettes sont jumelles. */
+  function cadrageDeLaCarte() {
+    const l = cfg.menu.lecture;
+    if (!l) return null;
+    const anglais = window.I18n && I18n.estAnglais();
+    const en = cfg.menu.imagesEn;
+    const carteAnglaise = anglais && en && en.length;
+    return {
+      defaut: l.defaut,
+      pages: (carteAnglaise && l.pagesEn) || l.pages
+    };
+  }
+
   async function initFlipbook() {
     const source =
       cfg.menu.type === "pdf"
@@ -146,7 +163,7 @@
         : { images: pagesDeLaCarte() };
 
     flipbook = new Flipbook(document.getElementById("flipbook"), Object.assign(source, {
-      lecture: cfg.menu.lecture || null,
+      lecture: cadrageDeLaCarte(),
       onPageChange: (i) => {
         if (i > 0) hideHint();
       }

@@ -59,7 +59,11 @@
       // page (menu.lecture dans config.js).
       const l = this.opts.lecture || {};
       this.lectureDefaut = this._bande(l.defaut);
-      this.lecturePages = Array.isArray(l.pages) ? l.pages.map((b) => this._bande(b)) : [];
+      // Une page sans mesure — déposée en image, ou sans couche de texte —
+      // vaut `null` : elle retombe alors sur le cadrage de repli.
+      this.lecturePages = Array.isArray(l.pages)
+        ? l.pages.map((b) => (b ? this._bande(b) : null))
+        : [];
 
       this.pages = []; // URLs des pages
       this.index = 0; // page de gauche (double page) ou page courante

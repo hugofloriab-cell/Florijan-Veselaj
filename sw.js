@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v14";
+const CACHE = "resto-menu-v15";
 
 const PRECACHE = [
   "./",
