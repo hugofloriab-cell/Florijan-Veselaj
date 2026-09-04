@@ -10,6 +10,8 @@ window.APP_CONFIG = {
   restaurant: {
     name: "Restaurant Les Tilleuls",
     tagline: "Carte d'automne · Cuisine de saison",
+    // Accroche servie aux téléphones réglés en anglais
+    taglineEn: "Autumn menu · Seasonal cooking",
     // Initiales de secours, si le logo ne se charge pas
     monogram: "LT",
     logoUrl: "assets/img/logo-tilleuls.png",

@@ -378,6 +378,9 @@ body.is-fullscreen .topbar { padding-top: 7px; }
   transition: transform .15s, background .2s;
 }
 .fb.is-ready .fb-zoom { display: inline-flex; }
+/* Sur un écran large, le livret s'ouvre en double page et le texte est déjà
+   lisible : la loupe n'aurait rien à corriger. */
+.fb.is-spread .fb-zoom { display: none; }
 .fb-zoom:active { transform: scale(.94); }
 .fb-zoom svg {
   width: 19px; height: 19px;

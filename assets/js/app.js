@@ -73,7 +73,12 @@
     const r = cfg.restaurant;
     document.title = `Menu · ${r.name}`;
     document.getElementById("brandName").textContent = r.name;
-    document.getElementById("brandTagline").textContent = r.tagline || "";
+    // L'accroche suit la langue quand une version anglaise existe : un
+    // client anglophone lisait jusqu'ici « Carte d'automne » sous un
+    // en-tête par ailleurs traduit.
+    const anglais = window.I18n && I18n.estAnglais();
+    document.getElementById("brandTagline").textContent =
+      (anglais && r.taglineEn) || r.tagline || "";
 
     const mark = document.getElementById("brandMark");
     if (r.logoUrl) {

@@ -83,8 +83,14 @@
       };
     }
 
-    /** La bande de la page affichée, ou celle par défaut. */
+    /** La bande de la page affichée, ou celle par défaut.
+     *
+     * En double page, le livret porte deux pages de front : une bande
+     * mesurée sur une seule page n'y veut plus rien dire. On s'en remet au
+     * cadrage neutre — sur un écran large, la carte se lit de toute façon
+     * sans agrandir. */
     _lecture() {
+      if (this.spread) return this.lectureDefaut;
       return this.lecturePages[this.index] || this.lectureDefaut;
     }
 
