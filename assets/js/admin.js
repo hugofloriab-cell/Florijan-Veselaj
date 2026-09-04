@@ -353,9 +353,11 @@
   /* Les deux cartes — française et anglaise — partagent le même éditeur.
      Seuls changent le tableau visé et les identifiants dans la page. */
   const CARTES = {
-    fr: { cle: "images", pages: "menuPages", etat: "menuEtat" },
-    en: { cle: "imagesEn", pages: "menuPagesEn", etat: "menuEtatEn" }
+    fr: { cle: "images", pages: "menuPages", etat: "menuEtat", reset: "menuReset" },
+    en: { cle: "imagesEn", pages: "menuPagesEn", etat: "menuEtatEn", reset: "menuResetEn" }
   };
+
+  const estImportee = (src) => typeof src === "string" && src.startsWith("data:");
 
   const pagesDe = (langue) => {
     const cle = CARTES[langue].cle;
@@ -400,6 +402,11 @@
     const box = document.getElementById(CARTES[l].pages);
     if (!box) return;
     const imgs = pagesDe(l);
+
+    // Le retour en arrière n'a de sens que si une carte a été importée :
+    // sinon c'est déjà celle de l'application qui s'affiche.
+    const bouton = document.getElementById(CARTES[l].reset);
+    if (bouton) bouton.hidden = !imgs.some(estImportee);
     if (!imgs.length) {
       box.innerHTML =
         l === "en"
@@ -605,6 +612,19 @@
           if (ev === "drop") ajouterFichiers(e.dataTransfer.files, langue);
         })
       );
+
+      const reset = document.getElementById(CARTES[langue].reset);
+      if (reset) {
+        reset.addEventListener("click", () => {
+          // Vider la liste suffit : une liste sans image importée n'est pas
+          // publiée, et l'application reprend ses propres pages.
+          brouillon.menu[CARTES[langue].cle] = [];
+          document.getElementById(CARTES[langue].etat).textContent =
+            "Carte de l'application rétablie. Publiez pour que les clients la voient.";
+          rendreMenu(langue);
+          majPoids();
+        });
+      }
 
       boite.addEventListener("click", (e) => {
         const b = e.target.closest("button");

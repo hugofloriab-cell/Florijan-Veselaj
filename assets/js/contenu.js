@@ -131,8 +131,11 @@ window.Contenu = (function () {
       }
 
       distant = nettoyer(await lireDistant(opts));
-      // L'aperçu du gérant garde ses pages importées : c'est tout son objet.
-      local = opts.ignorerLocal ? null : lireLocal();
+      // L'aperçu du gérant suit la même règle : ses pages importées comptent,
+      // les chemins du code non. Sans cela, un aperçu enregistré autrefois
+      // continuerait d'imposer une carte périmée sur l'appareil du gérant,
+      // et lui seul verrait la mauvaise version — le pire des cas.
+      local = opts.ignorerLocal ? null : nettoyer(lireLocal());
 
       let cfg = window.APP_CONFIG;
       if (publie) cfg = fusion(cfg, publie.config || publie);
