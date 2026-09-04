@@ -337,12 +337,14 @@
       avance(`Découpage du PDF… page ${i} sur ${doc.numPages}`);
       const page = await doc.getPage(i);
       const base = page.getViewport({ scale: 1 });
-      const vp = page.getViewport({ scale: 1400 / base.width });
+      // 1240 px : lisible jusqu'au zoom ×2 sur un téléphone, sans faire
+      // peser la carte plusieurs mégaoctets — chaque client la télécharge.
+      const vp = page.getViewport({ scale: 1240 / base.width });
       const cv = document.createElement("canvas");
       cv.width = Math.round(vp.width);
       cv.height = Math.round(vp.height);
       await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise;
-      out.push(cv.toDataURL("image/jpeg", 0.72));
+      out.push(cv.toDataURL("image/jpeg", 0.66));
       cv.width = cv.height = 0;
     }
     return out;
@@ -375,7 +377,7 @@
           images.push.apply(images, pages);
         } else if (f.type.startsWith("image/")) {
           etat.textContent = `Traitement de ${f.name}…`;
-          images.push(await compresser(f, 1400, 0.78));
+          images.push(await compresser(f, 1240, 0.7));
         }
       }
     } catch (err) {
@@ -449,6 +451,8 @@
     document.getElementById("fHours").value = r.hours || "";
     document.getElementById("fAddress").value = r.address || "";
     document.getElementById("fPhone").value = r.phone || "";
+    document.getElementById("fHotel").value = (r.hotel && r.hotel.name) || "";
+    document.getElementById("fHotelUrl").value = (r.hotel && r.hotel.url) || "";
     document.getElementById("logoApercu").style.backgroundImage =
       r.logoUrl ? `url("${r.logoUrl}")` : "none";
     document.getElementById("fSeuil").value = String(brouillon.review.threshold);
@@ -464,6 +468,10 @@
 
   function lireFormulaire() {
     const r = brouillon.restaurant;
+    r.hotel = {
+      name: document.getElementById("fHotel").value.trim(),
+      url: document.getElementById("fHotelUrl").value.trim()
+    };
     r.name = document.getElementById("fName").value.trim();
     r.tagline = document.getElementById("fTagline").value.trim();
     r.hours = document.getElementById("fHours").value.trim();
@@ -695,6 +703,20 @@
 
       lireFormulaire();
       await appliquerMotDePasse();
+
+      // Le serveur refuse au-delà de 6 Mo, et il a raison : chaque client
+      // télécharge cette carte. Mieux vaut le dire ici, en clair, que de
+      // laisser remonter un message de base de données.
+      const octets = new Blob([window.Contenu.fichier(brouillon)]).size;
+      if (octets > 5_500_000) {
+        publication = false;
+        toast(
+          "Trop lourd pour être publié (" + (octets / 1048576).toFixed(1) +
+            " Mo, maximum 5,5). Retirez des pages, ou confiez-moi le PDF : " +
+            "je le convertis en pages dix fois plus légères."
+        );
+        return;
+      }
 
       if (window.Serveur && Serveur.actif() && Serveur.session()) {
         btn.classList.add("is-loading");

@@ -50,6 +50,10 @@ window.Contenu = (function () {
     }
   }
 
+  /* On garde la ligne entière — `maj_le` compris — et non les seules
+     données : c'est cette colonne, écrite par le serveur, qui sert de
+     repère pour savoir si la carte a changé. La date rangée dans les
+     données, elle, vient du navigateur du gérant et ne coïncide pas. */
   function cache(valeur) {
     try {
       if (valeur === undefined) {
@@ -66,10 +70,14 @@ window.Contenu = (function () {
   /** La carte publiée sur le serveur, ou la dernière connue. */
   async function lireDistant(opts) {
     if (opts.ignorerDistant || !window.Serveur || !Serveur.actif()) return null;
+    const garde = cache();
     try {
-      const ligne = await Serveur.lireContenu(opts.delaiServeur);
+      const ligne = await Serveur.lireContenu(opts.delaiServeur, garde && garde.maj_le);
+      // Rien n'a bougé depuis la dernière visite : on garde ce qu'on a, et
+      // les mégaoctets de la carte ne repassent pas sur le réseau.
+      if (ligne && ligne.inchange && garde) return garde.donnees;
       if (ligne && ligne.donnees) {
-        cache(ligne.donnees);
+        cache({ maj_le: ligne.maj_le, donnees: ligne.donnees });
         return ligne.donnees;
       }
       // Le serveur répond, mais rien n'a jamais été publié : le cache
@@ -79,7 +87,7 @@ window.Contenu = (function () {
     } catch (_) {
       // Serveur injoignable ou trop lent : la dernière version reçue vaut
       // mieux qu'une carte périmée du dépôt.
-      return cache();
+      return garde && garde.donnees;
     }
   }
 

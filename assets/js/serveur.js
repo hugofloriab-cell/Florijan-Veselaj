@@ -150,17 +150,32 @@ window.Serveur = (function () {
       return reponse(r);
     },
 
-    /** La carte publiée. Lecture ouverte : les clients doivent la voir. */
-    async lireContenu(delai) {
+    /** La carte publiée. Lecture ouverte : les clients doivent la voir.
+     *
+     * `connuLe` évite le gros du trafic : on demande d'abord la seule date
+     * de publication, et le contenu n'est retéléchargé que s'il a changé.
+     * Une carte importée depuis le panneau pèse plusieurs mégaoctets — la
+     * redemander à chaque ouverture coûterait cher au client comme au
+     * forfait du restaurant. */
+    async lireContenu(delai, connuLe) {
       // Un serveur lent ne doit pas retenir l'ouverture de la carte : au-delà
       // du délai, on rend la main et l'application se rabat sur ce qu'elle a.
       const stop = new AbortController();
       const minuteur = setTimeout(() => stop.abort(), delai || 2500);
+      const url = base() + "/rest/v1/contenu?id=eq.carte&select=";
       try {
-        const r = await fetch(
-          base() + "/rest/v1/contenu?id=eq.carte&select=donnees,maj_le",
-          { headers: enTetes(false), signal: stop.signal, cache: "no-store" }
-        );
+        if (connuLe) {
+          const r = await fetch(url + "maj_le", {
+            headers: enTetes(false), signal: stop.signal, cache: "no-store"
+          });
+          const l = await reponse(r);
+          const ligne = l && l[0];
+          if (!ligne) return null;
+          if (ligne.maj_le === connuLe) return { inchange: true, maj_le: connuLe };
+        }
+        const r = await fetch(url + "donnees,maj_le", {
+          headers: enTetes(false), signal: stop.signal, cache: "no-store"
+        });
         const lignes = await reponse(r);
         return (lignes && lignes[0]) || null;
       } finally {

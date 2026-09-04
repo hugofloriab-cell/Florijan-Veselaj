@@ -94,6 +94,13 @@
     if (r.phone) {
       rows.push([T("infos.telephone", "Téléphone"), r.phone, "tel:" + r.phone.replace(/\s/g, "")]);
     }
+    if (r.hotel && (r.hotel.name || r.hotel.url)) {
+      rows.push([
+        T("infos.hotel", "Notre hôtel"),
+        r.hotel.name || r.hotel.url,
+        r.hotel.url || null
+      ]);
+    }
     if (r.wifi) {
       rows.push([T("infos.wifi", "Wi-Fi"),
                  r.wifi.ssid + " — " + T("infos.motDePasse", "mot de passe") + " : " + r.wifi.password,

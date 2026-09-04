@@ -13,10 +13,14 @@ window.APP_CONFIG = {
     // Initiales de secours, si le logo ne se charge pas
     monogram: "LT",
     logoUrl: "assets/img/logo-tilleuls.png",
-    // À compléter : l'adresse et le téléphone n'étaient pas sur la carte
+    // Adresse et téléphone de l'hôtel qui accueille le restaurant.
+    // Se règlent aussi depuis le panneau gérant, onglet Réglages.
     address: "",
     phone: "",
     hours: "Du lundi au dimanche · 19 h – 21 h",
+    // L'hôtel : son nom et le lien vers son site. Affichés dans
+    // « Informations pratiques », sous l'adresse.
+    hotel: { name: "Hôtel Ibis", url: "" },
     wifi: null // ex. { ssid: "...", password: "..." }
   },
 

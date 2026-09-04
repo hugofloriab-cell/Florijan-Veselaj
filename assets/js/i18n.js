@@ -172,6 +172,7 @@ window.I18n = (function () {
     "infos.adresse": ["Adresse", "Address"],
     "infos.telephone": ["Téléphone", "Phone"],
     "infos.wifi": ["Wi-Fi", "Wi-Fi"],
+    "infos.hotel": ["Notre hôtel", "Our hotel"],
     "infos.motDePasse": ["mot de passe", "password"],
     "infos.telecharger": ["Télécharger le PDF", "Download the PDF"],
 
