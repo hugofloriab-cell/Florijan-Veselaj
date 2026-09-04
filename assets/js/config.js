@@ -19,7 +19,9 @@ window.APP_CONFIG = {
     // Se règlent aussi depuis le panneau gérant, onglet Réglages.
     address: "",
     phone: "",
-    hours: "Du lundi au dimanche · 19 h – 21 h",
+    // Repris de la couverture de la carte d'automne 2026
+    hours: "Septembre : du lundi au dimanche · 19 h – 21 h · Octobre : du lundi au vendredi",
+    hoursEn: "September: Monday to Sunday · 7 pm – 9 pm · October: Monday to Friday",
     // L'hôtel : son nom et le lien vers son site. Affichés dans
     // « Informations pratiques », sous l'adresse.
     hotel: { name: "Hôtel Ibis", url: "" },
@@ -76,28 +78,32 @@ window.APP_CONFIG = {
      *
      * Une page A4 réduite à la largeur d'un téléphone ramène les prix à
      * 7 px : lisibles de justesse, pénibles à table. Cadrer la colonne de
-     * texte les remonte à 11–12 px, la taille d'un texte de site — sans
-     * toucher à la maquette, puisque le client revient à la page entière
-     * d'une seule touche.
+     * texte les remonte — sans toucher à la maquette, puisque le client
+     * revient à la page entière d'une seule touche.
      *
-     * Les valeurs viennent des boîtes de texte du PDF (outils/bandes.py) :
-     * la maquette alterne les colonnes — photos à gauche page 2, à droite
-     * page 3, deux colonnes page 4 — et un cadrage unique couperait un nom
-     * de plat sur deux. `defaut` sert aux cartes importées depuis le
-     * panneau gérant, dont on ne connaît pas la maquette.
+     * Les valeurs viennent des boîtes de texte du PDF (outils/bandes.py),
+     * page par page : la maquette alterne les colonnes — photos à gauche
+     * page 2, à droite page 3 — et un cadrage unique couperait un nom de
+     * plat sur deux. Le nom d'un plat et son prix tiennent toujours
+     * ensemble à l'écran : les pages à colonne étroite y gagnent un fort
+     * agrandissement, celles qui étalent leurs lignes d'un bord à l'autre
+     * (les vins, les bières) un plus modeste, mais gardent leurs prix.
+     *
+     * `defaut` sert aux cartes importées depuis le panneau gérant, dont on
+     * ne connaît pas la maquette.
      */
     lecture: {
       defaut: { part: 0.62, centre: 0.5 },
       pages: [
-        { part: 0.62, centre: 0.421 },
+        { part: 0.787, centre: 0.497 },
         { part: 0.544, centre: 0.644 },
-        { part: 0.62, centre: 0.39 },
-        { part: 0.62, centre: 0.39 },
-        { part: 0.62, centre: 0.39 },
-        { part: 0.62, centre: 0.39 },
-        { part: 0.62, centre: 0.39 },
-        { part: 0.62, centre: 0.42 },
-        { part: 0.62, centre: 0.39 }
+        { part: 0.862, centre: 0.511 },
+        { part: 0.861, centre: 0.511 },
+        { part: 0.862, centre: 0.511 },
+        { part: 0.831, centre: 0.496 },
+        { part: 0.831, centre: 0.496 },
+        { part: 0.773, centre: 0.496 },
+        { part: 0.837, centre: 0.499 }
       ]
     },
 

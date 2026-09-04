@@ -16,12 +16,13 @@ import cv2
 import fitz
 import numpy as np
 
+ICI = os.path.dirname(os.path.abspath(__file__))
 U = "/root/.claude/uploads/eb973e87-7c35-50ce-8874-e9267b19fddb/"
 SOURCES = {
-    "fr": U + "3cae6e3c-Carte_Les_Tilleuls_Automne_2026.pdf",
-    "en": U + "561411c6-Les_Tilleuls_Autumn_Menu_2026_EN.pdf",
+    "fr": U + "84455ab2-Carte_Les_Tilleuls_Automne_2026.pdf",
+    "en": U + "200304f2-Les_Tilleuls_Autumn_Menu_2026_EN.pdf",
 }
-OUT = "/home/user/Florijan-Veselaj/assets/menu"
+OUT = os.path.join(os.path.dirname(ICI), "assets", "menu")
 LARGEUR = 1800
 QUALITE = 82
 

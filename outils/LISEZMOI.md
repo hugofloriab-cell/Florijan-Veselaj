@@ -33,10 +33,17 @@ python3 bandes.py    # affiche les tableaux à coller dans config.js
 ```
 
 Le résultat va dans `menu.lecture.pages` de `assets/js/config.js`. La
-maquette alterne les colonnes — photos à gauche page 2, à droite page 3,
-deux colonnes page 4 — et un cadrage unique couperait un nom de plat sur
-deux. `menu.lecture.defaut` sert aux cartes déposées depuis le panneau
-gérant, dont on ne connaît pas la maquette.
+maquette alterne les colonnes — photos à gauche page 2, à droite page 3 —
+et un cadrage unique couperait un nom de plat sur deux. La règle : ne
+jamais cadrer plus serré que la ligne la plus large de la page, pour qu'un
+nom de plat et son prix tiennent toujours ensemble à l'écran. Un prix
+qu'on ne peut pas rattacher à un plat ne sert à rien. Les pages à colonne
+étroite (les entrées, les plats) y gagnent un fort agrandissement ; celles
+qui étalent leurs lignes d'un bord à l'autre (les vins, les bières) un
+plus modeste, mais gardent leurs prix à l'écran.
+
+`menu.lecture.defaut` sert aux cartes déposées depuis le panneau gérant,
+dont on ne connaît pas la maquette.
 
 Pour que les prix soient lisibles **sans que le client ait à agrandir**, il
 faudrait que le PDF lui-même soit dessiné au format d'un téléphone (page

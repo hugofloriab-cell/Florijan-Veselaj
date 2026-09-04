@@ -91,7 +91,8 @@
     const T = (cle, secours) => (window.I18n ? I18n.T(cle, secours) : secours);
     const list = document.getElementById("infoList");
     const rows = [];
-    if (r.hours) rows.push([T("infos.horaires", "Horaires"), r.hours, null]);
+    const horaires = (anglais && r.hoursEn) || r.hours;
+    if (horaires) rows.push([T("infos.horaires", "Horaires"), horaires, null]);
     if (r.address) {
       rows.push([T("infos.adresse", "Adresse"), r.address,
                  "https://maps.google.com/?q=" + encodeURIComponent(r.address)]);
