@@ -56,13 +56,19 @@ window.Contenu = (function () {
   const estImportee = (src) => typeof src === "string" && src.startsWith("data:");
 
   /**
-   * Retire d'une surcouche les listes de pages qui ne sont que des chemins.
+   * Retire d'une surcouche ce qui décrit la carte livrée avec le code.
    *
-   * Sans cela, publier gèle la carte telle qu'elle était dans le navigateur
-   * du gérant, et cette copie l'emporte ensuite sur le code : une nouvelle
-   * carte livrée par mise à jour resterait invisible, et les clients
-   * verraient indéfiniment l'ancienne. Le gérant publie ses réglages, pas
-   * les fichiers de l'application.
+   * Les listes de pages qui ne sont que des chemins, d'abord : sans cela,
+   * publier gèle la carte telle qu'elle était dans le navigateur du gérant,
+   * et cette copie l'emporte ensuite sur le code — une nouvelle carte
+   * livrée par mise à jour resterait invisible, et les clients verraient
+   * indéfiniment l'ancienne.
+   *
+   * Le cadrage de lecture ensuite, pour la même raison : il est mesuré page
+   * par page sur le PDF livré, il ne décrit que celui-là. Publié, il
+   * survivrait à la carte qu'il décrit et cadrerait de travers la suivante.
+   *
+   * Le gérant publie ses réglages, pas les fichiers de l'application.
    */
   function nettoyer(surcouche) {
     if (!surcouche) return surcouche;
@@ -72,6 +78,7 @@ window.Contenu = (function () {
       const liste = c.menu[cle];
       if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
     });
+    delete c.menu.lecture;
     return surcouche;
   }
 
@@ -172,8 +179,11 @@ window.Contenu = (function () {
 
     /** La configuration telle qu'elle doit être publiée.
      *
-     * Les pages livrées avec le code en sont retirées : elles ne sont pas
-     * un réglage du gérant, et les publier les figerait pour tout le monde.
+     * Les pages livrées avec le code et leur cadrage de lecture en sont
+     * retirés : ce ne sont pas des réglages du gérant, et les publier les
+     * figerait pour tout le monde. Voir `nettoyer`, qui applique la même
+     * règle en lecture — une publication faite avant cette règle ne peut
+     * donc plus nuire.
      */
     pourPublication(config) {
       const c = JSON.parse(JSON.stringify(config));
@@ -182,6 +192,7 @@ window.Contenu = (function () {
           const liste = c.menu[cle];
           if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
         });
+        delete c.menu.lecture;
       }
       return c;
     },
