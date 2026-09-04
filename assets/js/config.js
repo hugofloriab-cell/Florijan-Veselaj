@@ -46,7 +46,21 @@ window.APP_CONFIG = {
     // anglais. Tant qu'elle est vide, ces clients voient la carte
     // française : mieux vaut une carte qu'ils lisent à moitié qu'un
     // livret vide. Se remplit depuis le panneau gérant, onglet « English ».
-    imagesEn: [],
+    imagesEn: [
+      "assets/menu/tilleuls-en-1.svg",
+      "assets/menu/tilleuls-en-2.svg",
+      "assets/menu/tilleuls-en-3.svg",
+      "assets/menu/tilleuls-en-4.svg",
+      "assets/menu/tilleuls-en-5.svg",
+      "assets/menu/tilleuls-en-6.svg",
+      "assets/menu/tilleuls-en-7.svg",
+      "assets/menu/tilleuls-en-8.svg",
+      "assets/menu/tilleuls-en-9.svg",
+      "assets/menu/tilleuls-en-10.svg",
+      "assets/menu/tilleuls-en-11.svg",
+      "assets/menu/tilleuls-en-12.svg",
+      "assets/menu/tilleuls-en-13.svg"
+    ],
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
     // Où charger PDF.js (utile uniquement si type = "pdf").
@@ -89,9 +103,9 @@ window.APP_CONFIG = {
     // Trois suggestions, reprises telles quelles de la carte
     picks: [
       {
-        nom: "Moelleux chocolat cœur coulant",
+        nom: "Cœur coulant au chocolat",
         prix: "9,00 €",
-        note: "Chantilly et éclats de noisettes"
+        note: "Crème fouettée sucrée et éclats de noisettes"
       },
       {
         nom: "Tarte fine aux pommes tiède",
@@ -100,7 +114,7 @@ window.APP_CONFIG = {
       },
       {
         nom: "Crémeux vanille et poire pochée",
-        prix: "8,00 €",
+        prix: "9,00 €",
         note: "Poire au vin épicé et croustillant spéculoos"
       }
     ],
@@ -112,28 +126,28 @@ window.APP_CONFIG = {
       lead: "Our desserts are made in-house, fresh each day.",
       picks: [
         {
-          nom: "Warm chocolate fondant",
-          prix: "9,00 €",
-          note: "Whipped cream and crushed hazelnuts"
+          nom: "Chocolate fondant",
+          prix: "9.00 €",
+          note: "Sweetened whipped cream and hazelnut pieces"
         },
         {
           nom: "Warm thin apple tart",
-          prix: "9,00 €",
-          note: "Salted butter caramel ice cream"
+          prix: "9.00 €",
+          note: "Salted caramel ice cream"
         },
         {
-          nom: "Vanilla cream with poached pear",
-          prix: "8,00 €",
-          note: "Pear in spiced wine, speculoos crumble"
+          nom: "Vanilla cream and poached pear",
+          prix: "9.00 €",
+          note: "Pear poached in spiced wine and speculoos crumble"
         }
       ],
       notifTitle: "And to finish?",
-      notifBody: "Warm chocolate fondant, thin apple tart… Tap to see the desserts."
+      notifBody: "Chocolate fondant, warm thin apple tart… Tap to see the desserts."
     },
     // Texte de la notification, si le client a quitté l'onglet
     notifTitle: "Et pour finir ?",
     notifBody:
-      "Moelleux chocolat cœur coulant, tarte fine aux pommes tiède… " +
+      "Cœur coulant au chocolat, tarte fine aux pommes tiède… " +
       "Touchez pour voir les desserts."
   },
 
