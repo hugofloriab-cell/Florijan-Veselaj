@@ -426,6 +426,8 @@
       '<button type="button">' + echapper(I18n.T("ui.apercuRevenir", "Revenir")) + "</button>";
     bar.querySelector("button").addEventListener("click", () => {
       Contenu.supprimerLocal();
+      // L'aperçu a pu forcer la langue : on rend la main au téléphone.
+      if (window.I18n) I18n.oublier();
       location.reload();
     });
     document.body.insertBefore(bar, document.body.firstChild);

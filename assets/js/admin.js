@@ -667,13 +667,9 @@
 
     document.getElementById("apercuStop").addEventListener("click", () => {
       window.Contenu.supprimerLocal();
-      try {
-        // L'aperçu anglais a pu forcer la langue : on rend la main au
-        // téléphone, sinon le gérant resterait bloqué en anglais.
-        localStorage.removeItem("resto-langue");
-      } catch (_) {
-        /* rien à défaire */
-      }
+      // L'aperçu anglais a pu forcer la langue : on rend la main au
+      // téléphone, sinon le gérant resterait bloqué en anglais.
+      if (window.I18n) I18n.oublier();
       document.getElementById("apercuStop").hidden = true;
       toast("Aperçu annulé. Rechargez la carte pour revoir la version publiée.");
     });
@@ -684,11 +680,7 @@
       lireFormulaire();
       await appliquerMotDePasse();
       window.Contenu.enregistrerLocal(brouillon);
-      try {
-        localStorage.setItem("resto-langue", "en");
-      } catch (_) {
-        /* stockage refusé : la carte s'ouvrira dans la langue du téléphone */
-      }
+      if (window.I18n) I18n.apercu("en");
       document.getElementById("apercuStop").hidden = false;
       toast("Aperçu anglais actif. Ouvrez la carte pour le voir.");
       majPoids();
@@ -722,7 +714,7 @@
         btn.classList.add("is-loading");
         btn.textContent = "Publication…";
         try {
-          await Serveur.publierContenu(brouillon);
+          await Serveur.publierContenu(window.Contenu.pourPublication(brouillon));
           // L'aperçu local ferait écran à ce qu'on vient de publier :
           // il n'a plus de raison d'être.
           window.Contenu.supprimerLocal();

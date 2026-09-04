@@ -50,6 +50,31 @@ window.Contenu = (function () {
     }
   }
 
+  /* Une page importée depuis le panneau est une image embarquée
+     (« data:… ») ; une page livrée avec le code est un chemin de fichier.
+     Seules les premières appartiennent au gérant. */
+  const estImportee = (src) => typeof src === "string" && src.startsWith("data:");
+
+  /**
+   * Retire d'une surcouche les listes de pages qui ne sont que des chemins.
+   *
+   * Sans cela, publier gèle la carte telle qu'elle était dans le navigateur
+   * du gérant, et cette copie l'emporte ensuite sur le code : une nouvelle
+   * carte livrée par mise à jour resterait invisible, et les clients
+   * verraient indéfiniment l'ancienne. Le gérant publie ses réglages, pas
+   * les fichiers de l'application.
+   */
+  function nettoyer(surcouche) {
+    if (!surcouche) return surcouche;
+    const c = surcouche.config || surcouche;
+    if (!c || !c.menu) return surcouche;
+    ["images", "imagesEn"].forEach((cle) => {
+      const liste = c.menu[cle];
+      if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
+    });
+    return surcouche;
+  }
+
   /* On garde la ligne entière — `maj_le` compris — et non les seules
      données : c'est cette colonne, écrite par le serveur, qui sert de
      repère pour savoir si la carte a changé. La date rangée dans les
@@ -100,12 +125,13 @@ window.Contenu = (function () {
         // `no-store` : sans cela, une carte mise à jour resterait invisible
         // derrière le cache du navigateur.
         const r = await fetch(FICHIER, { cache: "no-store" });
-        if (r.ok) publie = await r.json();
+        if (r.ok) publie = nettoyer(await r.json());
       } catch (_) {
         publie = null; // fichier absent (cas normal) ou hors ligne
       }
 
-      distant = await lireDistant(opts);
+      distant = nettoyer(await lireDistant(opts));
+      // L'aperçu du gérant garde ses pages importées : c'est tout son objet.
       local = opts.ignorerLocal ? null : lireLocal();
 
       let cfg = window.APP_CONFIG;
@@ -141,9 +167,29 @@ window.Contenu = (function () {
     publie: () => publie,
     distant: () => distant,
 
+    /** La configuration telle qu'elle doit être publiée.
+     *
+     * Les pages livrées avec le code en sont retirées : elles ne sont pas
+     * un réglage du gérant, et les publier les figerait pour tout le monde.
+     */
+    pourPublication(config) {
+      const c = JSON.parse(JSON.stringify(config));
+      if (c.menu) {
+        ["images", "imagesEn"].forEach((cle) => {
+          const liste = c.menu[cle];
+          if (Array.isArray(liste) && !liste.some(estImportee)) delete c.menu[cle];
+        });
+      }
+      return c;
+    },
+
     /** Contenu du fichier à déposer chez l'hébergeur. */
     fichier(config) {
-      return JSON.stringify({ majLe: new Date().toISOString(), config: config }, null, 2);
+      return JSON.stringify(
+        { majLe: new Date().toISOString(), config: this.pourPublication(config) },
+        null,
+        2
+      );
     }
   };
 })();

@@ -17,6 +17,12 @@
 
 window.I18n = (function () {
   const CLE = "resto-langue";
+  // L'aperçu du gérant force la langue, mais avec une échéance : il doit
+  // traverser les onglets — on prévisualise ici, on ouvre la carte là —
+  // sans pouvoir enfermer durablement l'appareil dans une langue qu'on n'a
+  // pas choisie. Deux heures suffisent à vérifier une carte.
+  const CLE_APERCU = "resto-langue-apercu";
+  const DUREE_APERCU = 2 * 3600 * 1000;
   const LANGUES = ["fr", "en"];
 
   const DICO = {
@@ -192,6 +198,9 @@ window.I18n = (function () {
 
   function detecter() {
     try {
+      const a = JSON.parse(localStorage.getItem(CLE_APERCU) || "null");
+      if (a && a.expire > Date.now() && LANGUES.includes(a.langue)) return a.langue;
+      if (a) localStorage.removeItem(CLE_APERCU);
       const choisi = localStorage.getItem(CLE);
       if (LANGUES.includes(choisi)) return choisi;
     } catch (_) {
@@ -244,6 +253,8 @@ window.I18n = (function () {
     basculer(vers) {
       langue = LANGUES.includes(vers) ? vers : langue === "en" ? "fr" : "en";
       try {
+        // Un choix explicite l'emporte sur un aperçu resté en place.
+        localStorage.removeItem(CLE_APERCU);
         localStorage.setItem(CLE, langue);
       } catch (_) {
         /* le choix ne survivra pas à la fermeture, tant pis */
@@ -251,6 +262,28 @@ window.I18n = (function () {
       appliquerDOM();
       document.dispatchEvent(new CustomEvent("langue:change", { detail: langue }));
       return langue;
+    },
+
+    /** Force la langue pour l'aperçu du gérant, sans la graver. */
+    apercu(vers) {
+      try {
+        localStorage.setItem(
+          CLE_APERCU,
+          JSON.stringify({ langue: vers, expire: Date.now() + DUREE_APERCU })
+        );
+      } catch (_) {
+        /* sans stockage, l'aperçu suivra la langue du téléphone */
+      }
+    },
+
+    /** Rend la main au téléphone : ni aperçu, ni choix mémorisé. */
+    oublier() {
+      try {
+        localStorage.removeItem(CLE_APERCU);
+        localStorage.removeItem(CLE);
+      } catch (_) {
+        /* rien à défaire */
+      }
     },
 
     appliquerDOM
