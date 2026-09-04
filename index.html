@@ -32,13 +32,20 @@
   </div>
 
   <div class="topbar__actions">
-    <button class="icon-btn" id="fsBtn" type="button" aria-label="Plein écran" hidden>
+    <button class="icon-btn icon-btn--lang" id="langBtn" type="button"
+            data-t="nav.langueTitre" data-t-attr="aria-label">
+      <span id="langLabel" data-t="nav.langue">English</span>
+    </button>
+    <button class="icon-btn" id="fsBtn" type="button" aria-label="Plein écran"
+            data-t="nav.pleinEcran" data-t-attr="aria-label" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
     </button>
-    <button class="icon-btn" id="infoBtn" type="button" aria-label="Informations pratiques">
+    <button class="icon-btn" id="infoBtn" type="button" aria-label="Informations pratiques"
+            data-t="nav.infos" data-t-attr="aria-label">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.6"/></svg>
     </button>
-    <button class="icon-btn icon-btn--accent" id="reviewBtn" type="button" aria-label="Laisser un avis">
+    <button class="icon-btn icon-btn--accent" id="reviewBtn" type="button" aria-label="Laisser un avis"
+            data-t="nav.avis" data-t-attr="aria-label">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z"/></svg>
     </button>
   </div>
@@ -50,7 +57,7 @@
     <div id="flipbook"></div>
     <p class="hint" id="swipeHint">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h9M14 8l4 4-4 4"/></svg>
-      Glissez pour tourner · double-tapez pour zoomer
+      <span data-t="carte.indice">Glissez pour tourner · double-tapez pour zoomer</span>
     </p>
   </section>
 </main>
@@ -59,8 +66,8 @@
 <button class="countdown" id="countdown" type="button" hidden>
   <span class="countdown__ring"><span class="countdown__fill" id="countdownFill"></span></span>
   <span class="countdown__text">
-    <strong>Rappel dans <span id="countdownTime">--:--</span></strong>
-    <small>Touchez pour donner votre avis maintenant</small>
+    <strong><span data-t="rappel.dans">Rappel dans</span> <span id="countdownTime">--:--</span></strong>
+    <small data-t="rappel.toucher">Touchez pour donner votre avis maintenant</small>
   </span>
   <span class="countdown__close" id="countdownCancel" role="button" tabindex="0" aria-label="Annuler le rappel">✕</span>
 </button>
@@ -77,28 +84,30 @@
       <svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0-6 6c0 3.6-1.2 5-2 6h16c-.8-1-2-2.4-2-6a6 6 0 0 0-6-6zM10 19a2 2 0 0 0 4 0"/></svg>
     </div>
 
-    <h2 id="reminderTitle">Bon appétit&nbsp;!</h2>
-    <p class="modal__text">
+    <h2 id="reminderTitle" data-t="rappel.titre">Bon appétit&nbsp;!</h2>
+    <p class="modal__text" data-t="rappel.texte">
       Souhaitez-vous qu'on vous propose de laisser un avis un peu plus tard,
       une fois votre repas terminé&nbsp;?
     </p>
 
     <fieldset class="delays" id="delays">
-      <legend class="sr-only">Choisir un délai</legend>
+      <legend class="sr-only" data-t="rappel.choisir">Choisir un délai</legend>
       <!-- rempli par app.js -->
     </fieldset>
 
-    <p class="modal__note" id="permNote" hidden>
+    <p class="modal__note" id="permNote" data-t="rappel.note" hidden>
       Nous vous enverrons une notification&nbsp;: gardez simplement cette page
       ouverte. Sans autorisation, un minuteur reste affiché dans l'application.
     </p>
 
     <div class="modal__actions">
       <button class="btn btn--primary" id="reminderConfirm" type="button" disabled>
-        Me rappeler dans <span id="reminderConfirmDelay">15 min</span>
+        <span data-t="rappel.valider">Me rappeler dans</span> <span id="reminderConfirmDelay">15 min</span>
       </button>
-      <button class="btn btn--ghost" id="reminderNow" type="button">Donner mon avis tout de suite</button>
-      <button class="btn btn--quiet" id="reminderSkip" type="button">Non merci</button>
+      <button class="btn btn--ghost" id="reminderNow" type="button"
+              data-t="rappel.maintenant">Donner mon avis tout de suite</button>
+      <button class="btn btn--quiet" id="reminderSkip" type="button"
+              data-t="rappel.non">Non merci</button>
     </div>
   </div>
 </div>
@@ -109,13 +118,14 @@
   <div class="sheet__inner">
     <header class="sheet__head">
       <span class="modal__grip" aria-hidden="true"></span>
-      <button class="sheet__close" id="reviewClose" type="button" aria-label="Fermer">✕</button>
+      <button class="sheet__close" id="reviewClose" type="button" aria-label="Fermer"
+              data-t="avis.fermer" data-t-attr="aria-label">✕</button>
     </header>
 
     <!-- Étape 1 : le formulaire -->
     <div data-step="form">
-      <h2 id="reviewTitle">Votre avis compte</h2>
-      <p class="sheet__lead">Comment s'est passé votre moment chez nous&nbsp;?</p>
+      <h2 id="reviewTitle" data-t="avis.titre">Votre avis compte</h2>
+      <p class="sheet__lead" data-t="avis.accroche">Comment s'est passé votre moment chez nous&nbsp;?</p>
 
       <form id="reviewForm" novalidate>
         <div class="stars" id="stars" role="radiogroup" aria-label="Note de 1 à 5 étoiles">
@@ -135,54 +145,57 @@
             <svg viewBox="0 0 24 24"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.2 1 6-5.35-2.8-5.35 2.8 1-6L3.3 9.9l6-.9z"/></svg>
           </button>
         </div>
-        <p class="rating-label" id="ratingLabel">Touchez une étoile pour noter</p>
+        <p class="rating-label" id="ratingLabel" data-t="avis.noter">Touchez une étoile pour noter</p>
         <p class="route-hint" id="routeHint" hidden></p>
 
         <label class="field">
-          <span class="field__label">Votre commentaire <em>(facultatif)</em></span>
+          <span class="field__label"><span data-t="avis.commentaire">Votre commentaire</span> <em data-t="avis.facultatif">(facultatif)</em></span>
           <textarea id="comment" rows="4" maxlength="1200"
-                    placeholder="Le plat, l'accueil, l'ambiance… dites-nous tout."></textarea>
+                    placeholder="Le plat, l'accueil, l'ambiance… dites-nous tout."
+                    data-t="avis.commentairePlaceholder" data-t-attr="placeholder"></textarea>
         </label>
 
         <div class="field">
-          <span class="field__label">Une photo de votre plat&nbsp;? <em>(facultatif)</em></span>
+          <span class="field__label"><span data-t="avis.photo">Une photo de votre plat&nbsp;?</span> <em data-t="avis.facultatif">(facultatif)</em></span>
 
           <div class="photo-buttons" id="photoButtons">
             <label class="photo-btn">
               <input type="file" id="photoCamera" accept="image/*" capture="environment" hidden>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.2"/></svg>
-              Prendre une photo
+              <span data-t="avis.photoAppareil">Prendre une photo</span>
             </label>
             <label class="photo-btn">
               <input type="file" id="photoGallery" accept="image/*" hidden>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M4 16l4.5-4.5 3.5 3.5 3-3L20 16"/><circle cx="9" cy="9" r="1.4"/></svg>
-              Depuis ma galerie
+              <span data-t="avis.photoGalerie">Depuis ma galerie</span>
             </label>
           </div>
 
           <div class="photo-preview" id="photoPreview" hidden>
             <img id="photoPreviewImg" alt="Aperçu de la photo jointe">
-            <button class="photo-remove" id="photoRemove" type="button" aria-label="Retirer la photo">✕</button>
+            <button class="photo-remove" id="photoRemove" type="button" aria-label="Retirer la photo"
+                    data-t="avis.photoRetirer" data-t-attr="aria-label">✕</button>
           </div>
           <p class="field__error" id="photoError" role="alert"></p>
         </div>
 
         <details class="extra">
-          <summary>Informations complémentaires (facultatif)</summary>
+          <summary data-t="avis.complement">Informations complémentaires (facultatif)</summary>
           <label class="field">
-            <span class="field__label">Numéro de table</span>
+            <span class="field__label" data-t="avis.table">Numéro de table</span>
             <input type="text" id="tableNo" inputmode="numeric" maxlength="10" placeholder="Ex. 12">
           </label>
           <label class="field">
-            <span class="field__label">Pour être recontacté</span>
-            <input type="text" id="contact" maxlength="120" placeholder="E-mail ou téléphone">
+            <span class="field__label" data-t="avis.contact">Pour être recontacté</span>
+            <input type="text" id="contact" maxlength="120" placeholder="E-mail ou téléphone"
+                   data-t="avis.contactPlaceholder" data-t-attr="placeholder">
           </label>
         </details>
 
         <button class="btn btn--primary btn--block" id="reviewSubmit" type="submit" disabled>
-          Envoyer mon avis
+          <span data-t="avis.envoyer">Envoyer mon avis</span>
         </button>
-        <p class="legal">
+        <p class="legal" data-t="avis.mentions">
           Vos informations restent chez le restaurant. Aucune donnée n'est
           revendue ni publiée sans votre action.
         </p>
@@ -195,8 +208,8 @@
         <div class="result__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M12 3.5l2.7 5.5 6 .9-4.35 4.2 1 6-5.35-2.8-5.35 2.8 1-6L3.3 9.9l6-.9z"/></svg>
         </div>
-        <h2>Merci beaucoup&nbsp;!</h2>
-        <p class="sheet__lead">
+        <h2 data-t="avis.merci">Merci beaucoup&nbsp;!</h2>
+        <p class="sheet__lead" data-t="avis.merciTexte">
           Votre retour nous fait très plaisir. Partagez-le en public&nbsp;: c'est
           ce qui aide le plus une maison comme la nôtre.
         </p>
@@ -205,15 +218,17 @@
       <div class="platforms" id="platforms"></div>
 
       <div class="copy-row" id="copyRow" hidden>
-        <button class="btn btn--ghost btn--block" id="copyBtn" type="button">Copier mon commentaire</button>
-        <small>Vous n'aurez plus qu'à le coller sur la plateforme choisie.</small>
+        <button class="btn btn--ghost btn--block" id="copyBtn" type="button"
+                data-t="avis.copier">Copier mon commentaire</button>
+        <small data-t="avis.collerAilleurs">Vous n'aurez plus qu'à le coller sur la plateforme choisie.</small>
       </div>
-      <p class="legal" id="publicPhotoHint" hidden>
+      <p class="legal" id="publicPhotoHint" data-t="avis.photoNonTransmise" hidden>
         Pensez à joindre votre photo directement sur la plateforme, elle
         n'est pas transférée automatiquement.
       </p>
 
-      <button class="btn btn--quiet btn--block" data-close-sheet type="button">Plus tard</button>
+      <button class="btn btn--quiet btn--block" data-close-sheet type="button"
+              data-t="avis.plusTard">Plus tard</button>
     </div>
 
     <!-- Étape 2b : note < seuil → conservation interne -->
@@ -222,17 +237,18 @@
         <div class="result__icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-3.2-6.4"/><path d="M9 12l2.2 2.2L20 6"/></svg>
         </div>
-        <h2>Merci de votre franchise</h2>
-        <p class="sheet__lead">
+        <h2 data-t="avis.merciFranchise">Merci de votre franchise</h2>
+        <p class="sheet__lead" data-t="avis.priveTexte">
           Votre message vient d'être transmis <strong>directement au gérant</strong>,
           en privé. Il n'est publié nulle part.
         </p>
-        <p class="sheet__lead">
+        <p class="sheet__lead" data-t="avis.priveSuite">
           C'est exactement ce genre de retour qui nous permet de corriger le tir.
           Nous en sommes sincèrement désolés et nous espérons vous revoir.
         </p>
       </div>
-      <button class="btn btn--primary btn--block" data-close-sheet type="button">Fermer</button>
+      <button class="btn btn--primary btn--block" data-close-sheet type="button"
+              data-t="avis.fermer">Fermer</button>
     </div>
   </div>
 </section>
@@ -242,11 +258,13 @@
   <div class="sheet__inner">
     <header class="sheet__head">
       <span class="modal__grip" aria-hidden="true"></span>
-      <button class="sheet__close" data-close-sheet type="button" aria-label="Fermer">✕</button>
+      <button class="sheet__close" data-close-sheet type="button" aria-label="Fermer"
+              data-t="avis.fermer" data-t-attr="aria-label">✕</button>
     </header>
-    <h2 id="infoTitle">Informations pratiques</h2>
+    <h2 id="infoTitle" data-t="infos.titre">Informations pratiques</h2>
     <ul class="info-list" id="infoList"></ul>
-    <button class="btn btn--quiet btn--block" data-close-sheet type="button">Fermer</button>
+    <button class="btn btn--quiet btn--block" data-close-sheet type="button"
+            data-t="avis.fermer">Fermer</button>
   </div>
 </section>
 
@@ -256,7 +274,8 @@
   <div class="sheet__inner">
     <header class="sheet__head">
       <span class="modal__grip" aria-hidden="true"></span>
-      <button class="sheet__close" data-close-sheet type="button" aria-label="Fermer">✕</button>
+      <button class="sheet__close" data-close-sheet type="button" aria-label="Fermer"
+              data-t="avis.fermer" data-t-attr="aria-label">✕</button>
     </header>
 
     <div class="dessert-photos" id="dessertFigure" hidden></div>
@@ -267,16 +286,17 @@
     <ul class="dessert-list" id="dessertList"></ul>
 
     <button class="btn btn--primary btn--block" id="dessertOpen" type="button">
-      Voir les desserts
+      <span data-t="dessert.voir">Voir les desserts</span>
     </button>
     <button class="btn btn--quiet btn--block" id="dessertLater" type="button">
-      Une autre fois
+      <span data-t="dessert.plusTard">Une autre fois</span>
     </button>
   </div>
 </section>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="assets/js/i18n.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/contenu.js"></script>
 <script src="assets/js/serveur.js"></script>

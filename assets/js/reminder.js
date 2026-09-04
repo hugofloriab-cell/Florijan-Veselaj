@@ -102,9 +102,14 @@ window.Reminder = (function () {
     }
   }
 
+  const T = (cle, secours) => (window.I18n ? I18n.T(cle, secours) : secours);
+
   function notify() {
     const nom = (window.APP_CONFIG && APP_CONFIG.restaurant.name) || "Votre restaurant";
-    return envoyer(nom, "Avez-vous une minute pour nous dire comment s'est passé votre repas ?");
+    return envoyer(
+      nom,
+      T("rappel.notifCorps", "Avez-vous une minute pour nous dire comment s'est passé votre repas ?")
+    );
   }
 
   function fire() {
@@ -199,12 +204,17 @@ window.Reminder = (function () {
       const cfg = window.APP_CONFIG && APP_CONFIG.reminder;
       let notifiable = false;
       if (!cfg || cfg.confirmNotification !== false) {
-        const heure = new Date(state.dueAt).toLocaleTimeString("fr-FR", {
+        const langue = window.I18n && I18n.estAnglais() ? "en-GB" : "fr-FR";
+        const heure = new Date(state.dueAt).toLocaleTimeString(langue, {
           hour: "2-digit",
           minute: "2-digit"
         });
         const nom = (window.APP_CONFIG && APP_CONFIG.restaurant.name) || "Votre restaurant";
-        notifiable = await envoyer(nom, `Rappel prévu vers ${heure}. Touchez pour laisser votre avis.`);
+        notifiable = await envoyer(
+          nom,
+          T("rappel.notifPrevu", "Rappel prévu vers") + " " + heure + ". " +
+            T("rappel.notifToucher", "Touchez pour laisser votre avis.")
+        );
       } else {
         const d = await this.diagnostic();
         notifiable = d.permission === "granted";

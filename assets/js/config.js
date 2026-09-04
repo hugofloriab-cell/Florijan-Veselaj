@@ -42,6 +42,11 @@ window.APP_CONFIG = {
       "assets/menu/tilleuls-12.svg",
       "assets/menu/tilleuls-13.svg"
     ],
+    // Version anglaise de la carte, servie aux téléphones réglés en
+    // anglais. Tant qu'elle est vide, ces clients voient la carte
+    // française : mieux vaut une carte qu'ils lisent à moitié qu'un
+    // livret vide. Se remplit depuis le panneau gérant, onglet « English ».
+    imagesEn: [],
     // Téléchargement du menu en PDF proposé au client (null = masqué)
     downloadUrl: null,
     // Où charger PDF.js (utile uniquement si type = "pdf").
@@ -101,6 +106,30 @@ window.APP_CONFIG = {
     ],
     // Une ou deux photos. Deux se placent côte à côte.
     images: ["assets/img/dessert-moelleux.jpg", "assets/img/dessert-tarte.jpg"],
+    // Version anglaise : seuls les textes changent, le reste est commun.
+    en: {
+      title: "Room for a little more?",
+      lead: "Our desserts are made in-house, fresh each day.",
+      picks: [
+        {
+          nom: "Warm chocolate fondant",
+          prix: "9,00 €",
+          note: "Whipped cream and crushed hazelnuts"
+        },
+        {
+          nom: "Warm thin apple tart",
+          prix: "9,00 €",
+          note: "Salted butter caramel ice cream"
+        },
+        {
+          nom: "Vanilla cream with poached pear",
+          prix: "8,00 €",
+          note: "Pear in spiced wine, speculoos crumble"
+        }
+      ],
+      notifTitle: "And to finish?",
+      notifBody: "Warm chocolate fondant, thin apple tart… Tap to see the desserts."
+    },
     // Texte de la notification, si le client a quitté l'onglet
     notifTitle: "Et pour finir ?",
     notifBody:

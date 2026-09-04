@@ -4,7 +4,7 @@
  *  • affiche la notification de rappel et rouvre l'application au clic
  * ------------------------------------------------------------------ */
 
-const CACHE = "resto-menu-v6";
+const CACHE = "resto-menu-v7";
 
 const PRECACHE = [
   "./",
@@ -13,6 +13,7 @@ const PRECACHE = [
   "./manifest.webmanifest",
   "./assets/css/styles.css",
   "./assets/css/admin.css",
+  "./assets/js/i18n.js",
   "./assets/js/config.js",
   "./assets/js/contenu.js",
   "./assets/contenu.json",

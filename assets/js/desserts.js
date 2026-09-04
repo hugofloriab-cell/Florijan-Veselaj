@@ -19,7 +19,12 @@ window.Desserts = (function () {
   let timer = null;
   let onFire = null;
 
-  const conf = () => (window.APP_CONFIG && window.APP_CONFIG.desserts) || {};
+  const conf = () => {
+    const c = (window.APP_CONFIG && window.APP_CONFIG.desserts) || {};
+    // `en` ne porte que les textes : le délai, la page et les photos
+    // valent pour les deux langues.
+    return window.I18n && I18n.estAnglais() && c.en ? Object.assign({}, c, c.en) : c;
+  };
   const actif = () => Number(conf().delay) > 0;
 
   function read() {

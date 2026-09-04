@@ -56,6 +56,7 @@
   <nav class="tabs" id="tabs">
     <button class="tab is-on" data-tab="avis" type="button">Avis</button>
     <button class="tab" data-tab="reglages" type="button">Réglages</button>
+    <button class="tab" data-tab="english" type="button">English</button>
   </nav>
 
   <div id="tabAvis">
@@ -183,6 +184,47 @@
       </div>
     </section>
   </div>
+
+  <!-- ================= CARTE ANGLAISE ================= -->
+  <div id="tabEnglish" hidden>
+    <section class="edit">
+      <h2>La carte en anglais</h2>
+      <p class="edit__intro">
+        Un client dont le téléphone est réglé en anglais — ou dans une langue
+        que nous ne connaissons pas — verra automatiquement cette carte, et
+        toute l'application dans sa langue. Tant qu'aucune carte anglaise
+        n'est déposée ici, il voit la carte française : mieux vaut une carte
+        qu'il lit à moitié qu'un livret vide.
+      </p>
+
+      <details class="bloc" open>
+        <summary>Les pages en anglais</summary>
+        <div class="bloc__corps">
+          <label class="depot" id="menuDropEn">
+            <input type="file" id="menuFilesEn" accept="image/*,application/pdf" multiple hidden>
+            <strong>Choisir un PDF ou des images</strong>
+            <small>Le PDF est découpé en pages automatiquement. Les images sont
+              redimensionnées. L'ordre suit celui de vos fichiers.</small>
+          </label>
+          <p class="edit__etat" id="menuEtatEn"></p>
+          <div class="pages" id="menuPagesEn"></div>
+        </div>
+      </details>
+
+      <div class="edit__actions">
+        <button class="btn btn--primary btn--block" id="apercuBtnEn" type="button">
+          Prévisualiser en anglais sur cet appareil
+        </button>
+        <button class="btn btn--ghost btn--block" id="publierBtnEn" type="button">
+          Publier pour tous les clients
+        </button>
+        <p class="edit__note">
+          Le bouton publie les deux cartes à la fois, française et anglaise :
+          c'est le même enregistrement.
+        </p>
+      </div>
+    </section>
+  </div>
 </div>
 
 <!-- Visionneuse photo -->
@@ -193,6 +235,7 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="assets/js/i18n.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/contenu.js"></script>
 <script src="assets/js/serveur.js"></script>

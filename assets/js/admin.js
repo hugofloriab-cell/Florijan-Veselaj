@@ -282,7 +282,11 @@
     const c = window.APP_CONFIG;
     brouillon = {
       restaurant: copie(c.restaurant),
-      menu: { type: "images", images: (c.menu.images || []).slice() },
+      menu: {
+        type: "images",
+        images: (c.menu.images || []).slice(),
+        imagesEn: (c.menu.imagesEn || []).slice()
+      },
       review: { threshold: c.review.threshold, publicLinks: copie(c.review.publicLinks) },
       reminder: { delays: c.reminder.delays.slice(), defaultDelay: c.reminder.defaultDelay },
       admin: { passwordSha256: c.admin.passwordSha256 }
@@ -344,8 +348,22 @@
     return out;
   }
 
-  async function ajouterFichiers(liste) {
-    const etat = document.getElementById("menuEtat");
+  /* Les deux cartes — française et anglaise — partagent le même éditeur.
+     Seuls changent le tableau visé et les identifiants dans la page. */
+  const CARTES = {
+    fr: { cle: "images", pages: "menuPages", etat: "menuEtat" },
+    en: { cle: "imagesEn", pages: "menuPagesEn", etat: "menuEtatEn" }
+  };
+
+  const pagesDe = (langue) => {
+    const cle = CARTES[langue].cle;
+    if (!Array.isArray(brouillon.menu[cle])) brouillon.menu[cle] = [];
+    return brouillon.menu[cle];
+  };
+
+  async function ajouterFichiers(liste, langue) {
+    const c = CARTES[langue || "fr"];
+    const etat = document.getElementById(c.etat);
     const fichiers = Array.from(liste);
     if (!fichiers.length) return;
 
@@ -369,15 +387,25 @@
       etat.textContent = "Aucune image ni PDF reconnu dans votre sélection.";
       return;
     }
-    brouillon.menu.images = images;
+    brouillon.menu[c.cle] = images;
     etat.textContent = `${images.length} page${images.length > 1 ? "s" : ""} prête${images.length > 1 ? "s" : ""}.`;
-    rendreMenu();
+    rendreMenu(langue);
     majPoids();
   }
 
-  function rendreMenu() {
-    const box = document.getElementById("menuPages");
-    const imgs = brouillon.menu.images;
+  function rendreMenu(langue) {
+    const l = langue || "fr";
+    const box = document.getElementById(CARTES[l].pages);
+    if (!box) return;
+    const imgs = pagesDe(l);
+    if (!imgs.length) {
+      box.innerHTML =
+        l === "en"
+          ? '<p class="edit__note">Aucune carte anglaise. Les clients dont le' +
+            ' téléphone est en anglais verront la carte française.</p>'
+          : "";
+      return;
+    }
     box.innerHTML = imgs
       .map(
         (src, i) => `
@@ -388,6 +416,7 @@
           <button type="button" data-move="-1" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Monter">↑</button>
           <button type="button" data-move="1" data-i="${i}" ${i === imgs.length - 1 ? "disabled" : ""} aria-label="Descendre">↓</button>
           <button type="button" data-del="${i}" aria-label="Supprimer">✕</button>
+          <span hidden data-langue="${l}"></span>
         </span>
       </figure>`
       )
@@ -426,7 +455,8 @@
     document.getElementById("fDelais").value = brouillon.reminder.delays.join(", ");
     document.getElementById("fDelaiDefaut").value = String(brouillon.reminder.defaultDelay);
     rendreLiens();
-    rendreMenu();
+    rendreMenu("fr");
+    rendreMenu("en");
     majPoids();
     majPublication();
     document.getElementById("apercuStop").hidden = !window.Contenu.local();
@@ -536,40 +566,53 @@
       document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-on", x === t));
       document.getElementById("tabAvis").hidden = t.dataset.tab !== "avis";
       document.getElementById("tabReglages").hidden = t.dataset.tab !== "reglages";
-      if (t.dataset.tab === "reglages" && !brouillon) {
+      document.getElementById("tabEnglish").hidden = t.dataset.tab !== "english";
+      // Les deux onglets d'édition travaillent sur le même brouillon :
+      // il ne doit être monté qu'une fois, sans quoi une saisie en cours
+      // dans l'un serait effacée en passant dans l'autre.
+      if (t.dataset.tab !== "avis" && !brouillon) {
         initBrouillon();
         remplirFormulaire();
       }
     });
 
-    // carte
-    const drop = document.getElementById("menuDrop");
-    document.getElementById("menuFiles").addEventListener("change", (e) => {
-      ajouterFichiers(e.target.files);
-      e.target.value = "";
-    });
-    ["dragover", "dragleave", "drop"].forEach((ev) =>
-      drop.addEventListener(ev, (e) => {
-        e.preventDefault();
-        drop.classList.toggle("is-over", ev === "dragover");
-        if (ev === "drop") ajouterFichiers(e.dataTransfer.files);
-      })
-    );
+    // les deux cartes, française et anglaise
+    [
+      { langue: "fr", drop: "menuDrop", input: "menuFiles", pages: "menuPages" },
+      { langue: "en", drop: "menuDropEn", input: "menuFilesEn", pages: "menuPagesEn" }
+    ].forEach(({ langue, drop: idDrop, input, pages }) => {
+      const drop = document.getElementById(idDrop);
+      const champ = document.getElementById(input);
+      const boite = document.getElementById(pages);
+      if (!drop || !champ || !boite) return;
 
-    document.getElementById("menuPages").addEventListener("click", (e) => {
-      const b = e.target.closest("button");
-      if (!b) return;
-      const imgs = brouillon.menu.images;
-      if (b.dataset.del !== undefined) {
-        imgs.splice(Number(b.dataset.del), 1);
-      } else if (b.dataset.move) {
-        const i = Number(b.dataset.i);
-        const j = i + Number(b.dataset.move);
-        if (j < 0 || j >= imgs.length) return;
-        [imgs[i], imgs[j]] = [imgs[j], imgs[i]];
-      }
-      rendreMenu();
-      majPoids();
+      champ.addEventListener("change", (e) => {
+        ajouterFichiers(e.target.files, langue);
+        e.target.value = "";
+      });
+      ["dragover", "dragleave", "drop"].forEach((ev) =>
+        drop.addEventListener(ev, (e) => {
+          e.preventDefault();
+          drop.classList.toggle("is-over", ev === "dragover");
+          if (ev === "drop") ajouterFichiers(e.dataTransfer.files, langue);
+        })
+      );
+
+      boite.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        const imgs = pagesDe(langue);
+        if (b.dataset.del !== undefined) {
+          imgs.splice(Number(b.dataset.del), 1);
+        } else if (b.dataset.move) {
+          const i = Number(b.dataset.i);
+          const j = i + Number(b.dataset.move);
+          if (j < 0 || j >= imgs.length) return;
+          [imgs[i], imgs[j]] = [imgs[j], imgs[i]];
+        }
+        rendreMenu(langue);
+        majPoids();
+      });
     });
 
     // logo
@@ -616,15 +659,38 @@
 
     document.getElementById("apercuStop").addEventListener("click", () => {
       window.Contenu.supprimerLocal();
+      try {
+        // L'aperçu anglais a pu forcer la langue : on rend la main au
+        // téléphone, sinon le gérant resterait bloqué en anglais.
+        localStorage.removeItem("resto-langue");
+      } catch (_) {
+        /* rien à défaire */
+      }
       document.getElementById("apercuStop").hidden = true;
       toast("Aperçu annulé. Rechargez la carte pour revoir la version publiée.");
     });
 
+    // L'aperçu anglais force la langue avant d'ouvrir la carte, sinon le
+    // gérant — sur un téléphone français — verrait la version française.
+    document.getElementById("apercuBtnEn").addEventListener("click", async () => {
+      lireFormulaire();
+      await appliquerMotDePasse();
+      window.Contenu.enregistrerLocal(brouillon);
+      try {
+        localStorage.setItem("resto-langue", "en");
+      } catch (_) {
+        /* stockage refusé : la carte s'ouvrira dans la langue du téléphone */
+      }
+      document.getElementById("apercuStop").hidden = false;
+      toast("Aperçu anglais actif. Ouvrez la carte pour le voir.");
+      majPoids();
+    });
+
     let publication = false;
-    document.getElementById("publierBtn").addEventListener("click", async () => {
+    async function publier(idBouton) {
       if (publication) return;
       publication = true;
-      const btn = document.getElementById("publierBtn");
+      const btn = document.getElementById(idBouton);
       const etiquette = btn.textContent;
 
       lireFormulaire();
@@ -662,7 +728,14 @@
       majPoids();
       publication = false;
       toast("Déposez ce fichier dans le dossier assets/ de votre site.");
-    });
+    }
+
+    // Les deux boutons publient le même enregistrement : les cartes
+    // française et anglaise voyagent ensemble.
+    document.getElementById("publierBtn")
+      .addEventListener("click", () => publier("publierBtn"));
+    document.getElementById("publierBtnEn")
+      .addEventListener("click", () => publier("publierBtnEn"));
   }
 
   /* ------------------------------------------------------- export */

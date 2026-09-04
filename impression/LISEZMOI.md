@@ -8,6 +8,15 @@
 
 Le QR pointe vers `https://hugofloriab-cell.github.io/Carte-tilleuls/`.
 
+Le logo du restaurant occupe le centre du code, et un pictogramme indique
+le geste attendu. Le texte est bilingue : un client étranger comprend ce
+qu'il scanne, et l'application s'ouvrira d'elle-même dans sa langue.
+
+Le code est en correction d'erreur « H » : jusqu'à 30 % des modules
+peuvent manquer sans gêner la lecture. Le logo en couvre environ 4 %.
+Vérifié en redécodant l'image après réduction à 120 px, flou et
+sous-exposition.
+
 ## Conseils d'impression
 
 * Papier **épais** (160 g au minimum), sinon la carte gondole sur la table.

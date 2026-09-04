@@ -15,20 +15,17 @@ window.ReviewFlow = (function () {
   let lastRecord = null;
   let onClose = null;
 
-  const RATING_LABELS = {
-    0: "Touchez une étoile pour noter",
-    1: "Très décevant",
-    2: "Décevant",
-    3: "Correct, sans plus",
-    4: "Très bon moment",
-    5: "Excellent, un vrai plaisir !"
-  };
+  const T = (cle, secours) =>
+    window.I18n ? I18n.T(cle, secours) : secours;
+
+  const libelleNote = (n) =>
+    n === 0 ? T("avis.noter", "Touchez une étoile pour noter") : T("avis.note" + n, "");
 
   /* ------------------------------------------------------- photos */
   function compress(file) {
     return new Promise((resolve, reject) => {
       if (!file.type.startsWith("image/")) {
-        return reject(new Error("Ce fichier n'est pas une image."));
+        return reject(new Error(T("avis.erreurImage", "Ce fichier n'est pas une image.")));
       }
       const { maxSize, quality } = cfg().photo;
       const url = URL.createObjectURL(file);
@@ -50,7 +47,7 @@ window.ReviewFlow = (function () {
       };
       img.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("Image illisible."));
+        reject(new Error(T("avis.imageIllisible", "Image illisible.")));
       };
       img.src = url;
     });
@@ -90,7 +87,7 @@ window.ReviewFlow = (function () {
       b.classList.toggle("is-on", v <= n);
       b.setAttribute("aria-checked", String(v === n));
     });
-    el.ratingLabel.textContent = RATING_LABELS[n];
+    el.ratingLabel.textContent = libelleNote(n);
     el.submit.disabled = n === 0;
     el.form.dataset.rating = String(n);
 
@@ -105,13 +102,17 @@ window.ReviewFlow = (function () {
       el.routeHint.hidden = false;
       el.routeHint.className = "route-hint route-hint--public";
       el.routeHint.textContent = liste
-        ? `Merci ! Nous vous proposerons de partager cet avis sur ${liste}.`
-        : "Merci ! Nous vous proposerons de partager cet avis publiquement.";
+        ? T("avis.routagePublic", "Merci ! Nous vous proposerons de partager cet avis sur X.")
+            .replace("{plateformes}", liste)
+        : T("avis.routagePublicSansNom",
+            "Merci ! Nous vous proposerons de partager cet avis publiquement.");
     } else {
       el.routeHint.hidden = false;
       el.routeHint.className = "route-hint route-hint--private";
-      el.routeHint.textContent =
-        "Votre message sera transmis directement au gérant, en privé. Il ne sera pas publié.";
+      el.routeHint.textContent = T(
+        "avis.routagePrive",
+        "Votre message sera transmis directement au gérant, en privé. Il ne sera pas publié."
+      );
     }
   }
 
@@ -242,11 +243,11 @@ window.ReviewFlow = (function () {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      el.copyBtn.textContent = "Commentaire copié ✓";
+      el.copyBtn.textContent = T("avis.copie", "Commentaire copié ✓");
     } catch (_) {
-      el.copyBtn.textContent = "Copie impossible — sélectionnez le texte";
+      el.copyBtn.textContent = T("avis.copieRatee", "Copie impossible — sélectionnez le texte");
     }
-    setTimeout(() => (el.copyBtn.textContent = "Copier mon commentaire"), 2600);
+    setTimeout(() => (el.copyBtn.textContent = T("avis.copier", "Copier mon commentaire")), 2600);
   }
 
   function reset() {

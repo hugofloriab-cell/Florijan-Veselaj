@@ -83,13 +83,25 @@
       mark.textContent = r.monogram || r.name.slice(0, 2).toUpperCase();
     }
 
+    const T = (cle, secours) => (window.I18n ? I18n.T(cle, secours) : secours);
     const list = document.getElementById("infoList");
     const rows = [];
-    if (r.hours) rows.push(["Service", r.hours, null]);
-    if (r.address) rows.push(["Adresse", r.address, "https://maps.google.com/?q=" + encodeURIComponent(r.address)]);
-    if (r.phone) rows.push(["Téléphone", r.phone, "tel:" + r.phone.replace(/\s/g, "")]);
-    if (r.wifi) rows.push(["Wi-Fi", `${r.wifi.ssid} — mot de passe : ${r.wifi.password}`, null]);
-    if (cfg.menu.downloadUrl) rows.push(["Menu", "Télécharger le PDF", cfg.menu.downloadUrl]);
+    if (r.hours) rows.push([T("infos.horaires", "Horaires"), r.hours, null]);
+    if (r.address) {
+      rows.push([T("infos.adresse", "Adresse"), r.address,
+                 "https://maps.google.com/?q=" + encodeURIComponent(r.address)]);
+    }
+    if (r.phone) {
+      rows.push([T("infos.telephone", "Téléphone"), r.phone, "tel:" + r.phone.replace(/\s/g, "")]);
+    }
+    if (r.wifi) {
+      rows.push([T("infos.wifi", "Wi-Fi"),
+                 r.wifi.ssid + " — " + T("infos.motDePasse", "mot de passe") + " : " + r.wifi.password,
+                 null]);
+    }
+    if (cfg.menu.downloadUrl) {
+      rows.push(["Menu", T("infos.telecharger", "Télécharger le PDF"), cfg.menu.downloadUrl]);
+    }
 
     list.innerHTML = rows
       .map(([label, value, href]) => {
@@ -102,11 +114,23 @@
   }
 
   /* ========================= Flipbook =========================== */
+
+  /** Les pages de la carte dans la langue courante.
+   *
+   * Tant que la version anglaise n'a pas été publiée, un client anglophone
+   * voit la carte française : mieux vaut une carte qu'il ne lit qu'à
+   * moitié qu'un livret vide. */
+  function pagesDeLaCarte() {
+    const anglais = window.I18n && I18n.estAnglais();
+    const en = cfg.menu.imagesEn;
+    return anglais && en && en.length ? en : cfg.menu.images;
+  }
+
   async function initFlipbook() {
     const source =
       cfg.menu.type === "pdf"
         ? { pdfUrl: cfg.menu.pdfUrl, pdfjs: cfg.menu.pdfjs || undefined }
-        : { images: cfg.menu.images };
+        : { images: pagesDeLaCarte() };
 
     flipbook = new Flipbook(document.getElementById("flipbook"), Object.assign(source, {
       onPageChange: (i) => {
@@ -117,8 +141,16 @@
   }
 
   /* ==================== Le moment dessert ======================= */
-  function construireDesserts() {
+  /** Le bloc desserts dans la langue courante. */
+  function confDesserts() {
     const c = cfg.desserts || {};
+    // `en` ne porte que ce qui change : le reste (délai, page, photos)
+    // vaut pour les deux langues.
+    return window.I18n && I18n.estAnglais() && c.en ? Object.assign({}, c, c.en) : c;
+  }
+
+  function construireDesserts() {
+    const c = confDesserts();
     document.getElementById("dessertTitle").textContent = c.title || "Encore un peu de place ?";
     document.getElementById("dessertLead").textContent = c.lead || "";
 
@@ -204,7 +236,7 @@
         () => {
           if (actif() || openSheets.length) return;
           entrer().then(() => {
-            if (actif()) UI.toast("Plein écran. Touchez ⤢ en haut pour en sortir.", 3500);
+            if (actif()) UI.toast(I18n.T("ui.pleinEcranAstuce", "Plein écran. Touchez ⤢ en haut pour en sortir."), 3500);
           });
         },
         { once: true }
@@ -340,7 +372,7 @@
     document.getElementById("countdownCancel").addEventListener("click", (e) => {
       e.stopPropagation();
       Reminder.cancel();
-      UI.toast("Rappel annulé.");
+      UI.toast(I18n.T("rappel.annule", "Rappel annulé."));
     });
 
     document.getElementById("dessertOpen").addEventListener("click", allerAuxDesserts);
@@ -382,8 +414,9 @@
     const bar = document.createElement("div");
     bar.className = "preview-bar";
     bar.innerHTML =
-      '<span>Aperçu local — les clients voient encore la version publiée.</span>' +
-      '<button type="button">Revenir</button>';
+      "<span>" + echapper(I18n.T("ui.apercuLocal",
+        "Aperçu local — les clients voient encore la version publiée.")) + "</span>" +
+      '<button type="button">' + echapper(I18n.T("ui.apercuRevenir", "Revenir")) + "</button>";
     bar.querySelector("button").addEventListener("click", () => {
       Contenu.supprimerLocal();
       location.reload();
@@ -391,10 +424,30 @@
     document.body.insertBefore(bar, document.body.firstChild);
   }
 
+  /* ========================= Langue ============================= */
+  function initLangue() {
+    if (!window.I18n) return;
+    I18n.init();
+
+    const btn = document.getElementById("langBtn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      I18n.basculer();
+      // La carte est un jeu d'images : elle ne se traduit pas, elle se
+      // remplace. Recharger est plus sûr que de démonter le livret en vol.
+      location.reload();
+    });
+  }
+
   async function start() {
+    initLangue();
+
     // Surcouches (carte, liens, identité) avant tout affichage.
     const etat = await Contenu.appliquer();
     if (etat.local) bandeauApercu();
+
+    // Les surcouches peuvent changer les textes : on réapplique la langue.
+    if (window.I18n) I18n.appliquerDOM();
 
     applyBranding();
     bindGlobal();
