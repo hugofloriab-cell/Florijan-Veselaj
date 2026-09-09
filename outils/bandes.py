@@ -20,10 +20,13 @@ import os
 
 import pymupdf
 
-U = "/root/.claude/uploads/eb973e87-7c35-50ce-8874-e9267b19fddb/"
+ICI = os.path.dirname(os.path.abspath(__file__))
+# Les PDF réellement affichés : ceux du restaurant, aux logos ibis près
+# (voir logos-ibis.py). Ils sont versionnés avec l'application, pour qu'on
+# puisse refaire le rendu sans redemander les originaux.
 SOURCES = {
-    "fr": U + "84455ab2-Carte_Les_Tilleuls_Automne_2026.pdf",
-    "en": U + "200304f2-Les_Tilleuls_Autumn_Menu_2026_EN.pdf",
+    "fr": os.path.join(ICI, "cartes", "carte-fr.pdf"),
+    "en": os.path.join(ICI, "cartes", "carte-en.pdf"),
 }
 MARGE = 14.0     # respiration de chaque côté, en points
 PART_MIN = 0.50  # au plus 2x : au-delà, on ne lit plus qu'un mot à la fois

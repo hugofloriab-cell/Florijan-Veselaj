@@ -10,10 +10,32 @@ python3 rendre-carte.py fr    # produit assets/menu/carte-fr-1.webp …
 python3 rendre-carte.py en    # produit assets/menu/carte-en-1.webp …
 ```
 
-Le script attend les chemins des PDF en haut du fichier ; adaptez-les, puis
-reportez la liste des pages dans `assets/js/config.js` (`menu.images` et
+Le script rend les PDF de `cartes/`, versionnés avec l'application : le
+rendu se refait sans avoir à redemander les originaux. Reportez ensuite la
+liste des pages dans `assets/js/config.js` (`menu.images` et
 `menu.imagesEn`) et dans `sw.js` (`PRECACHE`), sans oublier d'y changer le
 numéro de version du cache.
+
+## Les logos ibis
+
+`cartes/` n'est pas tout à fait le PDF reçu : `logos-ibis.py` y a remplacé
+les deux logos ibis, restés à l'ancienne identité — coussins en dégradé,
+ombre portée, mention « HOTELS » — par les aplats en vigueur.
+
+```bash
+python3 logos-ibis.py    # relit les PDF d'origine, réécrit ceux de cartes/
+```
+
+L'échange se fait à l'intérieur du PDF, à la place et à la taille des
+images d'origine ; rien d'autre n'est touché. Deux corrections évitent que
+la substitution se voie : les fichiers de l'enseigne sont détourés et leur
+coussin n'occupe que 67 % du cadre contre 90 à 95 % pour les anciens, donc
+on les recadre sur leur dessin ; et le PDF attend des images opaques, donc
+on aplatit leur transparence sur la couleur du fond de page, relevée sur
+l'ancien logo lui-même.
+
+Pour changer d'autres images d'un PDF, le principe vaut : relever leur
+`xref` avec `page.get_images(full=True)`, puis `page.replace_image`.
 
 Dépendances : `pymupdf` et `opencv-python`.
 
