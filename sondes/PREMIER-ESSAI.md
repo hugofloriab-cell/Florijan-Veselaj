@@ -89,7 +89,29 @@ est dans `config.h`.
 
 ## 4. Où écrire et téléverser le programme
 
-Trois possibilités, par ordre de commodité :
+### Xcode ne flashe pas la sonde — ce sont deux moitiés séparées
+
+Point de confusion fréquent, et il vaut mieux l'avoir en tête dès le départ :
+ce projet a **deux moitiés qui ne partagent aucun outil**.
+
+| | La sonde | L'application iPhone |
+| --- | --- | --- |
+| Langage | C++ (Arduino) | Swift / SwiftUI |
+| Outil | **Arduino IDE** | **Xcode** |
+| Fichiers | `firmware/sonde-haccp/` | `ios/SondesHACCP/` |
+| Ce qu'on en fait | on téléverse dans l'ESP32 | on installe sur l'iPhone |
+
+Xcode ne sait pas programmer un ESP32, et Arduino IDE ne sait pas fabriquer une
+application iOS. Il n'existe pas d'outil « compatible avec les deux », et ce
+n'est pas un manque : les deux moitiés ne se rencontrent qu'en Bluetooth, à
+l'exécution, à travers le protocole décrit dans `PROTOCOLE-BLE.md`.
+
+Concrètement, vous installerez les deux logiciels sur le Mac. Arduino IDE sert
+une fois par sonde ; Xcode sert à l'application.
+
+### Les trois façons de téléverser
+
+Par ordre de commodité :
 
 | Outil | Où | Remarque |
 | --- | --- | --- |
@@ -102,6 +124,27 @@ ESP32 utilisent une puce USB-série **CH340** ou **CP2102**. macOS reconnaît la
 seconde d'origine, rarement la première — le pilote CH340 s'installe depuis le
 site de WCH. Le port porte alors un nom du type `/dev/cu.usbserial-…` ou
 `/dev/cu.wchusbserial-…`.
+
+### Et les flasheurs en ligne ?
+
+Ils existent et fonctionnent bien : l'outil officiel d'Espressif
+[esptool-js](https://espressif.github.io/esptool-js/) et
+[ESP Web Tool](https://esp.huhn.me/) programment un ESP32 depuis une page web,
+via l'API Web Serial, sans installer de pilote.
+
+**Mais ils ne compilent pas.** Ils envoient dans la puce un fichier `.bin` déjà
+compilé — il faut donc l'avoir fabriqué avant, avec Arduino IDE. Pour la
+première sonde, ils ne font donc gagner aucune étape.
+
+Ils deviennent intéressants **à partir de la deuxième sonde** : compilez une
+fois dans Arduino IDE (*Croquis → Exporter les binaires compilés*), puis
+programmez toutes les suivantes depuis la page web, sans rien réinstaller.
+C'est aussi la façon de confier le travail à quelqu'un d'autre.
+
+Deux réserves : il faut **Chrome ou Edge** sur le Mac — Safari ne gère pas
+Web Serial, exactement comme il ne gère pas le Bluetooth web — et il faut
+indiquer la bonne adresse d'écriture (`0x0` pour le binaire fusionné exporté
+par Arduino IDE, `0x10000` pour le seul binaire d'application).
 
 ## 5. Programmation
 
