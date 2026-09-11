@@ -20,34 +20,74 @@ Une heure suffit. Vous avez déjà tout le nécessaire.
 Le mode banc d'essai du programme est fait pour ça : il neutralise tout ce qui
 n'est pas encore câblé.
 
-## 2. Câblage — trois fils et une résistance
+## 2. Alimentation
 
-Le DS18B20 sort trois fils : **rouge** (alimentation), **jaune** ou blanc
-(données), **noir** (masse). La résistance de 4,7 kΩ se monte entre le rouge et
-le jaune : sans elle, la ligne de données reste à zéro et le capteur reste muet.
+Pour ce premier essai, **alimentez la carte par son port USB-C**, batterie
+débranchée. C'est plus simple, et cela évite le piège ci-dessous.
+
+Pour le montage sur accu : `OUT+` du TP4056 vers `VIN`, `OUT-` vers `GND`.
+
+> ### ⚠ Ne jamais brancher l'USB pendant que l'accu est relié à `VIN`
+>
+> Sur la plupart des cartes DevKit, le 5 V de l'USB et la broche `VIN` sont sur
+> le même réseau, parfois sans diode de séparation selon la version. Le 5 V
+> remonte alors dans la sortie du TP4056 et pousse du courant dans l'accu à
+> travers les transistors de protection, hors de tout contrôle de charge. Sur
+> un accu LiPo souple, c'est un risque d'emballement thermique.
+>
+> **Débranchez l'accu avant de brancher l'USB**, et inversement. C'est une
+> règle simple qui vaut quelle que soit la version de votre carte.
+
+Enfin, sachez ce que donne `VIN` sur cette carte : le régulateur AMS1117 a
+besoin d'environ 1 V de plus en entrée qu'en sortie. Un accu plein (4,2 V)
+passe ; vers 3,7 V la marge disparaît et la carte redémarre en boucle. Vous
+n'exploiterez donc qu'environ la moitié de la capacité de l'accu — ce qui,
+avec la veille de 5 à 15 mA d'une DevKit, ne change pas grand-chose : voir
+« Si vous partez d'une carte ESP32 DevKit » dans le [README](README.md).
+
+## 3. Câblage de la sonde — trois fils et une résistance
+
+Le DS18B20 sort trois fils. **Le code couleur est le point où tout le monde se
+trompe**, parce qu'il n'est pas intuitif :
+
+| Fil | Rôle | Va sur |
+| --- | --- | --- |
+| **rouge** | alimentation (VDD) | `3V3` |
+| **jaune** | **données** (1-Wire) | `D4` |
+| **noir** | masse (GND) | `GND` |
+
+Le **jaune porte les données**, pas la masse. Le **noir est la masse**, comme
+partout ailleurs en électricité. Inverser les deux ne marche pas et peut abîmer
+le capteur : sa masse se retrouve sur une sortie logique, et sa ligne de données
+sous sa propre masse quand la broche passe à l'état haut.
+
+La résistance de 4,7 kΩ se monte entre le **rouge et le jaune** — entre
+l'alimentation et les données. Sans elle, la ligne reste à zéro et le capteur
+ne répond jamais.
 
 ```
    DS18B20                     ESP32 (DevKit / WROOM-32)
 
-   rouge  ───────────────────► GPIO19      (alimentation commutée)
+   rouge  ───────────────────► 3V3
             │
           4,7 kΩ
             │
-   jaune  ──┴────────────────► GPIO21      (données 1-Wire)
+   jaune  ──┴────────────────► D4   (GPIO4, données 1-Wire)
 
    noir   ───────────────────► GND
 ```
 
-Sur une carte **ESP32-C3** (XIAO, SuperMini), c'est GPIO21 pour l'alimentation
-et GPIO5 pour les données — le programme s'adapte tout seul, seules les broches
-physiques changent. Le détail est dans `config.h`.
+Sur une carte **ESP32-C3** (XIAO, SuperMini), les données vont sur GPIO5 — le
+programme s'adapte tout seul, seules les broches physiques changent. Le détail
+est dans `config.h`.
 
-> **Le rouge ne va pas sur 3V3.** Il va sur une broche ordinaire, que le
-> programme allume le temps de la mesure et éteint ensuite. C'est ce qui
-> supprime la consommation du capteur au repos. Branché sur 3V3 permanent, tout
-> fonctionne aussi — mais l'autonomie en souffre.
+> **Si la trace affiche `T=-32768`**, c'est presque toujours le code couleur.
+> Les sondes bon marché n'utilisent pas toutes les mêmes teintes : sur
+> certaines le fil de données est blanc, bleu ou vert. Le rouge reste
+> l'alimentation et le noir la masse ; en cas de doute, essayez le troisième
+> fil sur `D4` et remettez les deux autres sur `3V3` et `GND`.
 
-## 3. Où écrire et téléverser le programme
+## 4. Où écrire et téléverser le programme
 
 Trois possibilités, par ordre de commodité :
 
@@ -63,7 +103,7 @@ seconde d'origine, rarement la première — le pilote CH340 s'installe depuis l
 site de WCH. Le port porte alors un nom du type `/dev/cu.usbserial-…` ou
 `/dev/cu.wchusbserial-…`.
 
-## 4. Programmation
+## 5. Programmation
 
 1. **Arduino IDE 2.x** → *Outils → Gestionnaire de cartes* → installer
    **esp32 by Espressif Systems** (version 3.x).
@@ -76,7 +116,7 @@ site de WCH. Le port porte alors un nom du type `/dev/cu.usbserial-…` ou
 5. Téléverser. Si la carte n'est pas détectée : maintenir **BOOT**, appuyer
    brièvement sur **EN**/**RESET**, relâcher BOOT.
 
-## 5. Lire la trace
+## 6. Lire la trace
 
 *Outils → Moniteur série*, **115200 bauds**. Toutes les minutes :
 
@@ -94,12 +134,18 @@ veille 60 s (tics 61)
 - `attente=N` → relevés en mémoire, non encore récupérés par la tablette.
 - `HACCP-0A3F` → le nom que vous chercherez dans la liste Bluetooth.
 
-**Si `T` vaut −32768** : le capteur n'est pas lu. Dans l'ordre — la résistance
-de 4,7 kΩ est-elle bien entre le rouge et le jaune (et non entre le jaune et la
-masse) ? Le rouge est-il sur GPIO19 et le jaune sur GPIO21 ? Les trois fils
-font-ils bien contact ?
+**Si `T` vaut −32768** : le capteur n'est pas lu. Dans l'ordre —
 
-## 6. Relever depuis la fiche
+1. le **jaune** est-il bien sur `D4` et le **noir** sur `GND` ? C'est l'erreur
+   la plus fréquente, les deux se confondent facilement ;
+2. la résistance de 4,7 kΩ est-elle bien entre le **rouge et le jaune**, et non
+   entre le rouge et le noir ? Entre rouge et noir, elle ne fait que consommer
+   0,7 mA entre l'alimentation et la masse, sans jamais tirer la ligne de
+   données vers le haut ;
+3. le rouge est-il sur `3V3` ?
+4. les trois soudures tiennent-elles vraiment ?
+
+## 7. Relever depuis la fiche
 
 Le Bluetooth du navigateur exige une adresse sécurisée : **la fiche doit être
 ouverte depuis son adresse web**, pas depuis un fichier local.
@@ -123,7 +169,7 @@ Chaque appui sur **Relever les sondes** rapatrie les nouvelles mesures.
 Un bandeau orange signalera que la sonde est en cadence de banc d'essai : c'est
 voulu, il disparaîtra en passant en service.
 
-## 7. Vérifier l'étalonnage
+## 8. Vérifier l'étalonnage
 
 Un verre de glace pilée, un peu d'eau, on remue : le bain est à 0,0 °C tant
 qu'il reste de la glace.
@@ -133,7 +179,7 @@ minutes, relevez depuis la fiche. Un DS18B20 sorti d'usine tombe en général
 entre −0,5 et +0,5 °C. L'écart lu se corrige avec le bouton **Étalonner**, ou
 dans `OFFSET_ETALONNAGE_CENTI`.
 
-## 8. Passer en service
+## 9. Passer en service
 
 Une fois l'essai concluant, dans `config.h` :
 

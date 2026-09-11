@@ -136,24 +136,25 @@
   /* GPIO33 est une broche RTC : elle sait réveiller la puce (ext0).
      GPIO34 est en entrée seule, sans rappel interne — idéal pour un pont
      diviseur, et sur ADC1, le seul convertisseur utilisable radio allumée.
-     GPIO 0, 2, 12 et 15 sont des broches de strapping : écartées. */
+     GPIO 0, 2, 12 et 15 sont des broches de strapping : écartées.
+     GPIO4 (D4) porte les données 1-Wire : broche ordinaire, sans contrainte. */
   #define BROCHE_ILS        33
   #define BROCHE_PILE       34   /* ADC1_CH6, entrée seule                  */
   #define BROCHE_PONT       25
-  #define BROCHE_1WIRE      21
-  #define BROCHE_CAPTEUR_VCC 19
+  #define BROCHE_1WIRE       4   /* D4  — données DS18B20 (fil jaune)       */
+  #define BROCHE_CAPTEUR_VCC -1  /* fil rouge sur 3V3 : rien à commuter     */
 
 #else
   #error "Puce non gérée. Choisissez une carte ESP32 ou ESP32-C3 dans l'IDE."
 #endif
 
-/* Le fil rouge du DS18B20 peut aussi être branché sur 3V3 en permanence
-   plutôt que sur BROCHE_CAPTEUR_VCC : mettez alors cette broche à -1 et le
-   programme cessera de commuter l'alimentation du capteur. Tout fonctionne
-   à l'identique — on perd seulement le microampère que coûte le DS18B20 au
-   repos, ce qui reste négligeable devant le reste. */
-/* #undef  BROCHE_CAPTEUR_VCC
-   #define BROCHE_CAPTEUR_VCC -1 */
+/* BROCHE_CAPTEUR_VCC à -1 signifie : le fil rouge du DS18B20 est câblé sur
+   3V3 en permanence, le programme ne commute rien. C'est le montage le plus
+   naturel à souder à la main, et il ne coûte que le microampère consommé par
+   le capteur au repos — négligeable devant tout le reste.
+
+   Pour gagner ce microampère, câblez le fil rouge sur une broche ordinaire
+   (GPIO19 par exemple) et indiquez-la ici à la place de -1. */
 
 /* Mettre à 0 tant que l'ILS n'est pas câblé. Une broche de réveil laissée en
    l'air déclenche des réveils parasites qui vident les piles — et sur
