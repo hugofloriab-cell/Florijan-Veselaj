@@ -628,8 +628,21 @@ void setup() {
 #endif
   }
 
-  trace("T=%d centi, pile=%u%% (%u mV), attente=%u, manuel=%d",
-        centi, rtcPile, rtcTension, rtcAttente, (int)manuel);
+  /* La température circule en centièmes de degré partout — entiers seulement,
+     jamais de virgule flottante. Mais une trace qui affiche « 2750 » se lit mal
+     à 18 h sur un établi : on écrit aussi les degrés. */
+#if TRACE
+  if (centi == TEMPERATURE_INVALIDE) {
+    trace("T=capteur muet, pile=%u%% (%u mV), attente=%u, manuel=%d",
+          rtcPile, rtcTension, rtcAttente, (int)manuel);
+  } else {
+    int entier = (centi < 0 ? -centi : centi) / 100;
+    int cents  = (centi < 0 ? -centi : centi) % 100;
+    trace("T=%s%d,%02d C (%d centi), pile=%u%% (%u mV), attente=%u, manuel=%d",
+          centi < 0 ? "-" : "+", entier, cents, centi,
+          rtcPile, rtcTension, rtcAttente, (int)manuel);
+  }
+#endif
 
   /* Fenêtre radio : longue si quelqu'un a passé l'aimant, courte sinon. */
   uint32_t fenetre = manuel ? FENETRE_MANUELLE_S : FENETRE_ANNONCE_S;
