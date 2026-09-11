@@ -53,8 +53,11 @@ section reste visible mais le relevé est indisponible.
 sondes fictives apparaissent, avec trois semaines de relevés et un incident de
 congélateur.
 
-Tout le reste — quoi commander, comment le monter, l'autonomie, l'étalonnage et
-ce qu'en dit la réglementation — est dans **[`sondes/README.md`](sondes/README.md)**.
+Pour monter la première sonde : **[`sondes/PREMIER-ESSAI.md`](sondes/PREMIER-ESSAI.md)**
+valide la chaîne complète en une heure, carte branchée en USB, sans batterie ni
+boîtier. Le reste — quoi commander, le câblage définitif, l'autonomie,
+l'étalonnage et ce qu'en dit la réglementation — est dans
+**[`sondes/README.md`](sondes/README.md)**.
 
 ## Transmission à la direction
 

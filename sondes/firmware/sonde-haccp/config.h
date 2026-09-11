@@ -47,11 +47,24 @@
 
 /* ---------- Pile ---------- */
 
-/* Pack de 3 piles AA lithium (Energizer L91), mesuré avant le régulateur.
-   Tension à vide d'une L91 neuve : 1,80 V ; palier de service : ~1,55 V ;
-   fin de vie exploitable : ~1,15 V (le régulateur décroche en dessous). */
+/* Bornes de la source d'énergie, mesurées avant le régulateur. Deux montages
+   sont prévus : gardez celui qui correspond au vôtre, commentez l'autre.
+
+   A — 3 piles AA lithium (Energizer L91), le montage de la nomenclature.
+       Tension à vide d'une L91 neuve : 1,80 V ; palier de service : ~1,55 V ;
+       fin de vie exploitable : ~1,15 V (le régulateur décroche en dessous).
+       Environ deux ans d'autonomie, remplacement en trente secondes. */
 #define PILE_PLEINE_MV 4900
 #define PILE_VIDE_MV   3450
+
+/* B — accu lithium rechargeable à un élément (18650, LiPo) avec un module de
+       charge TP4056. 4,20 V à pleine charge ; on s'arrête à 3,40 V : en
+       dessous le régulateur décroche, et la décharge profonde abîme l'accu.
+       Décommentez ces deux lignes et commentez les deux précédentes.
+
+#define PILE_PLEINE_MV 4200
+#define PILE_VIDE_MV   3400
+*/
 
 /* Seuil sous lequel le drapeau PILE_FAIBLE est levé, en pourcentage.
    20 % d'un pack L91 laisse plusieurs semaines pour intervenir. */
@@ -89,16 +102,55 @@
   #define ALERTE_MESURES_CONSECUTIVES 2
 #endif
 
-/* ---------- Brochage (carte Seeed XIAO ESP32C3) ---------- */
+/* ---------- Carte et brochage ---------- */
 
-/* Attention : seules les GPIO 0 à 5 réveillent l'ESP32-C3 depuis la veille
-   profonde. L'ILS doit donc rester dans cette plage. GPIO2 est une broche de
-   « strapping » au démarrage : on l'évite. */
-#define BROCHE_ILS         4   /* D2  — ILS/bouton vers la masse            */
-#define BROCHE_PILE        3   /* D1  — milieu du pont diviseur (ADC1)      */
-#define BROCHE_PONT       10   /* D10 — grille du MOSFET, ferme le pont     */
-#define BROCHE_1WIRE       5   /* D3  — données DS18B20                     */
-#define BROCHE_CAPTEUR_VCC 21  /* D6  — alimentation commutée du DS18B20    */
+/* Le programme s'adapte à la puce choisie dans l'IDE Arduino. Deux familles
+   sont gérées :
+
+     ESP32-C3  — Seeed XIAO ESP32C3, ESP32-C3 SuperMini.  Veille 5 à 44 µA.
+                 C'est la cible de la nomenclature : autonomie de deux ans.
+
+     ESP32     — DevKit V1, NodeMCU-32S, WROOM-32 en général.  Parfaite pour
+                 mettre au point sur l'établi, mais sa veille se compte en
+                 milliampères à cause du régulateur, de la LED d'alimentation
+                 et de la puce USB restés alimentés : quelques jours d'autonomie
+                 sur accu, pas quelques mois. Voir « Cartes ESP32 DevKit » dans
+                 le README avant de la mettre en service sur batterie.
+
+   Les broches sont choisies pour respecter trois contraintes : réveil possible
+   depuis la veille profonde (broches RTC), convertisseur ADC1 utilisable
+   pendant que la radio émet, et broches de « strapping » évitées. */
+
+#if defined(CONFIG_IDF_TARGET_ESP32C3)
+
+  /* Seules les GPIO 0 à 5 réveillent l'ESP32-C3 : l'ILS doit y rester.
+     GPIO2 est une broche de strapping au démarrage, on l'évite. */
+  #define BROCHE_ILS         4   /* D2  — ILS/bouton vers la masse          */
+  #define BROCHE_PILE        3   /* D1  — milieu du pont diviseur (ADC1)    */
+  #define BROCHE_PONT       10   /* D10 — grille du MOSFET, ferme le pont   */
+  #define BROCHE_1WIRE       5   /* D3  — données DS18B20                   */
+  #define BROCHE_CAPTEUR_VCC 21  /* D6  — alimentation commutée du capteur  */
+
+#elif defined(CONFIG_IDF_TARGET_ESP32)
+
+  /* GPIO33 est une broche RTC : elle sait réveiller la puce (ext0).
+     GPIO34 est en entrée seule, sans rappel interne — idéal pour un pont
+     diviseur, et sur ADC1, le seul convertisseur utilisable radio allumée.
+     GPIO 0, 2, 12 et 15 sont des broches de strapping : écartées. */
+  #define BROCHE_ILS        33
+  #define BROCHE_PILE       34   /* ADC1_CH6, entrée seule                  */
+  #define BROCHE_PONT       25
+  #define BROCHE_1WIRE      21
+  #define BROCHE_CAPTEUR_VCC 19
+
+#else
+  #error "Puce non gérée. Choisissez une carte ESP32 ou ESP32-C3 dans l'IDE."
+#endif
+
+/* Mettre à 0 tant que l'ILS n'est pas câblé. Une broche de réveil laissée en
+   l'air déclenche des réveils parasites qui vident les piles — et sur
+   l'établi, l'ILS est justement ce qu'on n'a pas encore soudé. */
+#define REVEIL_MANUEL_ACTIF 1
 
 /* ---------- Mémoire ---------- */
 
@@ -112,3 +164,34 @@
    l'initialisation du port série coûte quelques dizaines de millisecondes
    éveillé à chaque réveil. */
 #define TRACE 0
+
+/* ---------- Banc d'essai ---------- */
+
+/* Mettre à 1 pour la mise au point sur l'établi, avant d'avoir soudé l'ILS,
+   le pont de mesure et la batterie. Ce mode :
+
+     - mesure toutes les minutes au lieu de 30, pour ne pas attendre ;
+     - laisse la radio allumée 60 s par cycle, le temps de trouver la sonde ;
+     - écrit la trace sur le port série ;
+     - coupe le réveil par aimant — une broche de réveil en l'air déclenche
+       des réveils parasites ;
+     - annonce une batterie pleine, le pont diviseur n'étant pas encore câblé.
+
+   À REMETTRE À 0 AVANT LA MISE EN SERVICE : laissé à 1, il ramène l'autonomie
+   de deux ans à quelques semaines. La fiche affiche un avertissement tant
+   qu'une sonde annonce une cadence de banc d'essai. */
+#define MODE_BANC 1
+
+#if MODE_BANC
+  #undef  INTERVALLE_MINUTES
+  #define INTERVALLE_MINUTES 1
+  #undef  FENETRE_ANNONCE_S
+  #define FENETRE_ANNONCE_S 60
+  #undef  REVEIL_MANUEL_ACTIF
+  #define REVEIL_MANUEL_ACTIF 0
+  #undef  TRACE
+  #define TRACE 1
+  #define PILE_SIMULEE 1
+#else
+  #define PILE_SIMULEE 0
+#endif

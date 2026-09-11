@@ -134,6 +134,67 @@ Un accu rechargeable reste possible (18650 + convertisseur TPS63020 + module de
 charge TP4056, environ +8 €), mais il divise l'autonomie par trois, impose un
 démontage tous les 4 à 8 mois, et interdit toute charge sous 0 °C.
 
+### Si vous partez d'une carte ESP32 DevKit
+
+Une DevKit V1 / NodeMCU-32S fait tourner le programme sans rien changer — le
+brochage s'adapte tout seul. Mais **elle ne tiendra pas sur batterie**, et
+l'écart n'est pas de quelques pour cent.
+
+La puce ESP32 elle-même dort à 10 µA. La carte, elle, garde trois choses
+alimentées en permanence :
+
+| Ce qui reste allumé | Consommation |
+| --- | --- |
+| Régulateur AMS1117 (courant de repos) | 5 à 10 mA |
+| LED d'alimentation | 2 à 5 mA |
+| Puce USB-série CP2102 / CH340 | 0,3 à 1 mA |
+
+Soit **5 à 15 mA en veille profonde**, contre 44 µA pour une XIAO ESP32C3 :
+mille fois trop. Un accu de 2 000 mAh tient une semaine, un 18650 de 3 400 mAh
+une quinzaine de jours. Pas les « quelques mois » demandés.
+
+**Mesurez avant de trancher** : multimètre en série sur le fil d'alimentation,
+calibre milliampères, carte en veille entre deux mesures. C'est le seul chiffre
+qui compte, il varie beaucoup d'un exemplaire à l'autre.
+
+Trois issues possibles :
+
+1. **Garder la DevKit pour l'établi, acheter une ESP32-C3 pour le service.**
+   Un ESP32-C3 SuperMini coûte 3 €, une XIAO ESP32C3 5,50 €. Le programme les
+   gère déjà. C'est le chemin que je recommande : trois euros contre deux ans
+   d'autonomie.
+2. **Modifier la DevKit** : dessouder la LED d'alimentation (ou sa résistance
+   série), le régulateur AMS1117 et la puce USB-série, puis alimenter la
+   broche 3V3 directement en 3,3 V régulé. On retombe à quelques dizaines de
+   µA — mais on perd la programmation par USB, et c'est du dessoudage fin sur
+   une carte à 5 €.
+3. **Alimenter en permanence.** Si l'enceinte est près d'une prise, la question
+   de l'autonomie disparaît : le relevé toutes les 30 minutes et l'envoi à la
+   fiche fonctionnent à l'identique. C'est une solution parfaitement défendable
+   pour une chambre froide, moins pour un congélateur coffre isolé.
+
+Dans tous les cas, la DevKit reste la bonne carte pour le **premier essai** :
+voir [`PREMIER-ESSAI.md`](PREMIER-ESSAI.md).
+
+### Si vous partez d'un accu rechargeable et d'un module TP4056
+
+Le module TP4056 n'est pas le problème : au repos il consomme environ 5 µA,
+négligeable. Deux points de vigilance en revanche.
+
+**L'alimentation de la carte.** Un élément lithium donne 3,0 à 4,2 V. Ce n'est
+compatible avec aucune des deux entrées d'une DevKit : l'AMS1117 réclame au
+moins 4,5 V sur `VIN` pour sortir du 3,3 V, et brancher 4,2 V directement sur
+`3V3` dépasse la limite de 3,6 V de l'ESP32 — on grille la puce. Il faut donc
+soit un régulateur 3,3 V à faible courant de repos entre l'accu et la broche
+`3V3` (MCP1700-3302, HT7333, TPS7A0233), soit une carte prévue pour : la
+**XIAO ESP32C3 a une entrée batterie et son propre chargeur intégré**, auquel
+cas le TP4056 devient inutile.
+
+**L'autonomie.** Un accu de 2 000 mAh donne 4 à 8 mois là où trois piles AA
+lithium en donnent 24, et il faut décrocher la sonde pour la recharger. Si vous
+tenez au rechargeable, réglez les bornes sur le montage B du § « Pile » de
+`config.h` — le suivi d'autonomie de la fiche fonctionne à l'identique.
+
 ### Outillage et étalonnage
 
 À prévoir une fois, pas par sonde :
@@ -226,6 +287,12 @@ Trois détails qui comptent :
 ---
 
 ## 5. Programmation
+
+> **Commencez par [`PREMIER-ESSAI.md`](PREMIER-ESSAI.md)** : la chaîne complète
+> se valide en une heure avec la carte en USB, trois fils et la résistance de
+> 4,7 kΩ — sans batterie, sans boîtier, sans fer à souder. Le `MODE_BANC` de
+> `config.h` (relevé toutes les minutes, radio allumée 60 s, trace série)
+> existe pour cette séance, et doit repasser à 0 avant la mise en service.
 
 1. Installer **Arduino IDE 2.x**, puis, dans *Outils → Type de carte →
    Gestionnaire de cartes*, le paquet **esp32 by Espressif Systems** (version
@@ -386,6 +453,7 @@ En pratique :
 
 | Fichier | Contenu |
 | --- | --- |
+| `PREMIER-ESSAI.md` | Valider la chaîne en une heure, carte en USB |
 | `PROTOCOLE-BLE.md` | Format des trames — contrat entre la sonde et la fiche |
 | `firmware/sonde-haccp/sonde-haccp.ino` | Programme de la sonde |
 | `firmware/sonde-haccp/config.h` | Réglages propres à chaque sonde |
@@ -393,9 +461,21 @@ En pratique :
 Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 `/* ============ Sondes ============ */`.
 
-> **Le firmware n'a pas été essayé sur du matériel réel** — il n'y en avait pas
-> ici. Il est écrit pour compiler et fonctionner tel quel, mais comptez une
-> séance de mise au point sur la première sonde. Le mode `TRACE` est là pour ça.
+> **Le firmware n'a jamais tourné sur du matériel réel**, et il faut savoir ce
+> qui a été vérifié et ce qui ne l'a pas été.
+>
+> Vérifié : la logique de tampon circulaire, de déversement et d'acquittement
+> est testée en natif (ordre chronologique, acquittement partiel, débordement,
+> découpage sur petit MTU, températures négatives) — tout passe. Le code
+> compile sans avertissement pour les deux puces, en mode banc comme en
+> service, avec et sans l'option Wi-Fi.
+>
+> Non vérifié : cette compilation s'appuie sur des en-têtes de substitution,
+> la chaîne de compilation ESP32 étant inaccessible depuis l'environnement où
+> ce code a été écrit. Un écart de signature avec la vraie bibliothèque BLE
+> reste donc possible — les rappels sont écrits pour absorber les variantes
+> connues entre versions du cœur Arduino, mais ce n'est pas une garantie.
+> Et rien ne remplace une première mise au point sur la carte.
 >
 > Pour essayer l'application **sans attendre les composants** : ouvrez la fiche
 > avec `?demo=1` à la fin de l'adresse. Deux sondes fictives apparaissent, avec

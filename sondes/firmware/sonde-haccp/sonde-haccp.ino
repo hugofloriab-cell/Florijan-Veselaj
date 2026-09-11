@@ -1,7 +1,8 @@
 /* sonde-haccp — enregistreur de température autonome pour la check-list
  * petit déjeuner de l'Hôtel Ibis Sisteron.
  *
- * Carte    : Seeed XIAO ESP32C3 (ou tout module ESP32-C3)
+ * Carte    : ESP32-C3 (XIAO, SuperMini) ou ESP32 classique (DevKit, WROOM-32)
+ *            Le brochage et le réveil s'adaptent à la puce — voir config.h.
  * Capteur  : DS18B20 étanche déporté
  * Radio    : BLE — la tablette vient chercher l'historique
  * Piles    : 3 × AA lithium, plus d'un an d'autonomie
@@ -24,6 +25,9 @@
 #include <BLE2902.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
+#if defined(CONFIG_IDF_TARGET_ESP32)
+  #include <driver/rtc_io.h>
+#endif
 
 #if ALERTE_WIFI
   #include <WiFi.h>
@@ -132,6 +136,11 @@ static int16_t lireTemperature() {
 /* Le pont diviseur n'est fermé que le temps de la mesure : en permanence, ses
    2 MΩ consommeraient plus que l'ESP32 endormi. */
 static uint16_t lireTensionPile() {
+#if PILE_SIMULEE
+  /* Banc d'essai : le pont diviseur n'est pas câblé et la broche flotte.
+     Mieux vaut annoncer une batterie pleine qu'une valeur fantaisiste. */
+  return PILE_PLEINE_MV;
+#else
   pinMode(BROCHE_PONT, OUTPUT);
   digitalWrite(BROCHE_PONT, HIGH);
   analogSetPinAttenuation(BROCHE_PILE, ADC_11db);
@@ -144,6 +153,7 @@ static uint16_t lireTensionPile() {
   pinMode(BROCHE_PONT, INPUT);
 
   return (uint16_t)((somme / 8.0f) * PONT_RAPPORT);
+#endif
 }
 
 /* Conversion tension → pourcentage. La courbe d'une pile lithium AA est très
@@ -260,14 +270,18 @@ static void deverserHistorique(uint16_t depuis) {
 
 /* ============ Rappels BLE ============ */
 
+/* Les cœurs Arduino ESP32 ont fait varier la signature de ces rappels : selon
+   la version, la bibliothèque appelle la forme à un ou à deux arguments. On
+   déclare les deux, sans « override » — ainsi le code compile quelle que soit
+   la version, et reçoit l'appel dans tous les cas. */
 class RappelsServeur : public BLEServerCallbacks {
-  void onConnect(BLEServer *s) override {
+  void connexion() {
     connecte = true;
     /* Tant qu'une tablette est là, on ne repart pas en veille. */
     finFenetreMs = millis() + 60000UL;
     trace("connecte");
   }
-  void onDisconnect(BLEServer *s) override {
+  void deconnexion() {
     connecte = false;
     /* Petite fenêtre de repêchage : une déconnexion accidentelle en pleine
        synchronisation ne doit pas obliger à attendre 30 minutes. */
@@ -275,6 +289,11 @@ class RappelsServeur : public BLEServerCallbacks {
     BLEDevice::startAdvertising();
     trace("deconnecte");
   }
+ public:
+  void onConnect(BLEServer *s) { connexion(); }
+  void onConnect(BLEServer *s, esp_ble_gatts_cb_param_t *param) { connexion(); }
+  void onDisconnect(BLEServer *s) { deconnexion(); }
+  void onDisconnect(BLEServer *s, esp_ble_gatts_cb_param_t *param) { deconnexion(); }
   void onMtuChanged(BLEServer *s, esp_ble_gatts_cb_param_t *param) {
     mtu = param->mtu.mtu;
     trace("mtu %u", mtu);
@@ -282,7 +301,12 @@ class RappelsServeur : public BLEServerCallbacks {
 };
 
 class RappelsCommande : public BLECharacteristicCallbacks {
-  void onWrite(BLECharacteristic *c) override {
+ public:
+  void onWrite(BLECharacteristic *c) { traiter(c); }
+  void onWrite(BLECharacteristic *c, esp_ble_gatts_cb_param_t *param) { traiter(c); }
+
+ private:
+  void traiter(BLECharacteristic *c) {
     uint8_t *d = c->getData();
     size_t   n = c->getLength();
     if (n < 1) return;
@@ -495,12 +519,22 @@ static void examinerAlertes(int16_t centi) {
 static void dormir(uint32_t secondes) {
   if (secondes < 5) secondes = 5;
 
-  /* Réveil manuel : ILS ou bouton tirant la broche à la masse. Seules les
-     GPIO 0 à 5 en sont capables sur l'ESP32-C3. */
-  gpio_set_direction((gpio_num_t)BROCHE_ILS, GPIO_MODE_INPUT);
-  gpio_pullup_en((gpio_num_t)BROCHE_ILS);
-  gpio_pulldown_dis((gpio_num_t)BROCHE_ILS);
-  esp_deep_sleep_enable_gpio_wakeup(1ULL << BROCHE_ILS, ESP_GPIO_WAKEUP_GPIO_LOW);
+  /* Réveil manuel : ILS ou bouton tirant la broche à la masse. Les deux
+     familles de puces n'offrent pas la même interface — l'ESP32-C3 réveille
+     sur n'importe laquelle de ses GPIO 0 à 5, l'ESP32 classique passe par
+     le comparateur ext0 d'une broche RTC. */
+#if REVEIL_MANUEL_ACTIF
+  #if defined(CONFIG_IDF_TARGET_ESP32C3)
+    gpio_set_direction((gpio_num_t)BROCHE_ILS, GPIO_MODE_INPUT);
+    gpio_pullup_en((gpio_num_t)BROCHE_ILS);
+    gpio_pulldown_dis((gpio_num_t)BROCHE_ILS);
+    esp_deep_sleep_enable_gpio_wakeup(1ULL << BROCHE_ILS, ESP_GPIO_WAKEUP_GPIO_LOW);
+  #else
+    rtc_gpio_pullup_en((gpio_num_t)BROCHE_ILS);
+    rtc_gpio_pulldown_dis((gpio_num_t)BROCHE_ILS);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)BROCHE_ILS, 0);   /* 0 = niveau bas */
+  #endif
+#endif
 
   esp_sleep_enable_timer_wakeup((uint64_t)secondes * 1000000ULL);
 
@@ -544,7 +578,9 @@ void setup() {
     trace("demarrage a froid");
   }
 
-  bool manuel = (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_GPIO);
+  esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();
+  bool manuel = (cause == ESP_SLEEP_WAKEUP_GPIO)    /* ESP32-C3 */
+             || (cause == ESP_SLEEP_WAKEUP_EXT0);   /* ESP32 classique */
   if (manuel) rtcDrapeaux |= DRAPEAU_REVEIL_MANUEL;
   else        rtcDrapeaux &= ~DRAPEAU_REVEIL_MANUEL;
 

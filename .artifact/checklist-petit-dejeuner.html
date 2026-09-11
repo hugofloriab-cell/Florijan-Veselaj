@@ -778,7 +778,7 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
 
   <p class="quote">« La satisfaction client et l'esprit d'équipe reposent sur la rigueur de chacun. La cuisine et la plonge doivent être rendues parfaitement propres et prêtes pour le service du midi. »</p>
 
-  <p class="version"><!--MAJ-->Mise à jour du 30 août 2026 à 13h49</p>
+  <p class="version"><!--MAJ-->Mise à jour du 11 septembre 2026 à 15h22</p>
 
   <section class="history">
     <h2 class="section-title">Fiches enregistrées <span class="rule"></span></h2>
@@ -1747,6 +1747,12 @@ dialog::backdrop{background:rgba(10,15,24,.55)}
       }
       if(s.syncAt && Date.now() - s.syncAt > 72 * 3600000)
         avertis.push("« " + s.nom + " » n'a pas été relevée depuis " + ilYA(s.syncAt).replace("il y a ", "") + ".");
+      /* Filet de sécurité : une sonde laissée en réglage de banc d'essai
+         consomme trente fois trop. Mieux vaut le voir tout de suite. */
+      if(s.intervalle && s.intervalle < 5)
+        avertis.push("« " + s.nom + " » relève toutes les " + s.intervalle +
+                     " minute(s) — réglage de banc d'essai. Repasser MODE_BANC à 0 " +
+                     "dans config.h avant la mise en service.");
       if(s.drapeaux & 0x10) avertis.push("Capteur de « " + s.nom + " » illisible — vérifier le câble.");
       if(s.drapeaux & 0x08) avertis.push("Mémoire de « " + s.nom + " » saturée : des relevés anciens ont été perdus.");
     });
