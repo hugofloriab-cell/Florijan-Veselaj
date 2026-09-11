@@ -93,6 +93,7 @@ RTC_DATA_ATTR static int16_t  rtcDerniere   = TEMPERATURE_INVALIDE;
 RTC_DATA_ATTR static uint8_t  rtcPile       = 100;
 RTC_DATA_ATTR static char     rtcNom[17]    = EMPLACEMENT;
 RTC_DATA_ATTR static uint8_t  rtcHorsSeuil  = 0;  /* mesures consécutives hors seuils */
+RTC_DATA_ATTR static uint8_t  rtcCyclesMuets = 0; /* réveils sans fenêtre radio */
 RTC_DATA_ATTR static uint32_t rtcDerniereAlerte = 0;
 
 /* ============ État de la session en cours ============ */
@@ -587,6 +588,7 @@ void setup() {
     rtcDrapeaux   = 0;
     rtcDerniere   = TEMPERATURE_INVALIDE;
     rtcHorsSeuil  = 0;
+    rtcCyclesMuets = 0;
     rtcDerniereAlerte = 0;
     strncpy(rtcNom, EMPLACEMENT, sizeof(rtcNom) - 1);
     rtcNom[sizeof(rtcNom) - 1] = '\0';
@@ -644,10 +646,25 @@ void setup() {
   }
 #endif
 
-  /* Fenêtre radio : longue si quelqu'un a passé l'aimant, courte sinon. */
-  uint32_t fenetre = manuel ? FENETRE_MANUELLE_S : FENETRE_ANNONCE_S;
-  demarrerAnnonce();
-  tenirFenetre(fenetre);
+  /* Faut-il parler à ce réveil ? Mesurer ne coûte presque rien, émettre coûte
+     tout : on saute des fenêtres pour tenir plus longtemps. Mais jamais quand
+     quelqu'un passe l'aimant, ni quand la température sort des clous. */
+  bool annoncer = manuel
+               || (rtcDrapeaux & DRAPEAU_ALERTE_T)
+               || (ANNONCE_UN_CYCLE_SUR <= 1);
+
+  if (!annoncer) {
+    if (cadence && ++rtcCyclesMuets >= ANNONCE_UN_CYCLE_SUR) annoncer = true;
+  }
+  if (annoncer) rtcCyclesMuets = 0;
+
+  if (annoncer) {
+    uint32_t fenetre = manuel ? FENETRE_MANUELLE_S : FENETRE_ANNONCE_S;
+    demarrerAnnonce();
+    tenirFenetre(fenetre);
+  } else {
+    trace("pas d'annonce ce cycle (%u/%u)", rtcCyclesMuets, ANNONCE_UN_CYCLE_SUR);
+  }
 
   /* Le temps passé éveillé compte dans l'horloge de la sonde. */
   uint32_t eveilS = (millis() - debutMs + 999) / 1000;

@@ -24,8 +24,21 @@
 #define FENETRE_ANNONCE_S 15
 
 /* Durée de la fenêtre ouverte par l'aimant ou le bouton, en secondes.
-   Laisse le temps de choisir la sonde dans la liste de Chrome. */
+   Laisse le temps de choisir la sonde dans la liste. */
 #define FENETRE_MANUELLE_S 120
+
+/* N'ouvrir une fenêtre radio qu'un réveil sur N. Mesurer coûte presque rien,
+   émettre coûte tout : ce réglage permet de garder un relevé toutes les
+   30 minutes — ce qu'exige la fiche — en ne parlant que quelques fois par jour.
+
+     1  → une fenêtre à chaque mesure (48/jour)   ~3,8 mAh/jour
+     6  → une fenêtre toutes les 3 h (8/jour)     ~2,0 mAh/jour
+    12  → une fenêtre toutes les 6 h (4/jour)     ~1,8 mAh/jour
+
+   L'aimant ouvre toujours une fenêtre, quel que soit ce réglage : la
+   synchronisation quotidienne reste immédiate. Une température hors seuils en
+   ouvre une aussi, pour que l'écart puisse être vu sans attendre. */
+#define ANNONCE_UN_CYCLE_SUR 6
 
 /* ---------- Seuils HACCP ---------- */
 
@@ -184,6 +197,8 @@
      - écrit la trace sur le port série ;
      - coupe le réveil par aimant — une broche de réveil en l'air déclenche
        des réveils parasites ;
+     - ouvre une fenêtre radio à chaque cycle, pour que l'appairage d'essai ne
+       demande pas d'attendre ;
      - annonce une batterie pleine, le pont diviseur n'étant pas encore câblé.
 
    À REMETTRE À 0 AVANT LA MISE EN SERVICE : laissé à 1, il ramène l'autonomie
@@ -198,6 +213,8 @@
   #define FENETRE_ANNONCE_S 60
   #undef  REVEIL_MANUEL_ACTIF
   #define REVEIL_MANUEL_ACTIF 0
+  #undef  ANNONCE_UN_CYCLE_SUR
+  #define ANNONCE_UN_CYCLE_SUR 1
   #undef  TRACE
   #define TRACE 1
   #define PILE_SIMULEE 1

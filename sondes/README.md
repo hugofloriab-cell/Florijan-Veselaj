@@ -348,7 +348,27 @@ avant le décrochage du régulateur :
 
 **2 850 ÷ 3,8 ≈ 750 jours, soit à peu près deux ans.**
 
-Le poste dominant est la fenêtre d'annonce, et c'est le seul levier qui compte :
+Le poste dominant est la fenêtre d'annonce — mesurer ne coûte presque rien,
+émettre coûte tout. D'où `ANNONCE_UN_CYCLE_SUR` dans `config.h` : la sonde
+garde un relevé toutes les 30 minutes, comme l'exige la fiche, mais n'ouvre
+une fenêtre radio qu'un réveil sur N.
+
+| Réglage | Relevés/jour | Fenêtres/jour | Consommation | Autonomie (accu 1000 mAh) |
+| --- | --- | --- | --- | --- |
+| `1` — une fenêtre par mesure | 48 | 48 | 3,8 mAh/j | 8,6 mois |
+| **`6` — une fenêtre toutes les 3 h** | **48** | **8** | **2,0 mAh/j** | **16,5 mois** |
+| `12` — une fenêtre toutes les 6 h | 48 | 4 | 1,8 mAh/j | 18 mois |
+
+Espacer les *mesures* au lieu des *fenêtres* ne rapporte presque rien et coûte
+le registre : à 3 h d'intervalle on tombe à 8 relevés par jour, et une panne
+peut passer trois heures inaperçue. Mieux vaut mesurer souvent et parler
+rarement.
+
+L'aimant ouvre toujours une fenêtre, quel que soit ce réglage : la
+synchronisation quotidienne reste immédiate. Une température hors seuils en
+ouvre une aussi.
+
+La durée de chaque fenêtre reste l'autre levier :
 
 | `FENETRE_ANNONCE_S` | Consommation | Autonomie | Confort de synchronisation |
 | --- | --- | --- | --- |
