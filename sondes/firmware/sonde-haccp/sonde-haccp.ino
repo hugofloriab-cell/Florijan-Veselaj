@@ -29,6 +29,15 @@
   #include <driver/rtc_io.h>
 #endif
 
+/* esp_read_mac() et ESP_MAC_BT ont déménagé : esp_mac.h depuis ESP-IDF 5
+   (cœur Arduino 3.x), esp_system.h avant. On laisse le préprocesseur trancher
+   plutôt que de parier sur une version. */
+#if __has_include(<esp_mac.h>)
+  #include <esp_mac.h>
+#else
+  #include <esp_system.h>
+#endif
+
 #if ALERTE_WIFI
   #include <WiFi.h>
   #include <HTTPClient.h>
@@ -147,7 +156,9 @@ static uint16_t lireTensionPile() {
 #else
   pinMode(BROCHE_PONT, OUTPUT);
   digitalWrite(BROCHE_PONT, HIGH);
-  analogSetPinAttenuation(BROCHE_PILE, ADC_11db);
+  /* Pas de réglage d'atténuation : le cœur Arduino ESP32 est déjà sur la plus
+     large (11 dB), et le nom de cette valeur a changé d'une version à l'autre.
+     analogReadMilliVolts() applique de toute façon l'étalonnage d'usine. */
   delay(3);                        /* charge du condensateur de filtrage */
 
   uint32_t somme = 0;

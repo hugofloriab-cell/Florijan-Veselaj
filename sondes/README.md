@@ -478,6 +478,13 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > connues entre versions du cœur Arduino, mais ce n'est pas une garantie.
 > Et rien ne remplace une première mise au point sur la carte.
 >
+> La limite s'est d'ailleurs vérifiée au premier essai réel : les en-têtes de
+> substitution déclaraient eux-mêmes `esp_read_mac()`, ce qui masquait
+> l'absence de `#include <esp_mac.h>` dans le croquis. Le banc a été corrigé —
+> chaque symbole ESP-IDF vit désormais dans son vrai en-tête, et une
+> contre-épreuve confirme qu'un include manquant y échoue maintenant. Mais
+> c'est bien la carte qui a trouvé l'erreur, pas le banc.
+>
 > Pour essayer l'application **sans attendre les composants** : ouvrez la fiche
 > avec `?demo=1` à la fin de l'adresse. Deux sondes fictives apparaissent, avec
 > une semaine de relevés et un incident de congélateur, ce qui permet de valider
