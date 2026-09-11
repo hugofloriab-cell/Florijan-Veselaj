@@ -148,16 +148,98 @@ par Arduino IDE, `0x10000` pour le seul binaire d'application).
 
 ## 5. Programmation
 
-1. **Arduino IDE 2.x** → *Outils → Gestionnaire de cartes* → installer
-   **esp32 by Espressif Systems** (version 3.x).
-2. *Outils → Gérer les bibliothèques* → **OneWire** (Paul Stoffregen) et
-   **DallasTemperature** (Miles Burton).
-3. *Outils → Type de carte* : **ESP32 Dev Module** pour une DevKit,
-   **XIAO_ESP32C3** pour une XIAO.
-4. Ouvrir `firmware/sonde-haccp/sonde-haccp.ino`. Vérifier en bas de `config.h`
-   que **`MODE_BANC` vaut 1**.
-5. Téléverser. Si la carte n'est pas détectée : maintenir **BOOT**, appuyer
-   brièvement sur **EN**/**RESET**, relâcher BOOT.
+> **Il n'y a rien à écrire.** Le programme de la sonde est terminé et se trouve
+> dans ce dépôt. Cette section ne fait que le récupérer et le téléverser.
+
+### 5.1 Récupérer le code sur le Mac
+
+Le plus simple, sans rien installer de plus :
+
+1. Téléchargez l'archive du projet :
+   <https://github.com/hugofloriab-cell/Florijan-Veselaj/archive/refs/heads/claude/haccp-temperature-probes-pzo1eq.zip>
+2. Double-cliquez le `.zip` dans *Téléchargements* pour le décompresser.
+3. Le programme est dans
+   `Florijan-Veselaj-claude-haccp-temperature-probes-pzo1eq/sondes/firmware/sonde-haccp/`.
+
+Ce dossier contient **deux fichiers, et les deux comptent** :
+
+| Fichier | Rôle |
+| --- | --- |
+| `sonde-haccp.ino` | le programme |
+| `config.h` | les réglages — c'est le seul que vous modifierez |
+
+> Arduino IDE exige que le fichier `.ino` soit dans un dossier **portant
+> exactement le même nom** — ici `sonde-haccp/sonde-haccp.ino`. C'est déjà le
+> cas : ne renommez ni ne déplacez rien, et gardez `config.h` à côté.
+
+### 5.2 Ajouter les cartes ESP32 à Arduino IDE
+
+L'ESP32 n'est pas fourni d'origine, il faut indiquer où le trouver.
+
+1. **Arduino IDE → Réglages…** (`⌘,`)
+2. Dans **URL de gestionnaire de cartes supplémentaires**, collez :
+   ```
+   https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+   ```
+3. **OK**, puis *Outils → Type de carte → Gestionnaire de cartes…*
+   (icône de carte dans la colonne de gauche).
+4. Cherchez **esp32**, installez **esp32 by Espressif Systems** (version 3.x).
+   Le téléchargement fait quelques centaines de mégaoctets : prévoyez dix
+   minutes.
+
+### 5.3 Installer les deux bibliothèques du capteur
+
+*Outils → Gérer les bibliothèques…* (icône de livres), puis installez :
+
+- **OneWire** de Paul Stoffregen
+- **DallasTemperature** de Miles Burton
+  (acceptez l'installation des dépendances si elle est proposée)
+
+### 5.4 Régler la carte — dont le piège du partitionnement
+
+Ouvrez `sonde-haccp.ino` (double-clic), puis dans le menu **Outils** :
+
+| Réglage | Valeur |
+| --- | --- |
+| Type de carte | **ESP32 Dev Module** (ou **XIAO_ESP32C3** selon la carte) |
+| **Partition Scheme** | **Huge APP (3MB No OTA/1MB SPIFFS)** |
+| Port | `/dev/cu.usbserial-…` ou `/dev/cu.wchusbserial-…` |
+| Upload Speed | 921600, à ramener à 115200 si le téléversement échoue |
+
+> ### ⚠ Le partitionnement est le piège classique
+>
+> Le découpage par défaut ne réserve que 1,2 Mo au programme. Une application
+> Bluetooth ESP32 approche cette limite, et la dépasse dès qu'on active
+> l'option Wi-Fi. Vous verriez alors :
+>
+> ```
+> text section exceeds available space in board
+> Sketch too big
+> ```
+>
+> Ce n'est pas une erreur du programme : c'est le découpage de la mémoire.
+> **Huge APP** porte la place disponible à 3 Mo et règle la question
+> définitivement.
+
+### 5.5 Vérifier les réglages du programme
+
+Ouvrez l'onglet **config.h** dans Arduino IDE et contrôlez, tout en bas :
+
+```c
+#define MODE_BANC 1
+```
+
+C'est ce qui donne un relevé par minute, la radio allumée 60 s et la trace
+série. Le reste — brochage, seuils — est déjà réglé pour votre montage.
+
+### 5.6 Téléverser
+
+Bouton **→** (flèche). La première compilation prend une à deux minutes, les
+suivantes sont rapides.
+
+Si la carte n'est pas détectée, ou si le téléversement reste bloqué sur
+`Connecting........_____` : maintenez **BOOT** enfoncé, appuyez brièvement sur
+**EN** (ou **RST**), relâchez BOOT, et relancez.
 
 ## 6. Lire la trace
 
