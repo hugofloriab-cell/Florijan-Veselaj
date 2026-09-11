@@ -462,16 +462,34 @@ En pratique :
 Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 `/* ============ Sondes ============ */`.
 
-> **Le firmware n'a jamais tourné sur du matériel réel**, et il faut savoir ce
-> qui a été vérifié et ce qui ne l'a pas été.
+> **Le firmware compile, mais n'a pas encore tourné sur du matériel réel.**
+> Voici précisément où en est la vérification.
 >
-> Vérifié : la logique de tampon circulaire, de déversement et d'acquittement
+> **Compilation réelle réussie** le 11 septembre 2026, Arduino IDE 2.3.10, cœur
+> esp32 3.x, cible *ESP32 Dev Module*, partitionnement *Huge APP* :
+>
+> ```
+> Le croquis utilise 1113607 octets (35%) de l'espace de stockage de programmes.
+> Le maximum est de 3145728 octets.
+> Les variables globales utilisent 41452 octets (12%) de mémoire dynamique.
+> ```
+>
+> Il aura fallu une correction pour y arriver : l'include manquant d'`esp_mac.h`
+> (voir plus bas). À 1,1 Mo, le programme tiendrait de justesse dans le
+> découpage par défaut de 1,3 Mo ; *Huge APP* laisse 65 % de marge et évite
+> d'avoir à y repenser, notamment si l'option Wi-Fi est activée.
+>
+> Vérifié aussi : la logique de tampon circulaire, de déversement et d'acquittement
 > est testée en natif (ordre chronologique, acquittement partiel, débordement,
 > découpage sur petit MTU, températures négatives) — tout passe. Le code
 > compile sans avertissement pour les deux puces, en mode banc comme en
 > service, avec et sans l'option Wi-Fi.
 >
-> Non vérifié : cette compilation s'appuie sur des en-têtes de substitution,
+> **Reste à faire : le téléverser et le regarder tourner.** Une compilation
+> réussie ne dit rien du comportement au réveil, de la lecture du capteur ni de
+> la tenue de la liaison Bluetooth.
+>
+> Non vérifié : les contrôles en amont s'appuyaient sur des en-têtes de substitution,
 > la chaîne de compilation ESP32 étant inaccessible depuis l'environnement où
 > ce code a été écrit. Un écart de signature avec la vraie bibliothèque BLE
 > reste donc possible — les rappels sont écrits pour absorber les variantes
