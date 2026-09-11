@@ -113,17 +113,21 @@ static uint16_t          mtu           = 23;
 /* Le DS18B20 est alimenté par une broche : hors mesure il ne consomme rien,
    pas même son microampère de veille. */
 static int16_t lireTemperature() {
+#if BROCHE_CAPTEUR_VCC >= 0
   pinMode(BROCHE_CAPTEUR_VCC, OUTPUT);
   digitalWrite(BROCHE_CAPTEUR_VCC, HIGH);
   delay(12);                       /* le capteur a besoin de se stabiliser */
+#endif
 
   capteur.begin();
   capteur.setResolution(12);       /* 0,0625 °C, conversion 750 ms */
   capteur.requestTemperatures();
   float c = capteur.getTempCByIndex(0);
 
+#if BROCHE_CAPTEUR_VCC >= 0
   digitalWrite(BROCHE_CAPTEUR_VCC, LOW);
   pinMode(BROCHE_CAPTEUR_VCC, INPUT);
+#endif
 
   if (c == DEVICE_DISCONNECTED_C || c < -60.0f || c > 125.0f) {
     rtcDrapeaux |= DRAPEAU_CAPTEUR_HS;

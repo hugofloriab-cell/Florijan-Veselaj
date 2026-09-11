@@ -147,6 +147,14 @@
   #error "Puce non gérée. Choisissez une carte ESP32 ou ESP32-C3 dans l'IDE."
 #endif
 
+/* Le fil rouge du DS18B20 peut aussi être branché sur 3V3 en permanence
+   plutôt que sur BROCHE_CAPTEUR_VCC : mettez alors cette broche à -1 et le
+   programme cessera de commuter l'alimentation du capteur. Tout fonctionne
+   à l'identique — on perd seulement le microampère que coûte le DS18B20 au
+   repos, ce qui reste négligeable devant le reste. */
+/* #undef  BROCHE_CAPTEUR_VCC
+   #define BROCHE_CAPTEUR_VCC -1 */
+
 /* Mettre à 0 tant que l'ILS n'est pas câblé. Une broche de réveil laissée en
    l'air déclenche des réveils parasites qui vident les piles — et sur
    l'établi, l'ILS est justement ce qu'on n'a pas encore soudé. */

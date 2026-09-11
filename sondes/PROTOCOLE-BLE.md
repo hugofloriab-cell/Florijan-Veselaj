@@ -1,9 +1,14 @@
 # Protocole BLE des sondes HACCP
 
-Contrat entre le firmware de la sonde (`firmware/sonde-haccp/`) et la fiche
-(`checklist-petit-dejeuner.html`, section « Sondes de température »).
+Contrat entre trois implémentations du même protocole :
 
-Toute modification doit être reportée **des deux côtés**.
+| Implémentation | Où | Rôle |
+| --- | --- | --- |
+| Firmware de la sonde | `firmware/sonde-haccp/` | émet |
+| Fiche web | `../checklist-petit-dejeuner.html`, bloc « Sondes » | reçoit, sur Android |
+| Application iOS | `ios/SondesHACCP/ProtocoleSonde.swift` | reçoit, sur iPhone et iPad |
+
+Toute modification doit être reportée **aux trois**.
 
 ---
 

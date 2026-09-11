@@ -47,7 +47,23 @@ physiques changent. Le détail est dans `config.h`.
 > supprime la consommation du capteur au repos. Branché sur 3V3 permanent, tout
 > fonctionne aussi — mais l'autonomie en souffre.
 
-## 3. Programmation
+## 3. Où écrire et téléverser le programme
+
+Trois possibilités, par ordre de commodité :
+
+| Outil | Où | Remarque |
+| --- | --- | --- |
+| **Arduino IDE 2.x** | Application à installer, macOS / Windows / Linux | **Le choix recommandé.** Moniteur série intégré, c'est lui qu'on utilise ci-dessous. <https://www.arduino.cc/en/software> |
+| **Arduino Cloud Editor** | Dans le navigateur, <https://app.arduino.cc/sketches> | Pratique sur un poste où l'on n'installe rien, mais exige quand même un petit agent local pour accéder au port USB, et gère moins bien les cartes ESP32 tierces. |
+| **PlatformIO** | Extension de VS Code | Plus puissant, plus long à prendre en main. Inutile ici. |
+
+**Sur Mac**, si la carte n'apparaît dans aucun port : la plupart des cartes
+ESP32 utilisent une puce USB-série **CH340** ou **CP2102**. macOS reconnaît la
+seconde d'origine, rarement la première — le pilote CH340 s'installe depuis le
+site de WCH. Le port porte alors un nom du type `/dev/cu.usbserial-…` ou
+`/dev/cu.wchusbserial-…`.
+
+## 4. Programmation
 
 1. **Arduino IDE 2.x** → *Outils → Gestionnaire de cartes* → installer
    **esp32 by Espressif Systems** (version 3.x).
@@ -60,7 +76,7 @@ physiques changent. Le détail est dans `config.h`.
 5. Téléverser. Si la carte n'est pas détectée : maintenir **BOOT**, appuyer
    brièvement sur **EN**/**RESET**, relâcher BOOT.
 
-## 4. Lire la trace
+## 5. Lire la trace
 
 *Outils → Moniteur série*, **115200 bauds**. Toutes les minutes :
 
@@ -83,10 +99,15 @@ de 4,7 kΩ est-elle bien entre le rouge et le jaune (et non entre le jaune et la
 masse) ? Le rouge est-il sur GPIO19 et le jaune sur GPIO21 ? Les trois fils
 font-ils bien contact ?
 
-## 5. Relever depuis la fiche
+## 6. Relever depuis la fiche
 
 Le Bluetooth du navigateur exige une adresse sécurisée : **la fiche doit être
 ouverte depuis son adresse web**, pas depuis un fichier local.
+
+> **Sur iPhone ou iPad, cette étape ne marchera pas** : Safari ne gère pas le
+> Bluetooth web, et tous les navigateurs iOS reposent sur Safari. Utilisez la
+> tablette Android, le navigateur **Bluefy** en dépannage, ou l'application
+> SwiftUI du dossier [`ios/`](ios/README.md).
 
 1. Sur un téléphone ou une tablette Android, ouvrir **Chrome** à l'adresse
    <https://hugofloriab-cell.github.io/Florijan-Veselaj/>
@@ -102,7 +123,7 @@ Chaque appui sur **Relever les sondes** rapatrie les nouvelles mesures.
 Un bandeau orange signalera que la sonde est en cadence de banc d'essai : c'est
 voulu, il disparaîtra en passant en service.
 
-## 6. Vérifier l'étalonnage
+## 7. Vérifier l'étalonnage
 
 Un verre de glace pilée, un peu d'eau, on remue : le bain est à 0,0 °C tant
 qu'il reste de la glace.
@@ -112,7 +133,7 @@ minutes, relevez depuis la fiche. Un DS18B20 sorti d'usine tombe en général
 entre −0,5 et +0,5 °C. L'écart lu se corrige avec le bouton **Étalonner**, ou
 dans `OFFSET_ETALONNAGE_CENTI`.
 
-## 7. Passer en service
+## 8. Passer en service
 
 Une fois l'essai concluant, dans `config.h` :
 

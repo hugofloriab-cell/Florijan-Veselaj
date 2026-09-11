@@ -454,6 +454,7 @@ En pratique :
 | Fichier | Contenu |
 | --- | --- |
 | `PREMIER-ESSAI.md` | Valider la chaîne en une heure, carte en USB |
+| `ios/` | Application **SwiftUI** : lecture des sondes sur iPhone et iPad |
 | `PROTOCOLE-BLE.md` | Format des trames — contrat entre la sonde et la fiche |
 | `firmware/sonde-haccp/sonde-haccp.ino` | Programme de la sonde |
 | `firmware/sonde-haccp/config.h` | Réglages propres à chaque sonde |

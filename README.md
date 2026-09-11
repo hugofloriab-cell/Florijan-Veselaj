@@ -11,7 +11,7 @@ conçue pour la tablette de la cuisine.
 | `docs/` | **Version installable publiée sur le web** (voir ci-dessous). Générée. |
 | `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
-| `sondes/` | **Sondes de température autonomes** : nomenclature à commander, programme, protocole. |
+| `sondes/` | **Sondes de température autonomes** : nomenclature, programme de la sonde, protocole, application iOS. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -48,6 +48,11 @@ d'enregistreurs autonomes posés sur les enceintes froides : un point toutes les
 
 Le Bluetooth demande l'adresse web en `https` : depuis un fichier local, la
 section reste visible mais le relevé est indisponible.
+
+**Sur iPhone ou iPad, le relevé ne fonctionne pas** : Safari ne gère pas le
+Bluetooth web, et tous les navigateurs iOS reposent sur Safari. Une application
+SwiftUI qui parle le même protocole aux mêmes sondes est dans
+[`sondes/ios/`](sondes/ios/README.md).
 
 **Pour voir la section sans matériel**, ajoutez `?demo=1` à l'adresse : deux
 sondes fictives apparaissent, avec trois semaines de relevés et un incident de
