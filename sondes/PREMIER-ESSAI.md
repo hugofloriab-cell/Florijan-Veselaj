@@ -204,7 +204,7 @@ Ouvrez `sonde-haccp.ino` (double-clic), puis dans le menu **Outils** :
 | Type de carte | **ESP32 Dev Module** (ou **XIAO_ESP32C3** selon la carte) |
 | **Partition Scheme** | **Huge APP (3MB No OTA/1MB SPIFFS)** |
 | Port | `/dev/cu.usbserial-…` ou `/dev/cu.wchusbserial-…` |
-| Upload Speed | 921600, à ramener à 115200 si le téléversement échoue |
+| **Upload Speed** | **115200** — voir l'encadré ci-dessous |
 
 > ### ⚠ Le partitionnement est le piège classique
 >
@@ -220,6 +220,25 @@ Ouvrez `sonde-haccp.ino` (double-clic), puis dans le menu **Outils** :
 > Ce n'est pas une erreur du programme : c'est le découpage de la mémoire.
 > **Huge APP** porte la place disponible à 3 Mo et règle la question
 > définitivement.
+
+> ### ⚠ Et le débit de téléversement
+>
+> Arduino IDE propose 921600 bauds par défaut. Beaucoup d'adaptateurs USB-série
+> CH340 ne suivent pas à cette vitesse : la connexion s'établit, la puce est
+> reconnue — adresse MAC lue, tout va bien — puis l'écriture échoue au moment
+> précis du passage à haut débit :
+>
+> ```
+> Uploading stub flasher...
+> Changing baud rate to 921600...
+> A fatal error occurred: Unable to verify flash chip connection
+> Failed uploading: uploading error: exit status 2
+> ```
+>
+> L'erreur parle de « flash chip connection », ce qui fait penser à un problème
+> matériel. Il n'en est rien : **repassez Upload Speed à 115200**. Le
+> téléversement prend une trentaine de secondes au lieu de dix — sans commune
+> mesure avec le temps perdu à chercher.
 
 ### 5.5 Vérifier les réglages du programme
 
