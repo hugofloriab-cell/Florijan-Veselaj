@@ -233,6 +233,13 @@
   #define REVEIL_MANUEL_ACTIF 0
   #undef  ANNONCE_UN_CYCLE_SUR
   #define ANNONCE_UN_CYCLE_SUR 1
+  /* Sur le banc, le client est à un mètre : on n'a pas besoin de portée, et
+     un pic d'émission réduit évite de faire décrocher une alimentation juste
+     — une prise USB d'ordinateur, un câble long, une carte de développement
+     avec son régulateur et ses LED. Voir « Si la carte redémarre en boucle »
+     dans PREMIER-ESSAI.md. */
+  #undef  PUISSANCE_BLE
+  #define PUISSANCE_BLE ESP_PWR_LVL_N9
   #undef  TRACE
   #define TRACE 1
   #define PILE_SIMULEE 1

@@ -364,16 +364,20 @@ qui calcule juste.
 
 ### Les remèdes, du plus simple au plus lourd
 
-1. **Baisser la puissance d'émission.** `PUISSANCE_BLE` dans `config.h`, ou en
-   dur juste après `BLEDevice::init(nom)` :
-
-   ```cpp
-   BLEDevice::setPower(ESP_PWR_LVL_N9);
-   ```
+1. **Baisser la puissance d'émission.** C'est le réglage `PUISSANCE_BLE` de
+   `config.h`. En mode banc, il est **déjà** au minimum utile
+   (`ESP_PWR_LVL_N9`, −9 dBm) : sur l'établi, le téléphone est à un mètre, la
+   portée n'a aucune importance. Rien à faire donc, sauf si vous avez modifié
+   ce réglage — dans ce cas remettez-le, ou descendez d'un cran jusqu'à
+   `ESP_PWR_LVL_N12`.
 
    De `+3` à `-9 dBm`, le pic chute nettement. La portée passe d'une quinzaine
    de mètres à trois ou quatre — sans importance pour une sonde aimantée sur
    une porte de frigo, et la fenêtre radio consomme moins.
+
+   Le passage en service (§ 11) repasse à `ESP_PWR_LVL_N0`, soit une dizaine
+   de mètres. Si la carte se remet à redémarrer à ce moment-là, c'est le
+   condensateur du point 2 qu'il faut, pas un retour en arrière.
 
 2. **Ajouter un condensateur** de 220 à 470 µF entre `3V3` et `GND`, au plus
    près de la carte. Il sert de réservoir et absorbe le pic. C'est le remède de
@@ -391,6 +395,41 @@ les broches nues dessous peuvent se toucher dans un pli.
 
 Posez la carte sur une surface **dure et plate** avant de conclure quoi que ce
 soit.
+
+### Remettre la radio
+
+Une fois le remède appliqué, **décommentez les deux lignes** — sans quoi la
+sonde mesure très bien mais ne parlera jamais à personne :
+
+```cpp
+  demarrerAnnonce();
+  tenirFenetre(fenetre);
+```
+
+Téléversez. La trace attendue, à chaque cycle :
+
+```
+rst:0x5 (DEEPSLEEP_RESET),boot:0x17 (SPI_FAST_FLASH_BOOT)
+reveil: minuterie
+T=+7,25 C (725 centi), pile=100% (4900 mV), attente=3, manuel=0
+annonce HACCP-C456
+veille 1 s (tics 180)
+```
+
+Trois choses à y vérifier, dans cet ordre :
+
+| À vérifier | Pourquoi |
+| --- | --- |
+| `DEEPSLEEP_RESET`, et non `POWERON_RESET` | l'alimentation tient pendant l'émission |
+| pas de `demarrage a froid` après le premier | la mémoire de sauvegarde survit, donc le 3,3 V n'est pas tombé |
+| la ligne `annonce HACCP-XXXX` | la radio est réellement partie |
+
+`veille 1 s` est normal en mode banc et n'est pas un défaut : la fenêtre
+d'annonce dure 60 s et le cycle une minute, la radio occupe donc presque tout
+le temps. En service (§ 11), le cycle passe à 30 minutes et la fenêtre à 15 s.
+
+Notez le nom `HACCP-XXXX` de la trace : c'est sous ce nom que la sonde
+apparaîtra au scan, et c'est lui qu'il faudra chercher depuis l'application.
 
 ## 10. Essayer l'alerte Wi-Fi
 
@@ -492,6 +531,13 @@ Une fois l'essai concluant, dans `config.h` :
   `-2300`/`-1800` en négatif ;
 - `REVEIL_MANUEL_ACTIF` à 1 seulement quand l'ILS est réellement soudé ;
 - les bornes de batterie (§ « Pile ») selon piles AA ou accu rechargeable.
+
+Attention : `MODE_BANC` à 0 rend aussi sa valeur normale à `PUISSANCE_BLE`,
+`ESP_PWR_LVL_N0` — une dizaine de mètres de portée, et un pic de courant plus
+fort qu'au banc. C'est le moment où une alimentation juste se fait remarquer
+(§ 9). Sur le montage définitif, avec le condensateur de la nomenclature en
+place, elle n'a plus de raison de faiblir ; si c'est le cas, redescendez d'un
+cran plutôt que de renoncer au condensateur.
 
 Puis le montage définitif : voir `README.md`, § 4 (câblage complet) et § 8
 (mise en service sur l'enceinte).
