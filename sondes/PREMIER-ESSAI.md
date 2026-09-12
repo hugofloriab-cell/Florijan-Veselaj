@@ -313,15 +313,87 @@ Chaque appui sur **Relever les sondes** rapatrie les nouvelles mesures.
 Un bandeau orange signalera que la sonde est en cadence de banc d'essai : c'est
 voulu, il disparaîtra en passant en service.
 
-## 8. Vérifier l'étalonnage
+## 8. La température lue ne ressemble pas à la pièce
 
-Un verre de glace pilée, un peu d'eau, on remue : le bain est à 0,0 °C tant
-qu'il reste de la glace.
+C'est la réaction normale au premier essai : la trace affiche 24, 27, 32 °C, et
+il ne fait manifestement pas ça dans la pièce. Le réflexe est de soupçonner
+l'étalonnage. C'est presque toujours la mauvaise piste.
 
-Plongez-y la pointe inox **et** votre thermomètre de référence. Après cinq
-minutes, relevez depuis la fiche. Un DS18B20 sorti d'usine tombe en général
-entre −0,5 et +0,5 °C. L'écart lu se corrige avec le bouton **Étalonner**, ou
-dans `OFFSET_ETALONNAGE_CENTI`.
+### Un DS18B20 ne se dérègle pas
+
+C'est un capteur **numérique**, étalonné en usine, garanti **±0,5 °C** de −10 à
++85 °C. Il n'envoie pas une tension à interpréter mais un nombre déjà converti :
+il n'y a aucune chaîne analogique susceptible de dériver, ni résistance à
+ajuster, ni rien à régler.
+
+D'où la règle qui fait gagner du temps :
+
+> **Un écart de plusieurs degrés n'est jamais un problème d'étalonnage.**
+> C'est un problème de ce que la pointe mesure réellement.
+
+Un écart d'étalonnage, ça vaut 0,3 °C. Pas 8.
+
+### Ce que la pointe mesure vraiment
+
+Par ordre de fréquence :
+
+1. **La chaleur de la carte.** Une DevKit dissipe en permanence : régulateur
+   AMS1117, puce USB-série, LED d'alimentation. Ça chauffe peu, mais la pointe
+   inox posée à côté, ou le câble enroulé autour de la carte, suffit à faire
+   monter la lecture de plusieurs degrés. Une lecture à 32 °C dans une pièce à
+   22 °C, c'est exactement cette signature.
+
+2. **La pointe n'est pas dans l'air qu'on croit.** Contre un mur, sous un
+   coussin, dans un pli de tissu, posée sur du carrelage, coincée sous
+   l'ordinateur : elle mesure la surface, pas la pièce. Le carrelage est plus
+   froid que l'air, un couvre-lit bien plus chaud.
+
+3. **Le temps de réponse.** L'inox a de la masse. Déplacée d'un endroit à un
+   autre, la pointe met **cinq bonnes minutes** à suivre. Les premières lectures
+   après un déplacement décrivent l'endroit d'avant.
+
+Le test qui tranche en une minute : tenez la pointe **en l'air, à bout de bras,
+loin de la carte et de votre main**, attendez cinq minutes, et regardez la
+trace. Si la lecture descend franchement, le capteur va très bien — il mesurait
+autre chose.
+
+### Le point de référence qui ne coûte rien
+
+Pas besoin de thermomètre étalon. Un verre de **glace pilée avec un peu d'eau,
+remué**, est à **0,0 °C** tant qu'il reste de la glace : c'est de la physique,
+pas un réglage, et c'est bon à quelques centièmes. Aucun thermomètre de cuisine
+n'est aussi fiable.
+
+1. Remplissez un verre de glace, ajoutez un fond d'eau, remuez.
+2. Plongez-y la pointe inox sur cinq bons centimètres — pas le câble, pas la
+   jonction.
+3. Attendez **cinq minutes**, en remuant de temps en temps.
+4. Lisez la trace.
+
+| Lecture | Verdict |
+| --- | --- |
+| entre −0,5 et +0,5 °C | Le capteur est bon. L'écart dans la pièce venait du placement. |
+| écart franc et stable | Là, et là seulement, un offset se justifie. |
+| `-32768` | Ce n'est pas l'étalonnage, c'est le câblage (§ 3). |
+
+### Corriger, si c'est vraiment nécessaire
+
+`OFFSET_ETALONNAGE_CENTI` dans `config.h`, en centièmes de degré, **du signe
+opposé à l'erreur** : la sonde affiche +0,4 °C dans la glace, on met `-40`.
+
+```cpp
+#define OFFSET_ETALONNAGE_CENTI -40
+```
+
+La fiche sait aussi l'écrire dans la sonde sans retéléverser (bouton
+**Étalonner**, commande `0x05` du protocole).
+
+> **Ne mettez jamais un offset pour rattraper un placement.** Il s'appliquerait
+> ensuite à *toutes* les mesures, y compris dans le froid, où il n'y a plus de
+> carte pour chauffer la pointe. Une sonde « corrigée » de −8 °C sur un
+> réfrigérateur à +3 °C annoncerait −5 °C : elle passerait d'un outil de
+> contrôle à un mensonge enregistré toutes les 30 minutes. L'offset se
+> détermine dans la glace, jamais à l'estime.
 
 ## 9. Si la carte redémarre en boucle
 

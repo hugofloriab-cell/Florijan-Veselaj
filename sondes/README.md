@@ -421,6 +421,12 @@ périodique fait partie du plan de maîtrise sanitaire, sonde maison ou non.
    commande `0x05` depuis la fiche (bouton *Étalonner*).
 5. Noter la date et l'écart dans le registre — c'est ce qu'on vous demandera.
 
+L'écart attendu est **inférieur à 0,5 °C** : le DS18B20 est numérique et
+étalonné en usine, il n'a pas de chaîne analogique susceptible de dériver. Un
+écart de plusieurs degrés ne s'étalonne donc pas, il se diagnostique — la
+pointe mesure autre chose que ce qu'on croit. Voir « La température lue ne
+ressemble pas à la pièce » dans [PREMIER-ESSAI.md](PREMIER-ESSAI.md).
+
 ---
 
 ## 6. Autonomie — le calcul
