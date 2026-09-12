@@ -323,14 +323,83 @@ minutes, relevez depuis la fiche. Un DS18B20 sorti d'usine tombe en général
 entre −0,5 et +0,5 °C. L'écart lu se corrige avec le bouton **Étalonner**, ou
 dans `OFFSET_ETALONNAGE_CENTI`.
 
-## 9. Essayer l'alerte Wi-Fi
+## 9. Si la carte redémarre en boucle
+
+Symptôme observé sur la carte d'essai, et le plus déroutant de tous :
+
+```
+annonce HACCP-C456
+ets Jul 29 2019 12:21:46
+rst:0x1 (POWERON_RESET)
+demarrage a froid          ← et ça recommence, indéfiniment
+```
+
+`POWERON_RESET` juste après la ligne `annonce` signifie que l'alimentation
+s'est réellement effondrée — pas un plantage logiciel. Le signe qui ne trompe
+pas : `demarrage a froid` réapparaît à chaque tour, donc la mémoire de
+sauvegarde est perdue, donc le 3,3 V est bien tombé.
+
+La cause est le **pic de courant de l'émission Bluetooth** : plus de 100 mA par
+bouffée, sur une alimentation qui n'a pas la réserve pour l'encaisser.
+
+### L'expérience qui tranche
+
+Avant de chercher, isolez la radio. Commentez les deux lignes qui l'allument :
+
+```cpp
+  // demarrerAnnonce();
+  // tenirFenetre(fenetre);
+```
+
+Téléversez et regardez la trace :
+
+| Résultat | Conclusion |
+| --- | --- |
+| `rst:0x5 (DEEPSLEEP_RESET)`, plus de `demarrage a froid`, `veille 59 s` | C'est la radio. Voir ci-dessous. |
+| Toujours `POWERON_RESET` | Ce n'est pas la radio : bouton EN enfoncé, court-circuit, ou câble USB. |
+
+Le temps de veille est un indice supplémentaire : `veille 5 s` quand la radio
+occupe 60 s du cycle d'une minute, `veille 59 s` sans elle. C'est le programme
+qui calcule juste.
+
+### Les remèdes, du plus simple au plus lourd
+
+1. **Baisser la puissance d'émission.** `PUISSANCE_BLE` dans `config.h`, ou en
+   dur juste après `BLEDevice::init(nom)` :
+
+   ```cpp
+   BLEDevice::setPower(ESP_PWR_LVL_N9);
+   ```
+
+   De `+3` à `-9 dBm`, le pic chute nettement. La portée passe d'une quinzaine
+   de mètres à trois ou quatre — sans importance pour une sonde aimantée sur
+   une porte de frigo, et la fenêtre radio consomme moins.
+
+2. **Ajouter un condensateur** de 220 à 470 µF entre `3V3` et `GND`, au plus
+   près de la carte. Il sert de réservoir et absorbe le pic. C'est le remède de
+   fond, et c'est pourquoi la nomenclature en prévoit un.
+
+3. **Vérifier l'alimentation elle-même** : câble USB court et épais, branché
+   directement sur l'ordinateur, sans hub. Et surtout, **rien d'autre relié à
+   `VIN`** — un module de charge encore câblé suffit à perturber.
+
+### Un piège matériel à écarter d'abord
+
+`POWERON_RESET` est aussi ce qu'on obtient en appuyant sur **EN**. Une carte
+posée sur du tissu, un couvre-lit, une nappe : le bouton peut être enfoncé, et
+les broches nues dessous peuvent se toucher dans un pli.
+
+Posez la carte sur une surface **dure et plate** avant de conclure quoi que ce
+soit.
+
+## 10. Essayer l'alerte Wi-Fi
 
 Facultatif, et indépendant du Bluetooth. Cette option fait allumer le Wi-Fi à
 la sonde **uniquement pour signaler un défaut** : température hors seuils sur
 deux relevés consécutifs, ou pile faible. Elle est la seule façon d'être
 prévenu la nuit sans qu'aucun appareil ne soit à portée.
 
-### 9.1 S'abonner aux notifications
+### 10.1 S'abonner aux notifications
 
 **ntfy.sh** est gratuit et sans compte.
 
@@ -345,7 +414,7 @@ prévenu la nuit sans qu'aucun appareil ne soit à portée.
 Sans téléphone sous la main, ouvrez simplement `https://ntfy.sh/VOTRE-SUJET`
 dans un navigateur : les messages y arrivent en direct.
 
-### 9.2 Configurer la sonde
+### 10.2 Configurer la sonde
 
 Dans `config.h` :
 
@@ -372,7 +441,7 @@ Deux limites de l'ESP32 à connaître :
 - **Pas de portail captif, pas de Wi-Fi d'entreprise.** Un réseau à page
   d'accueil ou à identifiants individuels ne fonctionnera pas.
 
-### 9.3 Déclencher l'alerte pour de vrai
+### 10.3 Déclencher l'alerte pour de vrai
 
 Le plus simple : **ne rien faire de spécial.** Les seuils par défaut sont ceux
 d'une enceinte positive, `+1` à `+4 °C`. Sur un établi à 21 °C, la sonde est
@@ -395,7 +464,7 @@ alerte poussee, code http 200
 | `ouverture https impossible` | la connexion TLS a échoué |
 | aucune ligne d'alerte | moins de deux relevés hors seuils, ou délai de repos en cours |
 
-### 9.4 Pour recommencer l'essai
+### 10.4 Pour recommencer l'essai
 
 Après une alerte, la sonde se tait **2 heures** (`ALERTE_REPOS_MINUTES`) : sans
 ce repos, une enceinte en panne enverrait une notification par relevé.
@@ -404,7 +473,7 @@ Pour relancer un essai tout de suite, appuyez sur **EN**. La remise à zéro
 efface le compteur de repos, et deux relevés plus tard une nouvelle
 notification part.
 
-### 9.5 Ce que coûte l'option
+### 10.5 Ce que coûte l'option
 
 Rien, tant que les enceintes sont conformes : le Wi-Fi n'est jamais allumé.
 
@@ -412,7 +481,7 @@ Une enceinte réellement en panne envoie une alerte toutes les 2 heures, soit
 environ **0,4 mAh par alerte** — 5 mAh par jour de panne. Sans effet sur
 l'autonomie, d'autant qu'une panne se règle en quelques heures.
 
-## 10. Passer en service
+## 11. Passer en service
 
 Une fois l'essai concluant, dans `config.h` :
 
