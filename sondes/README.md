@@ -204,6 +204,51 @@ l'intervalle à 30 minutes, et mettez `ANNONCE_UN_CYCLE_SUR` à **1** — sur
 secteur, économiser la radio n'a plus d'intérêt, autant que la sonde soit
 joignable à chaque relevé.
 
+### Si vous voulez rester sur batterie : quelle capacité pour quelle durée
+
+Autonomie selon le pack et selon la veille réellement mesurée, avec une fenêtre
+radio à chaque relevé (`ANNONCE_UN_CYCLE_SUR 1`) :
+
+| Pack | Veille 10 mA | 5 mA | 2 mA |
+| --- | --- | --- | --- |
+| LiPo 1000 mAh (celui du prototype) | 2 j | 4 j | 10 j |
+| 18650 de 3400 mAh | 7 j | 14 j | 33 j |
+| 2 × 18650 en parallèle (3,7 V) | 14 j | 28 j | 2,2 mois |
+| 2 × 18650 en série (7,4 V) | 14 j | 28 j | 2,2 mois |
+| **Batterie externe USB 10 000 mAh** | 37 j | 2,4 mois | 5,8 mois |
+| **Batterie externe USB 20 000 mAh** | **2,4 mois** | **4,8 mois** | **11,7 mois** |
+
+**Série et parallèle donnent le même résultat**, ce qui n'est pas intuitif. Un
+seul élément lithium branché sur `VIN` ne donne que la moitié de sa capacité :
+l'AMS1117 décroche vers 4,3 V et abandonne toute la moitié basse de la
+décharge. Deux éléments en série (7,4 V) laissent au régulateur toute sa marge
+et rendent la capacité entière — mais un seul pack au lieu de deux. Le compte
+est identique.
+
+Conclusion pratique : **montez-les en parallèle**. Même autonomie, et le TP4056
+sait charger un pack parallèle, alors qu'un pack série exigerait un chargeur 2S
+et un circuit d'équilibrage.
+
+Mieux encore, une **batterie externe USB** évite tout ce câblage : sortie 5 V
+régulée, donc aucune perte au régulateur, et on la recharge comme un téléphone.
+C'est le meilleur rapport capacité/simplicité.
+
+> **Vérifiez l'extinction automatique.** Beaucoup de batteries externes se
+> coupent quand le courant tiré descend sous 50 à 100 mA — or la sonde en tire
+> dix fois moins. Cherchez un modèle annoncé « always on », « low current mode »
+> ou « pour objets connectés ». Sinon, testez : branchez, attendez une heure,
+> vérifiez que la trace série continue.
+
+### La modification la moins risquée, si vous voulez gagner sans rien racheter
+
+Sur la plupart de ces cartes, la **LED d'alimentation** consomme 2 à 5 mA en
+permanence — soit un tiers à la moitié du total. La dessouder, ou couper la
+piste de sa résistance série au cutter, ne demande pas de toucher au régulateur
+ni à la puce USB, et ne fait rien perdre d'autre que le témoin lumineux.
+
+C'est la seule modification vraiment accessible. Repérez la LED allumée en
+permanence près du régulateur, et sa petite résistance voisine.
+
 ### Et d'abord : mesurez, ne croyez pas l'estimation
 
 Les 5 à 15 mA ci-dessus sont une fourchette pour cette famille de cartes, pas
