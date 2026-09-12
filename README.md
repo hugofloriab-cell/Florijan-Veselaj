@@ -12,6 +12,7 @@ conçue pour la tablette de la cuisine.
 | `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
 | `planning-stagiaire.html` | **Planning du stagiaire au poste froid**, shift 10h–14h. Page autonome, indépendante de la check-list. |
+| `trainee-schedule.html` | Le même planning **en anglais, mis en page pour l'A4 paysage**. Page autonome. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -156,3 +157,20 @@ déroulé du shift 10h00 – 14h00, sous forme de diagramme de Gantt.
 La page s'imprime sur A4 pour être affichée au poste. Elle n'a pas de
 sauvegarde ni de champ à remplir : c'est un support de consigne, pas une fiche
 de contrôle.
+
+### Version anglaise, format paysage
+
+`trainee-schedule.html` est la traduction anglaise du planning, mise en page
+pour l'impression **A4 paysage** (`@page { size: A4 landscape }`) :
+
+- Page 1 : l'en-tête, les chiffres du shift, le diagramme complet et sa légende.
+- Page 2 : les trois moments à deux mains, le mode opératoire des quatre
+  préparations et les règles permanentes.
+
+Les libellés de tâche sont volontairement courts (42 caractères au plus) pour
+tenir sur une seule ligne à l'impression : c'est ce qui permet au diagramme de
+rentrer sur une seule page. Les allonger fait déborder le tableau sur une
+deuxième page.
+
+Les deux fiches, française et anglaise, portent le même déroulé et les mêmes
+horaires. Toute correction d'horaire doit être reportée dans les deux.
