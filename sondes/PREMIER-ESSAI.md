@@ -323,7 +323,96 @@ minutes, relevez depuis la fiche. Un DS18B20 sorti d'usine tombe en général
 entre −0,5 et +0,5 °C. L'écart lu se corrige avec le bouton **Étalonner**, ou
 dans `OFFSET_ETALONNAGE_CENTI`.
 
-## 9. Passer en service
+## 9. Essayer l'alerte Wi-Fi
+
+Facultatif, et indépendant du Bluetooth. Cette option fait allumer le Wi-Fi à
+la sonde **uniquement pour signaler un défaut** : température hors seuils sur
+deux relevés consécutifs, ou pile faible. Elle est la seule façon d'être
+prévenu la nuit sans qu'aucun appareil ne soit à portée.
+
+### 9.1 S'abonner aux notifications
+
+**ntfy.sh** est gratuit et sans compte.
+
+1. Installez l'application **ntfy** (App Store ou Play Store).
+2. *Ajouter un abonnement* → saisissez un nom de sujet **long et non
+   devinable**, par exemple `ibis-sisteron-froid-7f3a91c2`.
+
+> **Le nom du sujet est le seul mot de passe.** Qui le connaît lit vos alertes,
+> et peut en publier de fausses. Inventez une suite qu'on ne devine pas — pas
+> `ibis-froid`.
+
+Sans téléphone sous la main, ouvrez simplement `https://ntfy.sh/VOTRE-SUJET`
+dans un navigateur : les messages y arrivent en direct.
+
+### 9.2 Configurer la sonde
+
+Dans `config.h` :
+
+```c
+#define ALERTE_WIFI 1
+
+#if ALERTE_WIFI
+  #define WIFI_SSID "le-nom-de-votre-box"
+  #define WIFI_MDP  "le-mot-de-passe"
+  #define NTFY_SUJET "ibis-sisteron-froid-7f3a91c2"
+```
+
+> ### ⚠ Ne publiez jamais ces lignes
+>
+> Le dépôt GitHub est **public**. Si vous y poussez un `config.h` contenant le
+> vrai mot de passe de la box de l'hôtel, il devient lisible par tout le monde
+> — et le retirer plus tard ne l'effacera pas de l'historique. Gardez ce
+> fichier sur votre Mac uniquement.
+
+Deux limites de l'ESP32 à connaître :
+
+- **2,4 GHz uniquement.** Si votre box diffuse deux réseaux séparés, indiquez
+  celui en 2,4 GHz. Avec un réseau unique fusionné, ça passe en général.
+- **Pas de portail captif, pas de Wi-Fi d'entreprise.** Un réseau à page
+  d'accueil ou à identifiants individuels ne fonctionnera pas.
+
+### 9.3 Déclencher l'alerte pour de vrai
+
+Le plus simple : **ne rien faire de spécial.** Les seuils par défaut sont ceux
+d'une enceinte positive, `+1` à `+4 °C`. Sur un établi à 21 °C, la sonde est
+donc déjà largement hors normes.
+
+Gardez `MODE_BANC 1`, téléversez, et attendez **deux minutes** — le temps de
+deux relevés consécutifs hors seuils. La notification arrive sur le téléphone.
+
+La trace série raconte ce qui se passe :
+
+```
+T=+21,50 C (2150 centi), ...
+alerte poussee, code http 200
+```
+
+| Trace | Signification |
+| --- | --- |
+| `code http 200` | ntfy a accepté, la notification est partie |
+| `wifi indisponible (etat 6)` | mauvais SSID ou mot de passe, ou réseau 5 GHz |
+| `ouverture https impossible` | la connexion TLS a échoué |
+| aucune ligne d'alerte | moins de deux relevés hors seuils, ou délai de repos en cours |
+
+### 9.4 Pour recommencer l'essai
+
+Après une alerte, la sonde se tait **2 heures** (`ALERTE_REPOS_MINUTES`) : sans
+ce repos, une enceinte en panne enverrait une notification par relevé.
+
+Pour relancer un essai tout de suite, appuyez sur **EN**. La remise à zéro
+efface le compteur de repos, et deux relevés plus tard une nouvelle
+notification part.
+
+### 9.5 Ce que coûte l'option
+
+Rien, tant que les enceintes sont conformes : le Wi-Fi n'est jamais allumé.
+
+Une enceinte réellement en panne envoie une alerte toutes les 2 heures, soit
+environ **0,4 mAh par alerte** — 5 mAh par jour de panne. Sans effet sur
+l'autonomie, d'autant qu'une panne se règle en quelques heures.
+
+## 10. Passer en service
 
 Une fois l'essai concluant, dans `config.h` :
 

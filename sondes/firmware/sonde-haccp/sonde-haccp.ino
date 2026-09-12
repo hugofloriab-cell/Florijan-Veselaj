@@ -40,6 +40,7 @@
 
 #if ALERTE_WIFI
   #include <WiFi.h>
+  #include <WiFiClientSecure.h>
   #include <HTTPClient.h>
 #endif
 
@@ -481,16 +482,35 @@ static void pousserAlerte(const char *titre, const char *corps, const char *prio
   while (WiFi.status() != WL_CONNECTED && millis() - debut < 15000UL) delay(150);
 
   if (WiFi.status() == WL_CONNECTED) {
+    /* Une URL https ne suffit pas : HTTPClient::begin(url) seul ne sait pas
+       ouvrir de connexion chiffrée, et la requête échoue sans explication. Il
+       faut lui passer un client TLS explicite.
+
+       setInsecure() n'authentifie pas le serveur. C'est un choix assumé :
+       vérifier le certificat demanderait d'embarquer une autorité de
+       certification et de la tenir à jour dans une sonde censée vivre des
+       années sans maintenance. Le risque encouru est qu'un intrus sur le
+       réseau puisse intercepter ou falsifier un message disant qu'un
+       congélateur est trop chaud — pas un secret d'exploitation. */
+    WiFiClientSecure client;
+    client.setInsecure();
+
     HTTPClient http;
-    http.begin("https://ntfy.sh/" NTFY_SUJET);
-    http.addHeader("Title", titre);
-    http.addHeader("Priority", priorite);
-    http.addHeader("Tags", "warning,thermometer");
-    http.POST((uint8_t *)corps, strlen(corps));
-    http.end();
-    trace("alerte poussee");
+    http.setConnectTimeout(8000);
+    http.setTimeout(8000);
+    if (http.begin(client, "https://ntfy.sh/" NTFY_SUJET)) {
+      http.addHeader("Title", titre);
+      http.addHeader("Priority", priorite);
+      http.addHeader("Tags", "warning,thermometer");
+      int code = http.POST((uint8_t *)corps, strlen(corps));
+      http.end();
+      (void)code;   /* seule la trace s'en sert, absente en service */
+      trace("alerte poussee, code http %d", code);   /* 200 = accepte */
+    } else {
+      trace("ouverture https impossible");
+    }
   } else {
-    trace("wifi indisponible");
+    trace("wifi indisponible (etat %d)", (int)WiFi.status());
   }
 
   WiFi.disconnect(true, true);
