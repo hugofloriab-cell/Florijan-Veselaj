@@ -168,10 +168,58 @@ Trois issues possibles :
    broche 3V3 directement en 3,3 V régulé. On retombe à quelques dizaines de
    µA — mais on perd la programmation par USB, et c'est du dessoudage fin sur
    une carte à 5 €.
-3. **Alimenter en permanence.** Si l'enceinte est près d'une prise, la question
-   de l'autonomie disparaît : le relevé toutes les 30 minutes et l'envoi à la
-   fiche fonctionnent à l'identique. C'est une solution parfaitement défendable
-   pour une chambre froide, moins pour un congélateur coffre isolé.
+3. **Alimenter en permanence** — et c'est la solution à retenir si vous avez
+   déjà cette carte. Voir ci-dessous.
+
+### Faire fonctionner une DevKit, sans rien racheter
+
+Le seul défaut de cette carte est sa veille. Retirez la contrainte de veille et
+le défaut disparaît : **alimentez la sonde sur le secteur.**
+
+Un chargeur USB 5 V et un câble suffisent. Une chambre froide est éclairée, donc
+il y a du courant à proximité ; un frigo de cuisine est branché quelque part.
+
+Ce que l'on garde — c'est-à-dire tout :
+
+| Fonction | Sur secteur |
+| --- | --- |
+| Relevé toutes les 30 minutes, jour et nuit | identique |
+| Mémoire de 10 jours, aucun trou dans le registre | identique |
+| Synchronisation Bluetooth vers l'application | identique |
+| Seuils, écarts, alertes | identique |
+| Alerte Wi-Fi de nuit (option) | identique, et même plus simple |
+| Suivi de pile et d'autonomie | sans objet — plus de pile à suivre |
+
+Ce que l'on perd : l'absence de fil, et la survie à une coupure de courant.
+Sur ce dernier point, notez qu'une coupure de courant arrête aussi le groupe
+froid : la panne est alors bien plus visible qu'un trou dans le registre.
+
+À vrai dire, pour une enceinte proche d'une prise, le secteur est **préférable**
+au montage sur piles : plus de pile à changer, plus d'autonomie à surveiller,
+plus de relevés perdus au remplacement. Le fonctionnement sur piles n'existait
+que pour éviter de tirer un fil.
+
+Réglages dans `config.h` : rien de particulier. Laissez `MODE_BANC` à 0,
+l'intervalle à 30 minutes, et mettez `ANNONCE_UN_CYCLE_SUR` à **1** — sur
+secteur, économiser la radio n'a plus d'intérêt, autant que la sonde soit
+joignable à chaque relevé.
+
+### Et d'abord : mesurez, ne croyez pas l'estimation
+
+Les 5 à 15 mA ci-dessus sont une fourchette pour cette famille de cartes, pas
+une mesure de la vôtre. Les clones varient beaucoup, et certains montent un
+régulateur nettement plus sobre.
+
+Multimètre en série sur le fil d'alimentation, calibre milliampères, carte en
+veille entre deux mesures. Le chiffre obtenu décide :
+
+| Veille mesurée | Autonomie sur accu 1000 mAh | Conclusion |
+| --- | --- | --- |
+| 10 mA | 4 jours | secteur obligatoire |
+| 2 mA | 20 jours | secteur conseillé |
+| 0,5 mA | 2,5 mois | envisageable sur accu, avec recharge mensuelle |
+
+C'est le seul chiffre qui tranche, et il coûte deux minutes.
 
 Dans tous les cas, la DevKit reste la bonne carte pour le **premier essai** :
 voir [`PREMIER-ESSAI.md`](PREMIER-ESSAI.md).
