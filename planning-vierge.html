@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>Planning Vierge Ibis Sisteron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"></noscript>
+<style>
+@page{size:A4 landscape;margin:8mm}
+
+:root{
+  --paper:#F7F8FA;
+  --surface:#FFFFFF;
+  --sunken:#F0F2F6;
+  --ink:#131A26;
+  --ink-2:#4B5666;
+  --ink-3:#7C879A;
+  --line:#C9D1DC;
+  --line-strong:#8D99AB;
+  --rule:#131A26;
+  --navy:#12336B;
+  --navy-2:#1B4A96;
+  --cold:#1B4A96;
+  --cold-fill:#DDE8FA;
+  --hot:#BC2026;
+  --hot-fill:#FADDDD;
+  --grid:rgba(19,26,38,.13);
+  --grid-hour:rgba(19,26,38,.34);
+  --field:rgba(19,26,38,.42);
+  --shadow:0 1px 2px rgba(19,26,38,.06), 0 8px 24px -14px rgba(19,26,38,.22);
+  --focus:#1B4A96;
+  --c1:104px; --c2:218px; --c3:98px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E131C; --surface:#151C27; --sunken:#1C2533;
+    --ink:#E8ECF3; --ink-2:#A7B2C2; --ink-3:#7A869A;
+    --line:#39455A; --line-strong:#59677D; --rule:#E8ECF3;
+    --navy:#8AAFEA; --navy-2:#8AAFEA;
+    --cold:#8AAFEA; --cold-fill:#1D2E4D;
+    --hot:#F2807F; --hot-fill:#3B2023;
+    --grid:rgba(232,236,243,.13);
+    --grid-hour:rgba(232,236,243,.34);
+    --field:rgba(232,236,243,.40);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+    --focus:#8AAFEA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E131C; --surface:#151C27; --sunken:#1C2533;
+  --ink:#E8ECF3; --ink-2:#A7B2C2; --ink-3:#7A869A;
+  --line:#39455A; --line-strong:#59677D; --rule:#E8ECF3;
+  --navy:#8AAFEA; --navy-2:#8AAFEA;
+  --cold:#8AAFEA; --cold-fill:#1D2E4D;
+  --hot:#F2807F; --hot-fill:#3B2023;
+  --grid:rgba(232,236,243,.13);
+  --grid-hour:rgba(232,236,243,.34);
+  --field:rgba(232,236,243,.40);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  --focus:#8AAFEA;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+h1{font-family:Archivo,"Segoe UI",Helvetica,Arial,sans-serif;margin:0;text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+.en{color:var(--ink-3);font-weight:400;font-style:italic}
+
+.sheet{max-width:1320px;margin:0 auto;padding-block:20px 44px;padding-left:16px;padding-right:16px;display:flex;flex-direction:column;gap:14px}
+
+/* ---------- En-tête de formulaire, pensé pour la photocopie ---------- */
+.masthead{
+  background:var(--surface);border:1px solid var(--line);border-bottom:3px solid var(--navy);
+  border-radius:4px 4px 0 0;padding:15px 20px 14px;
+  display:flex;flex-wrap:wrap;gap:14px 26px;align-items:flex-end;justify-content:space-between;
+}
+.masthead h1{font-size:clamp(1.05rem,2.3vw,1.42rem);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--navy)}
+.masthead .sub{font-size:.84rem;color:var(--ink-3);font-style:italic;margin-top:3px}
+.fields{display:flex;flex-wrap:wrap;gap:10px 18px}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field .k{font-family:Archivo,sans-serif;font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.field .k .en,.ruler .h .en{text-transform:none;letter-spacing:.02em}
+.field .blank{border-bottom:1px solid var(--field);height:21px}
+.field.w-date .blank{width:104px}
+.field.w-name .blank{width:172px}
+.field.w-time .blank{width:70px}
+
+/* ---------- Trame ---------- */
+.gantt-wrap{border:1px solid var(--line-strong);border-radius:0 0 4px 4px;background:var(--surface);overflow:hidden;box-shadow:var(--shadow)}
+.gantt-scroll{overflow-x:auto}
+.gantt{min-width:1040px}
+
+.gridrow{display:grid;grid-template-columns:var(--c1) var(--c2) var(--c3) 1fr}
+.gridrow > *{border-right:1px solid var(--line);min-width:0;overflow:hidden}
+.gridrow > *:last-child{border-right:0}
+
+.ruler{border-bottom:2px solid var(--line-strong);background:var(--sunken)}
+.ruler .h{
+  padding:8px 10px;font-family:Archivo,sans-serif;font-size:.6rem;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-2);display:flex;align-items:flex-end;
+}
+.ruler .h .en{letter-spacing:.08em;margin-left:5px;text-transform:none;font-size:.62rem}
+.ruler .rtrack{position:relative;height:40px}
+.hourbox{
+  position:absolute;top:7px;width:54px;height:24px;
+  border:1px solid var(--line-strong);border-radius:2px;background:var(--surface);
+  transform:translateX(-50%);
+}
+.hourbox.first{transform:translateX(2px)}
+.hourbox.last{transform:translateX(calc(-100% - 2px))}
+.hourbox::after{
+  content:"h";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;color:var(--ink-3);
+}
+
+.track{
+  position:relative;
+  background-image:
+    repeating-linear-gradient(to right, var(--grid-hour) 0 1px, transparent 1px 25%),
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 6.25%);
+}
+
+.pauserow{border-bottom:2px solid var(--line-strong);background:var(--sunken);min-height:24px}
+.pauserow .p{
+  padding:3px 10px;font-family:Archivo,sans-serif;font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;
+}
+.pauserow .hint{
+  grid-column:2 / 4;padding:3px 10px;font-size:.68rem;color:var(--ink-3);
+  font-style:italic;display:flex;align-items:center;
+}
+
+.row{border-bottom:1px solid var(--line);min-height:27px}
+.row:nth-child(4n){border-bottom:1px solid var(--line-strong)}
+.row:last-child{border-bottom:0}
+.row > *{min-height:27px}
+
+/* ---------- Légende ---------- */
+.legend{
+  display:flex;flex-wrap:wrap;gap:7px 20px;align-items:center;
+  padding:9px 14px;border-top:2px solid var(--line-strong);background:var(--sunken);
+}
+.leg{display:flex;align-items:center;gap:7px;font-size:.76rem;color:var(--ink-2)}
+.swatch{width:26px;height:14px;border-radius:2px;flex:none;position:relative;border:1px solid var(--sw-accent);border-left:4px solid var(--sw-accent);background:var(--sw-fill)}
+.swatch.cold{--sw-fill:var(--cold-fill);--sw-accent:var(--cold)}
+.swatch.hot{--sw-fill:var(--hot-fill);--sw-accent:var(--hot)}
+.swatch.passive::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(135deg, transparent 0 6px, var(--sw-accent) 6px 7px);opacity:.4}
+.leg .tickmark{color:var(--cold);font-weight:700;font-size:.9rem}
+
+.reminder{
+  padding:9px 14px;border-top:1px solid var(--line);background:var(--surface);
+  font-size:.8rem;color:var(--ink-2);
+}
+.reminder b{color:var(--navy-2)}
+
+/* ---------- Bas de page ---------- */
+.bottom{display:grid;grid-template-columns:1fr 210px;gap:14px}
+.notes,.visa{border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);padding:11px 14px 13px}
+.notes .k,.visa .k{font-family:Archivo,sans-serif;font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+.notes .lines{display:flex;flex-direction:column;gap:14px}
+.notes .lines i{display:block;height:1px;background:var(--field)}
+.visa .box{height:56px;border:1px dashed var(--field);border-radius:3px}
+.foot{font-size:.75rem;color:var(--ink-3);text-align:center;font-style:italic}
+
+@media (max-width:560px){
+  .fields{gap:9px 14px}
+  .bottom{grid-template-columns:1fr}
+}
+
+/* ---------- A4 paysage, photocopiable ---------- */
+@media print{
+  body{background:#fff;color:#000;font-size:8.4pt;line-height:1.3}
+  .sheet{max-width:none;padding:0;gap:5px}
+  .gantt-scroll{overflow:visible}
+  .gantt{min-width:0}
+  .gantt-wrap,.bottom{break-inside:avoid;box-shadow:none}
+  .swatch,.hourbox,.track,.ruler,.pauserow,.legend{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  .masthead{padding:7px 13px;border-radius:0}
+  .masthead h1{font-size:11pt}
+  .masthead .sub{font-size:7.4pt;margin-top:1px}
+  .field .k{font-size:5.6pt}
+  .field .blank{height:16px}
+
+  .ruler .h{padding:5px 9px;font-size:5.6pt}
+  .ruler .h .en{font-size:5.8pt}
+  .ruler .rtrack{height:27px}
+  .hourbox{top:3.5px;height:19px;width:48px}
+  .hourbox::after{font-size:6.4pt}
+
+  .pauserow .p{font-size:5.6pt;padding:2px 9px}
+  .pauserow .hint{font-size:6.4pt;padding:2px 9px}
+  .row,.row > *{min-height:25.5px}
+
+  .legend{padding:5px 12px;gap:3px 16px}
+  .leg{font-size:6.6pt}
+  .swatch{width:20px;height:11px}
+  .reminder{padding:5px 12px;font-size:6.9pt;line-height:1.28}
+
+  .notes,.visa{padding:7px 12px 8px}
+  .notes .k,.visa .k{font-size:5.6pt;margin-bottom:6px}
+  .notes .lines{gap:14px}
+  .visa .box{height:36px}
+  .foot{font-size:6.6pt}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <h1>Planning de poste — feuille vierge</h1>
+      <div class="sub">Hôtel Ibis Sisteron · 1 case = 15 min, 4 h au total <span class="en">— blank shift planner, 1 cell = 15 min</span></div>
+    </div>
+    <div class="fields">
+      <label class="field w-date"><span class="k">Date</span><span class="blank"></span></label>
+      <label class="field w-name"><span class="k">Stagiaire <span class="en">Trainee</span></span><span class="blank"></span></label>
+      <label class="field w-time"><span class="k">Début <span class="en">Start</span></span><span class="blank"></span></label>
+      <label class="field w-time"><span class="k">Fin <span class="en">End</span></span><span class="blank"></span></label>
+      <label class="field w-name"><span class="k">Pause <span class="en">Break</span></span><span class="blank"></span></label>
+    </div>
+  </header>
+
+  <div class="gantt-wrap">
+    <div class="gantt-scroll">
+      <div class="gantt">
+
+        <div class="gridrow ruler">
+          <div class="h">Prépa <span class="en">Prep</span></div>
+          <div class="h">Tâche <span class="en">Task</span></div>
+          <div class="h">Horaire <span class="en">Time</span></div>
+          <div class="rtrack">
+            <span class="hourbox first" style="left:0%"></span>
+            <span class="hourbox" style="left:25%"></span>
+            <span class="hourbox" style="left:50%"></span>
+            <span class="hourbox" style="left:75%"></span>
+            <span class="hourbox last" style="left:100%"></span>
+          </div>
+        </div>
+
+        <div class="gridrow pauserow">
+          <div class="p">Pause</div>
+          <div class="hint">Grise les cases de la pause&nbsp;<span class="en">— shade the break columns</span></div>
+          <div class="track"></div>
+        </div>
+
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+        <div class="gridrow row"><div></div><div></div><div></div><div class="track"></div></div>
+
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="leg"><span class="swatch cold"></span>Bleu : tâche froide <span class="en">— cold</span></span>
+      <span class="leg"><span class="swatch hot"></span>Rouge : tâche chaude <span class="en">— hot</span></span>
+      <span class="leg"><span class="swatch hot passive"></span>Hachuré : temps passif <span class="en">— unattended</span></span>
+      <span class="leg"><span class="tickmark">&#10003;</span>Rangé en chambre froide <span class="en">— stored</span></span>
+    </div>
+
+    <p class="reminder"><b>Le temps passif n'est pas du temps mort.</b> Dès qu'une case est hachurée, pose une tâche
+      froide par-dessus, sur la ligne du dessous. Une seule limite : on ne s'éloigne jamais d'un feu ni d'une friteuse allumée.</p>
+  </div>
+
+  <div class="bottom">
+    <div class="notes">
+      <div class="k">Observations, anomalies, températures relevées</div>
+      <div class="lines"><i></i><i></i></div>
+    </div>
+    <div class="visa">
+      <div class="k">Visa chef</div>
+      <div class="box"></div>
+    </div>
+  </div>
+
+  <p class="foot">À imprimer en A4 paysage. Remplir au stylo bleu et rouge : la couleur dit d'un coup d'œil où sont les risques.</p>
+
+</div>
+<!--ARTIFACT-END-->
+</body>
+</html>

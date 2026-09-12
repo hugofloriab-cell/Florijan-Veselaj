@@ -13,6 +13,7 @@ conçue pour la tablette de la cuisine.
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
 | `planning-stagiaire.html` | **Planning du stagiaire au poste froid**, shift 10h–14h. Page autonome, indépendante de la check-list. |
 | `trainee-schedule.html` | Le même planning **en anglais, mis en page pour l'A4 paysage**. Page autonome. |
+| `planning-vierge.html` | **Trame vierge à imprimer et remplir à la main**, A4 paysage, une page. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -174,3 +175,27 @@ deuxième page.
 
 Les deux fiches, française et anglaise, portent le même déroulé et les mêmes
 horaires. Toute correction d'horaire doit être reportée dans les deux.
+
+### Trame vierge
+
+`planning-vierge.html` est le même tableau, sans contenu : de quoi imprimer une
+pile de feuilles et composer un shift différent chaque jour.
+
+- Une page A4 paysage, en noir et blanc : la feuille se photocopie sans vider
+  une cartouche. La couleur vient des stylos, pas de l'imprimante.
+- En-tête à remplir : date, stagiaire, début, fin, pause.
+- Colonnes **Prépa / Tâche / Horaire**, puis une piste de **16 cases de 15 min**
+  (4 heures). Les heures ne sont pas imprimées : cinq cases à remplir au-dessus
+  de la piste permettent d'utiliser la feuille pour n'importe quel service.
+- Une bande **Pause** sous la règle, à griser selon l'horaire du jour.
+- 15 lignes de tâches, un trait plus marqué toutes les quatre lignes pour
+  séparer les préparations à l'œil.
+- Légende imprimée (froid / chaud / temps passif / rangé) et bas de page
+  observations + visa chef.
+
+Les intitulés portent leur traduction anglaise en petit, pour qu'une feuille
+remplie en français reste lisible par un stagiaire anglophone.
+
+La contrainte de mise en page est la hauteur : 15 lignes à 26 px remplissent la
+page. Ajouter des lignes fait passer la feuille sur deux pages — il faut alors
+réduire `min-height` des `.row` dans le bloc `@media print`.
