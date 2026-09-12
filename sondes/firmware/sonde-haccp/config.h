@@ -40,6 +40,24 @@
    ouvre une aussi, pour que l'écart puisse être vu sans attendre. */
 #define ANNONCE_UN_CYCLE_SUR 6
 
+/* Puissance d'émission Bluetooth. C'est le pic de courant à l'émission — plus
+   de 100 mA par bouffée — qui fait décrocher une alimentation juste : la carte
+   redémarre alors en boucle pendant la fenêtre d'annonce, avec un
+   POWERON_RESET dans la trace.
+
+   Baisser la puissance réduit ce pic, et consomme moins. On perd de la portée,
+   mais une sonde aimantée sur une porte de frigo n'a que quelques mètres à
+   couvrir.
+
+     ESP_PWR_LVL_P9    +9 dBm   portée maximale, pic le plus fort
+     ESP_PWR_LVL_P3    +3 dBm   réglage par défaut du cœur Arduino
+     ESP_PWR_LVL_N0     0 dBm   bon compromis, portée ~10 m
+     ESP_PWR_LVL_N9    -9 dBm   pour une alimentation fragile, portée ~3 m
+     ESP_PWR_LVL_N12  -12 dBm   minimum
+
+   Si la carte redémarre en boucle, descendez d'un cran. */
+#define PUISSANCE_BLE ESP_PWR_LVL_N0
+
 /* ---------- Seuils HACCP ---------- */
 
 /* Bornes de conformité, en centièmes de degré.

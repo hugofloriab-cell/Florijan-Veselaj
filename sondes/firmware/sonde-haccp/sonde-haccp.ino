@@ -400,6 +400,9 @@ static void demarrerAnnonce() {
   nomSonde(nom, sizeof(nom));
 
   BLEDevice::init(nom);
+  /* Avant toute émission : brider la puissance limite le pic de courant, qui
+     est la cause habituelle d'une carte qui redémarre pendant l'annonce. */
+  BLEDevice::setPower(PUISSANCE_BLE);
   BLEDevice::setMTU(517);
 
   serveur = BLEDevice::createServer();
