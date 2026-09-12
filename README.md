@@ -11,6 +11,7 @@ conçue pour la tablette de la cuisine.
 | `docs/` | **Version installable publiée sur le web** (voir ci-dessous). Générée. |
 | `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
+| `planning-stagiaire.html` | **Planning du stagiaire au poste froid**, shift 10h–14h. Page autonome, indépendante de la check-list. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -134,3 +135,24 @@ utilisés pour les compteurs de validation et pour l'export. **Toute modificatio
 et `x<n>` des cases à cocher.
 
 Après modification, régénérer les versions dérivées avec `python3 build.py`.
+
+## Planning du stagiaire au poste froid
+
+`planning-stagiaire.html` est une fiche séparée, autonome elle aussi : le
+déroulé du shift 10h00 – 14h00, sous forme de diagramme de Gantt.
+
+- Une ligne par tâche, une piste continue de 10h à 14h, pause de 11h00 à 11h45
+  matérialisée en travers du tableau.
+- **Bleu : tâche froide. Rouge : tâche chaude** (feu, friteuse, produit brûlant).
+  Les hachures marquent un temps passif — ça cuit ou ça refroidit tout seul.
+- Les tâches qui se chevauchent sont volontaires : une préparation froide vient
+  se poser par-dessus une cuisson, pour ne pas perdre les trois créneaux où
+  l'on peut mener deux choses de front (blanchiment des frites, frémissement du
+  velouté, refroidissement en cellule).
+- Un curseur vert suit l'heure réelle de Paris sur la piste pendant le service.
+- Le mode opératoire des quatre préparations (salade, frites, mayonnaise,
+  velouté) figure sous le planning, avec les points HACCP.
+
+La page s'imprime sur A4 pour être affichée au poste. Elle n'a pas de
+sauvegarde ni de champ à remplir : c'est un support de consigne, pas une fiche
+de contrôle.

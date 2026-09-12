@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>Planning Stagiaire Ibis Sisteron</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+      href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"></noscript>
+<style>
+:root{
+  --paper:#F7F8FA;
+  --surface:#FFFFFF;
+  --sunken:#EEF1F6;
+  --ink:#131A26;
+  --ink-2:#4B5666;
+  --ink-3:#7C879A;
+  --line:#DBE1EA;
+  --line-strong:#BFC8D6;
+  --navy:#12336B;
+  --navy-2:#1B4A96;
+  --on-navy:#FFFFFF;
+
+  --cold:#1B4A96;
+  --cold-fill:#DDE8FA;
+  --cold-ink:#12336B;
+  --hot:#BC2026;
+  --hot-fill:#FADDDD;
+  --hot-ink:#8E181D;
+  --org:#8792A5;
+  --org-fill:#E7EBF1;
+  --org-ink:#4B5666;
+
+  --green:#0F6B49;
+  --green-soft:#E4F2EC;
+  --pause-fill:rgba(124,135,154,.21);
+  --grid:rgba(19,26,38,.09);
+  --grid-hour:rgba(19,26,38,.20);
+  --shadow:0 1px 2px rgba(19,26,38,.06), 0 8px 24px -14px rgba(19,26,38,.22);
+  --focus:#1B4A96;
+  --lbl:268px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E131C; --surface:#161D29; --sunken:#1D2634;
+    --ink:#E8ECF3; --ink-2:#A7B2C2; --ink-3:#7A869A;
+    --line:#2A3547; --line-strong:#3B4859;
+    --navy:#1A2B4A; --navy-2:#8AAFEA; --on-navy:#EEF3FC;
+    --cold:#8AAFEA; --cold-fill:#1D2E4D; --cold-ink:#C9DAF6;
+    --hot:#F2807F; --hot-fill:#3B2023; --hot-ink:#F6B0AF;
+    --org:#6C7789; --org-fill:#222B3A; --org-ink:#A7B2C2;
+    --green:#63C5A0; --green-soft:#12281F;
+    --pause-fill:rgba(167,178,194,.15);
+    --grid:rgba(232,236,243,.09);
+    --grid-hour:rgba(232,236,243,.22);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+    --focus:#8AAFEA;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E131C; --surface:#161D29; --sunken:#1D2634;
+  --ink:#E8ECF3; --ink-2:#A7B2C2; --ink-3:#7A869A;
+  --line:#2A3547; --line-strong:#3B4859;
+  --navy:#1A2B4A; --navy-2:#8AAFEA; --on-navy:#EEF3FC;
+  --cold:#8AAFEA; --cold-fill:#1D2E4D; --cold-ink:#C9DAF6;
+  --hot:#F2807F; --hot-fill:#3B2023; --hot-ink:#F6B0AF;
+  --org:#6C7789; --org-fill:#222B3A; --org-ink:#A7B2C2;
+  --green:#63C5A0; --green-soft:#12281F;
+  --pause-fill:rgba(167,178,194,.15);
+  --grid:rgba(232,236,243,.09);
+  --grid-hour:rgba(232,236,243,.22);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  --focus:#8AAFEA;
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Source Sans 3","Segoe UI",Helvetica,Arial,sans-serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+h1,h2,h3{font-family:Archivo,"Segoe UI",Helvetica,Arial,sans-serif;margin:0;text-wrap:balance}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-numeric:tabular-nums}
+:where(a,button,summary):focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+.sheet{max-width:1180px;margin:0 auto;padding-block:20px 48px;padding-left:16px;padding-right:16px;display:flex;flex-direction:column;gap:26px}
+
+/* ---------- En-tête ---------- */
+.masthead{
+  background:var(--navy);color:var(--on-navy);border-radius:4px;
+  padding:22px 26px;display:flex;flex-wrap:wrap;gap:16px 28px;
+  align-items:flex-end;justify-content:space-between;
+}
+.masthead h1{
+  font-size:clamp(1.25rem,3.2vw,1.85rem);font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;line-height:1.15;
+}
+.masthead .sub{font-style:italic;color:rgba(255,255,255,.8);font-size:.95rem;margin-top:6px}
+.shiftbox{text-align:right;display:flex;flex-direction:column;gap:2px}
+.shiftbox .k{font-family:Archivo,sans-serif;font-size:.66rem;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.65)}
+.shiftbox .v{font-family:"IBM Plex Mono",monospace;font-size:1.35rem;font-weight:600;letter-spacing:.02em}
+
+/* ---------- Bandeau de chiffres ---------- */
+.facts{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:4px;background:var(--surface);overflow:hidden}
+.fact{flex:1 1 150px;padding:13px 18px;border-right:1px solid var(--line);min-width:0}
+.fact:last-child{border-right:0}
+.fact .k{font-family:Archivo,sans-serif;font-size:.64rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.fact .v{font-family:"IBM Plex Mono",monospace;font-size:1.05rem;font-weight:600;color:var(--ink);margin-top:3px}
+
+/* ---------- Titres de section ---------- */
+.sectitle{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+.sectitle h2{font-size:.86rem;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--navy-2);white-space:nowrap}
+.sectitle .rule{flex:1;height:1px;background:var(--line)}
+.sectitle .note{font-size:.8rem;color:var(--ink-3);font-style:italic;white-space:nowrap}
+
+/* ---------- Gantt ---------- */
+.gantt-wrap{border:1px solid var(--line);border-radius:4px;background:var(--surface);overflow:hidden;box-shadow:var(--shadow)}
+.gantt-scroll{overflow-x:auto}
+.gantt{min-width:900px;position:relative}
+
+.ruler{display:grid;grid-template-columns:var(--lbl) 1fr;border-bottom:1px solid var(--line-strong);background:var(--sunken);position:sticky;top:0;z-index:6}
+.ruler .rlbl{padding:9px 14px;font-family:Archivo,sans-serif;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3);border-right:1px solid var(--line-strong)}
+.ruler .rtrack{position:relative;height:48px}
+.tick{position:absolute;top:6px;font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-2);white-space:nowrap;transform:translateX(-50%)}
+.tick.first{transform:translateX(0);padding-left:5px}
+.tick.last{transform:translateX(-100%);padding-right:5px}
+.pauseflag{
+  position:absolute;top:26px;height:19px;display:flex;align-items:center;justify-content:center;
+  background:var(--org-fill);border:1px solid var(--line-strong);border-radius:2px;
+  font-family:Archivo,sans-serif;font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;color:var(--org-ink);
+}
+
+.grouphead{
+  display:flex;align-items:baseline;gap:12px;
+  padding:12px 14px 7px;background:var(--sunken);
+  border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line);
+}
+.grouphead .name{font-family:Archivo,sans-serif;font-size:.76rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink)}
+.grouphead .span{font-family:"IBM Plex Mono",monospace;font-size:.72rem;color:var(--ink-3)}
+.grouphead .out{margin-left:auto;font-size:.72rem;color:var(--ink-3);font-style:italic}
+
+.row{display:grid;grid-template-columns:var(--lbl) 1fr;border-bottom:1px solid var(--line);min-height:46px}
+.row:last-child{border-bottom:0}
+.row:hover{background:color-mix(in srgb, var(--sunken) 60%, transparent)}
+.lbl{padding:7px 12px 7px 14px;border-right:1px solid var(--line-strong);display:flex;flex-direction:column;justify-content:center;gap:1px;min-width:0}
+.lbl .txt{font-size:.86rem;line-height:1.28}
+.lbl .hrs{font-family:"IBM Plex Mono",monospace;font-size:.7rem;color:var(--ink-3);letter-spacing:.01em}
+.lbl .hrs .para{color:var(--green);font-weight:600}
+.track{
+  position:relative;
+  background-image:
+    linear-gradient(to right, transparent 0 25%, var(--pause-fill) 25% 43.75%, transparent 43.75%),
+    repeating-linear-gradient(to right, var(--grid-hour) 0 1px, transparent 1px 25%),
+    repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px 6.25%);
+}
+
+.bar{
+  position:absolute;top:6px;bottom:6px;border-radius:2px;
+  left:calc(var(--s) * (100% / 240));
+  width:calc((var(--e) - var(--s)) * (100% / 240));
+  background:var(--bar-fill);
+  border:1px solid var(--bar-accent);
+  border-left:4px solid var(--bar-accent);
+  display:flex;align-items:center;padding:0 7px;overflow:hidden;
+  font-family:"IBM Plex Mono",monospace;font-size:.68rem;font-weight:600;
+  color:var(--bar-ink);white-space:nowrap;
+}
+.bar.cold{--bar-fill:var(--cold-fill);--bar-accent:var(--cold);--bar-ink:var(--cold-ink)}
+.bar.hot{--bar-fill:var(--hot-fill);--bar-accent:var(--hot);--bar-ink:var(--hot-ink)}
+.bar.org{--bar-fill:var(--org-fill);--bar-accent:var(--org);--bar-ink:var(--org-ink)}
+.bar.passive::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:repeating-linear-gradient(135deg, transparent 0 6px, var(--bar-accent) 6px 7px);
+  opacity:.34;
+}
+.bar span{position:relative;z-index:1}
+.bar.done{justify-content:center;padding:0 2px;font-size:.8rem;line-height:1}
+.bar.para{box-shadow:0 0 0 2px var(--surface), 0 0 0 3px var(--green)}
+
+.cursor{position:absolute;top:0;bottom:0;width:2px;background:var(--green);z-index:5;pointer-events:none;display:none}
+.cursor::before{
+  content:attr(data-t);position:absolute;top:-1px;left:50%;transform:translateX(-50%);
+  background:var(--green);color:#fff;font-family:"IBM Plex Mono",monospace;font-size:.62rem;
+  font-weight:600;padding:1px 5px;border-radius:2px;white-space:nowrap;
+}
+.chartbody{position:relative}
+
+/* ---------- Légende ---------- */
+.legend{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 16px;border-top:1px solid var(--line-strong);background:var(--sunken)}
+.leg{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--ink-2)}
+.swatch{width:26px;height:14px;border-radius:2px;flex:none;position:relative;border:1px solid var(--sw-accent);border-left:4px solid var(--sw-accent);background:var(--sw-fill)}
+.swatch.cold{--sw-fill:var(--cold-fill);--sw-accent:var(--cold)}
+.swatch.hot{--sw-fill:var(--hot-fill);--sw-accent:var(--hot)}
+.swatch.org{--sw-fill:var(--org-fill);--sw-accent:var(--org)}
+.swatch.passive::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(135deg, transparent 0 6px, var(--sw-accent) 6px 7px);opacity:.34}
+.swatch.para{background:var(--surface);border:2px solid var(--green);border-left:2px solid var(--green)}
+
+/* ---------- Encadré multitâche ---------- */
+.multi{border:1px solid var(--green);border-radius:4px;background:var(--green-soft);padding:18px 20px}
+.multi h2{font-size:.86rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:4px}
+.multi .lead{font-size:.88rem;color:var(--ink-2);margin:0 0 14px;max-width:66ch}
+.moments{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.moment{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:13px 15px;display:flex;flex-direction:column;gap:6px}
+.moment .when{font-family:"IBM Plex Mono",monospace;font-size:.74rem;font-weight:600;color:var(--green)}
+.moment .pair{font-size:.88rem;line-height:1.35}
+.moment .pair b{color:var(--hot-ink)}
+.moment .pair i{font-style:normal;color:var(--cold-ink);font-weight:600}
+.moment .care{font-size:.78rem;color:var(--ink-3);border-top:1px dashed var(--line);padding-top:6px}
+
+/* ---------- Fiches mode opératoire ---------- */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;break-inside:avoid}
+.card header{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.card h3{font-size:.92rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.pill{font-family:Archivo,sans-serif;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:2px 7px;border-radius:2px;border:1px solid currentColor}
+.pill.cold{color:var(--cold)}
+.pill.hot{color:var(--hot)}
+.card ol{margin:0;padding-left:1.15em;display:flex;flex-direction:column;gap:7px;font-size:.86rem;line-height:1.4}
+.card ol::marker{color:var(--ink-3)}
+.card li b{color:var(--hot-ink)}
+.card .temp{font-family:"IBM Plex Mono",monospace;font-weight:600}
+
+/* ---------- Règles de fin ---------- */
+.rules{border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);padding:18px 20px}
+.rules h2{font-size:.82rem;letter-spacing:.14em;text-transform:uppercase;color:var(--navy-2);margin-bottom:12px}
+.rules ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.rules li{font-size:.88rem;line-height:1.38;padding-left:13px;border-left:3px solid var(--hot)}
+.foot{font-size:.76rem;color:var(--ink-3);text-align:center;font-style:italic}
+
+@media (max-width:560px){
+  .fact{flex-basis:50%;border-bottom:1px solid var(--line)}
+  .masthead{align-items:flex-start}
+  .shiftbox{text-align:left}
+}
+
+@media print{
+  body{background:#fff;color:#000;font-size:10pt}
+  .sheet{max-width:none;padding:0;gap:16px}
+  .masthead{background:#12336B !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .gantt-wrap,.card,.multi,.rules,.facts{break-inside:avoid;box-shadow:none}
+  .gantt-scroll{overflow:visible}
+  .gantt{min-width:0}
+  .cursor{display:none !important}
+  .bar,.swatch,.track,.grouphead,.ruler,.multi{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="masthead">
+    <div>
+      <h1>Planning du stagiaire — poste froid</h1>
+      <div class="sub">Hôtel Ibis Sisteron · mise en place du service du midi</div>
+    </div>
+    <div class="shiftbox">
+      <span class="k">Shift</span>
+      <span class="v">10h00 → 14h00</span>
+    </div>
+  </header>
+
+  <section class="facts" aria-label="Chiffres de la journée">
+    <div class="fact"><div class="k">Travail effectif</div><div class="v">3 h 15</div></div>
+    <div class="fact"><div class="k">Pause</div><div class="v">11h00 → 11h45</div></div>
+    <div class="fact"><div class="k">Préparations</div><div class="v">4</div></div>
+    <div class="fact"><div class="k">Temps de cuisson passif</div><div class="v">45 min</div></div>
+    <div class="fact"><div class="k">Tout en chambre froide à</div><div class="v">13h45</div></div>
+  </section>
+
+  <section>
+    <div class="sectitle">
+      <h2>Déroulé de la journée</h2>
+      <span class="rule"></span>
+      <span class="note">une ligne par tâche, une piste de 10h à 14h</span>
+    </div>
+
+    <div class="gantt-wrap">
+      <div class="gantt-scroll">
+        <div class="gantt">
+
+          <div class="ruler">
+            <div class="rlbl">Tâche</div>
+            <div class="rtrack">
+              <span class="tick first mono" style="left:0%">10h00</span>
+              <span class="tick mono" style="left:12.5%">10h30</span>
+              <span class="tick mono" style="left:25%">11h00</span>
+              <span class="pauseflag" style="left:25%;width:18.75%">Pause 45 min</span>
+              <span class="tick mono" style="left:43.75%">11h45</span>
+              <span class="tick mono" style="left:50%">12h00</span>
+              <span class="tick mono" style="left:62.5%">12h30</span>
+              <span class="tick mono" style="left:75%">13h00</span>
+              <span class="tick mono" style="left:87.5%">13h30</span>
+              <span class="tick last mono" style="left:100%">14h00</span>
+            </div>
+          </div>
+
+          <div class="chartbody">
+            <div class="cursor mono" id="cursor" data-t=""></div>
+
+            <div class="grouphead">
+              <span class="name">Prise de poste</span>
+              <span class="span mono">10h00 → 10h05</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Tenue propre, lavage des mains, plan de travail et matériel sortis</span><span class="hrs">10h00 → 10h05</span></div>
+              <div class="track"><div class="bar org" style="--s:0;--e:5"></div></div>
+            </div>
+
+            <div class="grouphead">
+              <span class="name">Frites</span>
+              <span class="span mono">10h05 → 11h55</span>
+              <span class="out">sortie : bac filmé, daté, chambre froide</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Laver et éplucher les pommes de terre, puis relaver</span><span class="hrs">10h05 → 10h20</span></div>
+              <div class="track"><div class="bar cold" style="--s:5;--e:20"><span>15 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Allumer la friteuse — montée en température</span><span class="hrs">10h20 → 10h35</span></div>
+              <div class="track"><div class="bar hot passive" style="--s:20;--e:35"><span>150 °C</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Tailler les bâtonnets, réserver dans l'eau froide</span><span class="hrs">10h20 → 10h35</span></div>
+              <div class="track"><div class="bar cold" style="--s:20;--e:35"><span>15 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Égoutter, sécher, blanchir — 3 bains de 6 min</span><span class="hrs">10h35 → 10h55</span></div>
+              <div class="track"><div class="bar hot" style="--s:35;--e:55"><span>150 °C</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Étaler sur plaque en une couche, mettre en cellule</span><span class="hrs">10h55 → 11h00</span></div>
+              <div class="track"><div class="bar cold" style="--s:55;--e:60"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Refroidissement rapide — la cellule tourne pendant ta pause</span><span class="hrs">11h00 → 11h45</span></div>
+              <div class="track"><div class="bar cold passive" style="--s:60;--e:105"><span>+63 °C → +10 °C</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Filmer, étiqueter, ranger en chambre froide</span><span class="hrs">11h45 → 11h55</span></div>
+              <div class="track"><div class="bar cold done" style="--s:105;--e:115"><span>&#10003;</span></div></div>
+            </div>
+
+            <div class="grouphead">
+              <span class="name">Velouté</span>
+              <span class="span mono">10h35 → 13h45</span>
+              <span class="out">sortie : bac filmé, daté, chambre froide</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Éplucher et laver les légumes</span><span class="hrs">10h35 → 10h55 <span class="para">· en parallèle</span></span></div>
+              <div class="track"><div class="bar cold para" style="--s:35;--e:55"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Tailler : émincer les poireaux, détailler en dés réguliers</span><span class="hrs">11h55 → 12h10</span></div>
+              <div class="track"><div class="bar cold" style="--s:115;--e:130"><span>15 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Suer au beurre sans coloration, mouiller, assaisonner</span><span class="hrs">12h10 → 12h20</span></div>
+              <div class="track"><div class="bar hot" style="--s:130;--e:140"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Cuisson à frémissement, à couvert</span><span class="hrs">12h20 → 12h50</span></div>
+              <div class="track"><div class="bar hot passive" style="--s:140;--e:170"><span>30 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Mixer, passer au chinois, rectifier (crème en dernier)</span><span class="hrs">12h50 → 13h05</span></div>
+              <div class="track"><div class="bar hot" style="--s:170;--e:185"><span>15 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Refroidissement rapide en cellule (+63 °C → +10 °C), bac peu profond, à découvert</span><span class="hrs">13h05 → 13h35</span></div>
+              <div class="track"><div class="bar cold passive" style="--s:185;--e:215"><span>30 min</span></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Filmer, étiqueter, ranger en chambre froide</span><span class="hrs">13h35 → 13h45</span></div>
+              <div class="track"><div class="bar cold done" style="--s:215;--e:225"><span>&#10003;</span></div></div>
+            </div>
+
+            <div class="grouphead">
+              <span class="name">Mayonnaise</span>
+              <span class="span mono">12h20 → 12h50</span>
+              <span class="out">sortie : filmée au contact, DLC 24 h</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Monter la mayonnaise, serrer au vinaigre, rectifier</span><span class="hrs">12h20 → 12h45 <span class="para">· en parallèle</span></span></div>
+              <div class="track"><div class="bar cold para" style="--s:140;--e:165"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Filmer au contact, étiqueter, chambre froide</span><span class="hrs">12h45 → 12h50</span></div>
+              <div class="track"><div class="bar cold" style="--s:165;--e:170"></div></div>
+            </div>
+
+            <div class="grouphead">
+              <span class="name">Salade</span>
+              <span class="span mono">13h05 → 13h45</span>
+              <span class="out">sortie : bac perforé, filmé, chambre froide</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Parer et laver en 3 bains d'eau froide vinaigrée</span><span class="hrs">13h05 → 13h25 <span class="para">· en parallèle</span></span></div>
+              <div class="track"><div class="bar cold para" style="--s:185;--e:205"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Essorer en deux fois, essoreuse à moitié pleine</span><span class="hrs">13h25 → 13h35</span></div>
+              <div class="track"><div class="bar cold" style="--s:205;--e:215"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Bac perforé + papier, filmer, étiqueter, chambre froide</span><span class="hrs">13h35 → 13h45</span></div>
+              <div class="track"><div class="bar cold" style="--s:215;--e:225"><span>rangé</span></div></div>
+            </div>
+
+            <div class="grouphead">
+              <span class="name">Fin de service</span>
+              <span class="span mono">13h45 → 14h00</span>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Nettoyage du poste, plonge, filtration de la friteuse</span><span class="hrs">13h45 → 13h55</span></div>
+              <div class="track"><div class="bar org" style="--s:225;--e:235"></div></div>
+            </div>
+            <div class="row">
+              <div class="lbl"><span class="txt">Relevé des températures, traçabilité, débrief avec le chef</span><span class="hrs">13h55 → 14h00</span></div>
+              <div class="track"><div class="bar org" style="--s:235;--e:240"></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="legend">
+        <span class="leg"><span class="swatch cold"></span>Tâche froide</span>
+        <span class="leg"><span class="swatch hot"></span>Tâche chaude — feu, friteuse, produit brûlant</span>
+        <span class="leg"><span class="swatch hot passive"></span>Temps passif : ça cuit ou ça chauffe tout seul</span>
+        <span class="leg"><span class="swatch para"></span>Tâche menée en même temps qu'une autre</span>
+        <span class="leg"><span class="swatch org"></span>Organisation du poste</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="multi">
+    <h2>Les trois moments où tu travailles à deux mains</h2>
+    <p class="lead">C'est là que se joue le métier : une cuisson qui dure n'est pas un temps mort, c'est un
+      créneau libre. À chaque fois, la tâche froide vient se poser <em>par-dessus</em> la case rouge.</p>
+    <div class="moments">
+      <div class="moment">
+        <span class="when">10h35 → 10h55</span>
+        <span class="pair"><b>Les frites blanchissent</b> → tu <i>épluches les légumes du velouté</i>.</span>
+        <span class="care">Tu restes devant la friteuse : on ne quitte jamais un bain d'huile allumé. Épluche au plan de travail d'à côté, pas à l'autre bout de la cuisine.</span>
+      </div>
+      <div class="moment">
+        <span class="when">12h20 → 12h45</span>
+        <span class="pair"><b>Le velouté frémit 30 min</b> → tu <i>montes la mayonnaise</i>.</span>
+        <span class="care">Un coup d'œil au rondeau toutes les 5 min : il doit frémir, jamais bouillir à gros bouillons.</span>
+      </div>
+      <div class="moment">
+        <span class="when">13h05 → 13h35</span>
+        <span class="pair"><b>Le velouté refroidit en cellule</b> → tu <i>laves et essores la salade</i>.</span>
+        <span class="care">Les deux bacs partent ensemble en chambre froide à 13h35 : un seul aller-retour, la porte reste fermée.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sectitle">
+      <h2>Mode opératoire</h2>
+      <span class="rule"></span>
+      <span class="note">le détail de chaque préparation</span>
+    </div>
+    <div class="cards">
+
+      <article class="card">
+        <header><h3>Salade</h3><span class="pill cold">Froid</span></header>
+        <ol>
+          <li>Parer : ôter le trognon et les feuilles abîmées.</li>
+          <li>Laver en <b>3 bains</b> d'eau froide vinaigrée. Sortir la salade du bac, jeter l'eau, recommencer — ne jamais vider le bac avec la salade dedans, le sable retomberait dessus.</li>
+          <li>Essorer en deux fois, essoreuse à moitié pleine : trop chargée, elle n'essore pas et casse les feuilles.</li>
+          <li>Bac perforé, papier absorbant au fond, filmer. Étiquette : produit, date, heure. Chambre froide <span class="temp">0–3 °C</span>.</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <header><h3>Frites</h3><span class="pill hot">Chaud</span><span class="pill cold">puis froid</span></header>
+        <ol>
+          <li>Laver, éplucher, relaver les pommes de terre.</li>
+          <li>Tailler des bâtonnets de même section : même taille, même cuisson. Réserver dans l'eau froide.</li>
+          <li><b>Égoutter et sécher avant la friteuse</b> — l'eau fait déborder l'huile.</li>
+          <li>Blanchir à <span class="temp">150 °C</span>, 6 min par bain, panier à moitié rempli, 3 bains. La frite est cuite mais reste blonde, pas colorée.</li>
+          <li>Étaler sur plaque en une seule couche, cellule : <span class="temp">+63 °C → +10 °C en moins de 2 h</span>.</li>
+          <li>Filmer, dater, chambre froide. Le second bain à <span class="temp">180 °C</span> se fait au service, pas maintenant.</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <header><h3>Mayonnaise</h3><span class="pill cold">Froid</span></header>
+        <ol>
+          <li>Tous les éléments à la même température : jaunes et huile sortis 15 min avant.</li>
+          <li>Jaunes, moutarde, sel, poivre. Laisser 2 min que le sel fonde, puis fouetter.</li>
+          <li>Monter à l'huile <b>en filet</b>, doucement au début, plus franchement ensuite. Serrer au vinaigre ou au jus de citron.</li>
+          <li>Rectifier, filmer au contact, étiqueter. <b>DLC 24 h</b> : œuf cru, on ne garde pas au-delà.</li>
+        </ol>
+      </article>
+
+      <article class="card">
+        <header><h3>Velouté</h3><span class="pill cold">Préli froid</span><span class="pill hot">Cuisson chaude</span></header>
+        <ol>
+          <li>Éplucher, laver, tailler les légumes régulièrement.</li>
+          <li>Suer au beurre <b>sans coloration</b>, mouiller à hauteur, assaisonner léger — ça réduit.</li>
+          <li>Frémissement 30 min à couvert, écumer. Pas de gros bouillons.</li>
+          <li>Mixer, passer au chinois, rectifier. La crème s'ajoute en dernier.</li>
+          <li>Refroidir en cellule dans un bac peu profond, <b>à découvert</b> tant que c'est chaud.</li>
+          <li>Filmer, dater, chambre froide.</li>
+        </ol>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="rules">
+    <h2>Trois règles qui ne bougent jamais</h2>
+    <ul>
+      <li>On ne range jamais un produit chaud en chambre froide : il réchauffe tout le reste.</li>
+      <li>On étiquette tout : produit, date, heure. Un bac sans étiquette part à la poubelle.</li>
+      <li>On ne quitte jamais une friteuse allumée, même une minute.</li>
+    </ul>
+  </section>
+
+  <p class="foot">En cas de retard sur un poste, préviens le chef tout de suite : on réorganise, on ne saute pas une étape de refroidissement.</p>
+
+</div>
+
+<script>
+/* Curseur de l'heure réelle sur la piste, uniquement pendant le shift.
+   Heure de Paris : la fiche est lue en cuisine, pas sur le serveur. */
+(function () {
+  var cursor = document.getElementById("cursor");
+  if (!cursor) return;
+
+  function minutesParis() {
+    var h, m;
+    try {
+      var parts = new Intl.DateTimeFormat("fr-FR", {
+        timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit", hour12: false
+      }).formatToParts(new Date());
+      parts.forEach(function (p) {
+        if (p.type === "hour") h = parseInt(p.value, 10);
+        if (p.type === "minute") m = parseInt(p.value, 10);
+      });
+    } catch (e) {
+      var d = new Date();
+      h = d.getHours(); m = d.getMinutes();
+    }
+    return h * 60 + m;
+  }
+
+  function place() {
+    var mins = minutesParis() - 600;          /* 600 = 10h00 */
+    if (mins < 0 || mins > 240) { cursor.style.display = "none"; return; }
+    var lbl = getComputedStyle(document.documentElement).getPropertyValue("--lbl").trim();
+    cursor.style.display = "block";
+    cursor.style.left = "calc(" + lbl + " + (100% - " + lbl + ") * " + (mins / 240) + ")";
+    var t = mins + 600;
+    cursor.setAttribute("data-t",
+      String(Math.floor(t / 60)) + "h" + ("0" + (t % 60)).slice(-2));
+  }
+
+  place();
+  setInterval(place, 30000);
+})();
+</script>
+<!--ARTIFACT-END-->
+</body>
+</html>
