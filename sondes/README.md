@@ -633,6 +633,7 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | Démarrage de l'annonce Bluetooth | `annonce HACCP-C456` émis |
 > | **Portail Wi-Fi** | réseau `SONDE-C456` créé, DHCP distribue 192.168.4.2 |
 > | **Lecture d'un relevé par un client** | `GET /etat` → `200 OK`, 329 octets de JSON |
+> | **Lecture depuis Safari, sur iPhone** | la page de la sonde s'affiche, sans application |
 >
 > Cette dernière ligne est la plus importante du tableau : c'est la première
 > fois, depuis le début du projet, qu'un client lit une température dans la
@@ -651,6 +652,12 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > `alerte: true` parce que 19,44 °C sort bien des seuils +1/+4 °C — la logique
 > de conformité fonctionne sur du vrai.
 >
+> Et la page s'affiche depuis **Safari sur iPhone** : « Chambre froide »,
+> 18,63 °C en rouge sous « Hors des seuils », la pile, les seuils, l'horloge
+> interne. C'est la limitation qui justifiait à elle seule l'écriture d'une
+> application séparée — le Bluetooth web n'existant pas sur iOS — et elle ne
+> s'applique pas au portail HTTP.
+>
 > Et un défaut trouvé par la carte, pas par le banc : l'annonce Bluetooth
 > faisait redémarrer la carte en boucle (`POWERON_RESET`), le pic de courant de
 > l'émission effondrant le 3,3 V. Diagnostic établi en isolant la radio ;
@@ -663,7 +670,6 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
 > | Le déversement de l'historique (`/releves`) | seul `/etat` a été lu pour l'instant |
 > | L'acquittement (`/acquitter`) | c'est lui qui referme le portail par anticipation, donc toute l'autonomie annoncée |
-> | Safari sur iPhone | voir ci-dessous : le réseau et le serveur vont bien, iOS choisit la 4G |
 > | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
 > | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >
