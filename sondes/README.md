@@ -634,6 +634,11 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | **Portail Wi-Fi** | réseau `SONDE-C456` créé, DHCP distribue 192.168.4.2 |
 > | **Lecture d'un relevé par un client** | `GET /etat` → `200 OK`, 329 octets de JSON |
 > | **Lecture depuis Safari, sur iPhone** | la page de la sonde s'affiche, sans application |
+> | **Déversement de l'historique** | `GET /releves` → la liste des relevés en attente |
+> | **Acquittement** | `POST /acquitter` → `{"acquitte":true,"attente":0}` |
+> | **Fermeture anticipée du portail** | `portail ferme (acquitte)`, sans attendre le plafond |
+> | **Fenêtre Bluetooth sautée** | `pas d'annonce : le portail a deja tout transmis` |
+> | **Reprise du cycle** | `DEEPSLEEP_RESET` au réveil suivant, mémoire RTC intacte, nouveau relevé rangé |
 >
 > Cette dernière ligne est la plus importante du tableau : c'est la première
 > fois, depuis le début du projet, qu'un client lit une température dans la
@@ -658,6 +663,26 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > application séparée — le Bluetooth web n'existant pas sur iOS — et elle ne
 > s'applique pas au portail HTTP.
 >
+> La boucle complète a tourné le 22 septembre 2026 à 1 h 48 :
+>
+> ```
+> acquitte 1, reste 0
+> portail: requete /acquitter
+> portail ferme (acquitte)
+> pas d'annonce : le portail a deja tout transmis
+> veille 20 s (tics 266)
+> …
+> rst:0x5 (DEEPSLEEP_RESET)
+> T=+18,31 C (1831 centi), pile=100% (4900 mV), attente=1, manuel=0
+> portail: reseau SONDE-C456, http://192.168.4.1
+> ```
+>
+> Les deux lignes du milieu sont celles qui portent toute l'autonomie annoncée :
+> le portail s'est refermé **dès l'acquittement** au lieu d'attendre son plafond,
+> et la sonde a compris qu'ouvrir une fenêtre Bluetooth par-dessus ne servirait
+> qu'à consommer. Puis elle est repartie en veille, et au réveil suivant la
+> mémoire de sauvegarde était intacte avec un nouveau relevé dedans.
+>
 > Et un défaut trouvé par la carte, pas par le banc : l'annonce Bluetooth
 > faisait redémarrer la carte en boucle (`POWERON_RESET`), le pic de courant de
 > l'émission effondrant le 3,3 V. Diagnostic établi en isolant la radio ;
@@ -668,8 +693,6 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | Ce qui n'a pas tourné | Pourquoi ça compte |
 > | --- | --- |
 > | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
-> | Le déversement de l'historique (`/releves`) | seul `/etat` a été lu pour l'instant |
-> | L'acquittement (`/acquitter`) | c'est lui qui referme le portail par anticipation, donc toute l'autonomie annoncée |
 > | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
 > | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >

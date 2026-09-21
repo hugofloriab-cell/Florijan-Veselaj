@@ -981,13 +981,21 @@ static void tenirPortail(uint32_t dureeS) {
 
   trace(portailFini ? "portail ferme (acquitte)" : "portail ferme (delai)");
   portail.stop();
+  /* Le premier argument « true » coupe déjà la radio. Y ajouter un
+     WiFi.mode(WIFI_OFF) revenait à éteindre deux fois, et ESP-IDF le disait
+     dans la trace :
+
+       E (42849) wifi_init_default: netstack cb reg failed with 12308
+
+     12308, c'est 0x3014, ESP_ERR_WIFI_STOP_STATE — « on ne peut pas arrêter ce
+     qui est déjà arrêté ». Sans conséquence, mais une ligne d'erreur rouge
+     dans une trace fait douter d'un montage qui marche. */
 #if PORTAIL_MODE == PORTAIL_STATION
   MDNS.end();
   WiFi.disconnect(true, true);
 #else
   WiFi.softAPdisconnect(true);
 #endif
-  WiFi.mode(WIFI_OFF);
   portailOuvert = false;
 }
 
