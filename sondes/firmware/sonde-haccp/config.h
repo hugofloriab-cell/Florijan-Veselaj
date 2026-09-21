@@ -119,10 +119,16 @@
   #define WIFI_SSID "NOM_DU_RESEAU"
   #define WIFI_MDP  "MOT_DE_PASSE"
 
-  /* Service de notification. ntfy.sh est gratuit et sans compte : choisissez
-     un nom de sujet long et non devinable, il tient lieu de mot de passe.
+  /* Service de notification. ntfy.sh est gratuit et sans compte : le nom de
+     sujet **tient lieu de mot de passe**. Qui le connaît reçoit vos alertes —
+     et peut en publier de fausses.
+
+     ⚠ Changez celui-ci avant de l'utiliser : le dépôt de ce projet est public,
+     donc cette valeur l'est aussi. Prenez quelque chose de long et non
+     devinable, par exemple en ajoutant huit caractères au hasard à la fin.
+
      La tablette et les téléphones s'y abonnent via l'application ntfy. */
-  #define NTFY_SUJET "ibis-sisteron-froid-7f3a91c2"
+  #define NTFY_SUJET "sonde-haccp-A-CHANGER-xxxxxxxx"
 
   /* Délai minimal entre deux alertes pour un même défaut, en minutes. */
   #define ALERTE_REPOS_MINUTES 120

@@ -482,6 +482,24 @@ static void tenirFenetre(uint32_t dureeS) {
   BLEDevice::deinit(true);
 }
 
+/* ============ Degrés lisibles ============ */
+
+/* La température circule partout en centièmes entiers — jamais de virgule
+   flottante, voir PROTOCOLE-HTTP.md § 7. Mais une notification qui annonce
+   « 1863 » sur un téléphone ne sert à personne : on convertit ici, au dernier
+   moment, et sans flottant. */
+#if ALERTE_WIFI || PORTAIL_WIFI
+static void centiEnTexte(int16_t centi, char *sortie, size_t taille) {
+  if (centi == TEMPERATURE_INVALIDE) {
+    snprintf(sortie, taille, "capteur muet");
+    return;
+  }
+  int32_t a = centi < 0 ? -(int32_t)centi : (int32_t)centi;
+  snprintf(sortie, taille, "%s%ld,%02ld", centi < 0 ? "-" : "",
+           (long)(a / 100), (long)(a % 100));
+}
+#endif
+
 /* ============ Alerte Wi-Fi ============ */
 
 #if ALERTE_WIFI
@@ -526,8 +544,10 @@ static void pousserAlerte(const char *titre, const char *corps, const char *prio
     trace("wifi indisponible (etat %d)", (int)WiFi.status());
   }
 
+  /* Un seul appel : le premier « true » coupe déjà la radio. Y ajouter un
+     WiFi.mode(WIFI_OFF) faisait apparaître ESP_ERR_WIFI_STOP_STATE dans la
+     trace — voir le même correctif dans tenirPortail(). */
   WiFi.disconnect(true, true);
-  WiFi.mode(WIFI_OFF);
 }
 
 static void examinerAlertes(int16_t centi) {
@@ -541,13 +561,16 @@ static void examinerAlertes(int16_t centi) {
                (rtcTics - rtcDerniereAlerte < (uint32_t)ALERTE_REPOS_MINUTES * 60UL);
   if (repos) return;
 
-  char corps[160];
+  char corps[200];
 
   if (rtcHorsSeuil >= ALERTE_MESURES_CONSECUTIVES) {
+    char t[16], tmin[16], tmax[16];
+    centiEnTexte(centi, t, sizeof(t));
+    centiEnTexte(rtcSeuilMin, tmin, sizeof(tmin));
+    centiEnTexte(rtcSeuilMax, tmax, sizeof(tmax));
     snprintf(corps, sizeof(corps),
-             "%s : %.1f C depuis %u releves (seuils %.1f a %.1f C). Verifier l'enceinte.",
-             rtcNom, centi / 100.0f, rtcHorsSeuil,
-             rtcSeuilMin / 100.0f, rtcSeuilMax / 100.0f);
+             "%s : %s C depuis %u releves (seuils %s a %s C). Verifier l'enceinte.",
+             rtcNom, t, rtcHorsSeuil, tmin, tmax);
     pousserAlerte("Temperature non conforme", corps, "urgent");
     rtcDerniereAlerte = rtcTics;
     return;
@@ -586,18 +609,6 @@ static WebServer  portail(80);
 static bool       portailOuvert = false;
 static bool       portailFini   = false;   /* l'application a acquitté       */
 static uint32_t   portailFinMs  = 0;
-
-/* Les degrés ne servent qu'à l'affichage humain de la page de secours. Le JSON
-   ne transporte que des centièmes entiers — voir PROTOCOLE-HTTP.md, § 6. */
-static void centiEnTexte(int16_t centi, char *sortie, size_t taille) {
-  if (centi == TEMPERATURE_INVALIDE) {
-    snprintf(sortie, taille, "capteur muet");
-    return;
-  }
-  int32_t a = centi < 0 ? -(int32_t)centi : (int32_t)centi;
-  snprintf(sortie, taille, "%s%ld,%02ld", centi < 0 ? "-" : "",
-           (long)(a / 100), (long)(a % 100));
-}
 
 /* Le libellé d'emplacement est modifiable à distance — commande 0x08 en
    Bluetooth. Un guillemet ou une barre oblique inverse dedans casserait le JSON
