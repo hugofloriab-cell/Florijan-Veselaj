@@ -447,7 +447,7 @@ qui calcule juste.
    de mètres à trois ou quatre — sans importance pour une sonde aimantée sur
    une porte de frigo, et la fenêtre radio consomme moins.
 
-   Le passage en service (§ 11) repasse à `ESP_PWR_LVL_N0`, soit une dizaine
+   Le passage en service (§ 12) repasse à `ESP_PWR_LVL_N0`, soit une dizaine
    de mètres. Si la carte se remet à redémarrer à ce moment-là, c'est le
    condensateur du point 2 qu'il faut, pas un retour en arrière.
 
@@ -498,7 +498,7 @@ Trois choses à y vérifier, dans cet ordre :
 
 `veille 1 s` est normal en mode banc et n'est pas un défaut : la fenêtre
 d'annonce dure 60 s et le cycle une minute, la radio occupe donc presque tout
-le temps. En service (§ 11), le cycle passe à 30 minutes et la fenêtre à 15 s.
+le temps. En service (§ 12), le cycle passe à 30 minutes et la fenêtre à 15 s.
 
 Notez le nom `HACCP-XXXX` de la trace : c'est sous ce nom que la sonde
 apparaîtra au scan, et c'est lui qu'il faudra chercher depuis l'application.
@@ -592,7 +592,109 @@ Une enceinte réellement en panne envoie une alerte toutes les 2 heures, soit
 environ **0,4 mAh par alerte** — 5 mAh par jour de panne. Sans effet sur
 l'autonomie, d'autant qu'une panne se règle en quelques heures.
 
-## 11. Passer en service
+## 11. Essayer le portail Wi-Fi
+
+C'est la voie qui rend votre application iOS simple : du HTTP et du JSON, là où
+le Bluetooth demande CoreBluetooth. Le contrat complet est dans
+[PROTOCOLE-HTTP.md](PROTOCOLE-HTTP.md) ; cette section ne fait que le mettre en
+route sur l'établi.
+
+### 11.1 Activer
+
+Dans `config.h`, cherchez `PORTAIL_WIFI` :
+
+```cpp
+#define PORTAIL_WIFI 1
+```
+
+Laissez `PORTAIL_MODE` sur `PORTAIL_AP` pour ce premier essai : la sonde crée
+son propre réseau, il n'y a aucun identifiant à saisir, et ça marche même sans
+le Wi-Fi de l'hôtel. Choisissez un mot de passe d'au moins **huit caractères** :
+
+```cpp
+#define PORTAIL_MDP "sonde-ibis-2026"
+```
+
+En dessous de huit caractères, l'ESP32 crée un réseau **ouvert** sans le dire —
+et sur un réseau ouvert, n'importe qui à portée peut appeler `/acquitter` et
+faire disparaître des relevés.
+
+Rien d'autre à changer : le mode banc ouvre le portail à chaque réveil, faute
+d'ILS soudé à ce stade. Téléversez.
+
+> **Vérifiez le partitionnement avant de téléverser.** Le portail ajoute la pile
+> Wi-Fi et le serveur HTTP au programme, qui passe d'environ 1,1 Mo à un peu
+> moins de 1,5 Mo. C'est confortable dans *Huge APP* (3 Mo) et **trop gros pour
+> le découpage par défaut** (1,3 Mo), qui rejettera le téléversement avec un
+> message sur la taille du croquis. *Outils → Partition Scheme →
+> Huge APP (3MB No OTA/1MB SPIFFS)* — c'est le réglage du § 5.4, à ne pas
+> perdre si vous avez rouvert l'IDE depuis.
+
+### 11.2 La trace
+
+```
+T=+21,44 C (2144 centi), pile=100% (4900 mV), attente=3, manuel=0
+portail: reseau SONDE-C456, http://192.168.4.1
+```
+
+Si vous lisez `portail: softAP refuse`, c'est le mot de passe : moins de huit
+caractères.
+
+### 11.3 Lire depuis le téléphone — sans aucune application
+
+C'est le test qui vaut le plus, parce qu'il ne dépend d'aucun code à vous :
+
+1. **Réglages → Wi-Fi**, rejoignez **`SONDE-C456`** (les quatre caractères sont
+   ceux de votre trace, ils viennent de l'adresse MAC de la carte).
+2. Ouvrez **Safari** et saisissez `192.168.4.1`.
+
+La température, la pile, les seuils et l'étalonnage s'affichent. Depuis un
+iPhone. Sans application, sans compte, sans Internet.
+
+> iOS affiche « Aucune connexion Internet » sur ce réseau, et c'est normal : la
+> sonde n'en donne pas. Elle répond en revanche à la vérification de
+> connectivité (`PORTAIL_REPONDRE_CAPTIF`), ce qui empêche iOS de quitter le
+> réseau tout seul au milieu d'une lecture.
+
+Puis les relevés bruts, ceux que votre application consommera :
+
+```
+http://192.168.4.1/etat
+http://192.168.4.1/releves
+```
+
+Safari affiche le JSON tel quel. **Si ces deux adresses répondent, le contrat
+est vérifié de bout en bout** — c'était le dernier maillon de la chaîne que
+personne n'avait encore vu fonctionner.
+
+### 11.4 Depuis un ordinateur, si vous préférez
+
+Même réseau rejoint, puis :
+
+```sh
+curl http://192.168.4.1/etat
+curl http://192.168.4.1/releves
+curl -X POST "http://192.168.4.1/heure?unix=$(date +%s)"
+```
+
+L'acquittement en dernier, et seulement pour voir — il fait **perdre** les
+relevés à la sonde :
+
+```sh
+curl -X POST "http://192.168.4.1/acquitter?jusqua=0"
+```
+
+La trace doit répondre `portail ferme (acquitte)` : le portail s'est refermé
+sans attendre ses 180 secondes. C'est exactement ce qui rend l'option viable
+sur piles — et ce que votre application devra faire.
+
+### 11.5 Ne le laissez pas en service comme ça
+
+Le mode banc ouvre le portail **à chaque réveil**. En service, ce serait
+48 allumages Wi-Fi par jour et quelques jours d'autonomie. `MODE_BANC` à 0
+remet le portail sur l'aimant seul (§ 12), ce qui est le réglage prévu.
+
+## 12. Passer en service
 
 Une fois l'essai concluant, dans `config.h` :
 
@@ -603,6 +705,12 @@ Une fois l'essai concluant, dans `config.h` :
   `-2300`/`-1800` en négatif ;
 - `REVEIL_MANUEL_ACTIF` à 1 seulement quand l'ILS est réellement soudé ;
 - les bornes de batterie (§ « Pile ») selon piles AA ou accu rechargeable.
+
+Si vous gardez le portail Wi-Fi, `MODE_BANC` à 0 suffit : il le remet tout seul
+sur l'aimant seul, au lieu de l'ouvrir à chaque réveil. Vérifiez seulement que
+`PORTAIL_ARRET_APRES_ACQUIT` est bien à 1 — c'est ce réglage, et le fait que
+votre application acquitte, qui font la différence entre trois ans et quatorze
+mois d'autonomie.
 
 Attention : `MODE_BANC` à 0 rend aussi sa valeur normale à `PUISSANCE_BLE`,
 `ESP_PWR_LVL_N0` — une dizaine de mètres de portée, et un pic de courant plus

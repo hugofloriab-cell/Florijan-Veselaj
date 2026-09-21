@@ -38,10 +38,20 @@
   #include <esp_system.h>
 #endif
 
-#if ALERTE_WIFI
+#if ALERTE_WIFI || PORTAIL_WIFI
   #include <WiFi.h>
+#endif
+
+#if ALERTE_WIFI
   #include <WiFiClientSecure.h>
   #include <HTTPClient.h>
+#endif
+
+#if PORTAIL_WIFI
+  #include <WebServer.h>
+  #if PORTAIL_MODE == PORTAIL_STATION
+    #include <ESPmDNS.h>
+  #endif
 #endif
 
 /* ============ Protocole ============ */
@@ -553,6 +563,408 @@ static void examinerAlertes(int16_t centi) {
 }
 #endif
 
+/* ============ Portail Wi-Fi ============ */
+
+/* Le même principe qu'une petite caméra d'inspection : l'appareil porte son
+   propre réseau (ou rejoint celui de la maison), on s'y connecte, on lit en
+   direct, et rien n'est enregistré ailleurs.
+ *
+ * La différence avec une caméra, et c'est elle qui dicte tout le reste : une
+ * caméra sert deux minutes puis retourne dans son tiroir. Une sonde HACCP doit
+ * tenir des mois sur des piles. Le portail ne peut donc pas rester allumé — il
+ * s'ouvre à la demande, sur l'aimant, et se referme dès que l'application a
+ * fini. D'où PORTAIL_ARRET_APRES_ACQUIT : une consultation de vingt secondes
+ * coûte vingt secondes de radio, pas trois minutes.
+ *
+ * Le contrat HTTP est décrit dans ../../PROTOCOLE-HTTP.md. Toute modification
+ * du format JSON doit y être reportée.
+ */
+
+#if PORTAIL_WIFI
+
+static WebServer  portail(80);
+static bool       portailOuvert = false;
+static bool       portailFini   = false;   /* l'application a acquitté       */
+static uint32_t   portailFinMs  = 0;
+
+/* Les degrés ne servent qu'à l'affichage humain de la page de secours. Le JSON
+   ne transporte que des centièmes entiers — voir PROTOCOLE-HTTP.md, § 6. */
+static void centiEnTexte(int16_t centi, char *sortie, size_t taille) {
+  if (centi == TEMPERATURE_INVALIDE) {
+    snprintf(sortie, taille, "capteur muet");
+    return;
+  }
+  int32_t a = centi < 0 ? -(int32_t)centi : (int32_t)centi;
+  snprintf(sortie, taille, "%s%ld,%02ld", centi < 0 ? "-" : "",
+           (long)(a / 100), (long)(a % 100));
+}
+
+/* Le libellé d'emplacement est modifiable à distance — commande 0x08 en
+   Bluetooth. Un guillemet ou une barre oblique inverse dedans casserait le JSON
+   de toutes les requêtes suivantes, et la synchronisation avec lui, jusqu'à ce
+   que quelqu'un comprenne pourquoi. On échappe donc, plutôt que de faire
+   confiance à ce que la sonde a bien voulu qu'on lui écrive.
+   Les octets de contrôle sont remplacés par un espace : les guillemets \uXXXX
+   coûteraient six octets là où le libellé n'en a que seize. */
+static void jsonTexte(const char *entree, char *sortie, size_t taille) {
+  size_t j = 0;
+  for (size_t i = 0; entree[i] && j + 2 < taille; i++) {
+    unsigned char c = (unsigned char)entree[i];
+    if (c == '"' || c == '\\') { sortie[j++] = '\\'; sortie[j++] = (char)c; }
+    else if (c < 0x20)           { sortie[j++] = ' '; }
+    else                         { sortie[j++] = (char)c; }
+  }
+  sortie[j] = '\0';
+}
+
+/* Même raison, autre langage : un « < » dans le libellé transformerait la page
+   de secours en balise ouverte. */
+static void htmlTexte(const char *entree, char *sortie, size_t taille) {
+  static const char *codes[] = { "&lt;", "&gt;", "&amp;", "&quot;" };
+  static const char  bruts[] = { '<', '>', '&', '"' };
+  size_t j = 0;
+  for (size_t i = 0; entree[i]; i++) {
+    const char *remplacement = nullptr;
+    for (int k = 0; k < 4; k++) if (entree[i] == bruts[k]) remplacement = codes[k];
+    if (remplacement) {
+      size_t n = strlen(remplacement);
+      if (j + n >= taille) break;
+      memcpy(sortie + j, remplacement, n);
+      j += n;
+    } else {
+      if (j + 1 >= taille) break;
+      sortie[j++] = entree[i];
+    }
+  }
+  sortie[j] = '\0';
+}
+
+/* Une mesure ratée se dit « null » en JSON, pas -32768. */
+static const char *centiJson(int16_t centi, char *tampon, size_t taille) {
+  if (centi == TEMPERATURE_INVALIDE) return "null";
+  snprintf(tampon, taille, "%d", (int)centi);
+  return tampon;
+}
+
+static void entetesPortail() {
+  /* Sans ça, une page web servie depuis une autre origine — la fiche du petit
+     déjeuner publiée sur GitHub Pages, par exemple — ne pourrait pas lire la
+     réponse. Une application native n'en a pas besoin, un navigateur si. */
+  portail.sendHeader("Access-Control-Allow-Origin", "*");
+  portail.sendHeader("Cache-Control", "no-store");
+}
+
+static void servirEtat() {
+  char nom[16];
+  nomSonde(nom, sizeof(nom));
+
+  char tampon[12];
+  char lieu[40];                 /* 16 caractères, tous échappés : 32 + marge */
+  jsonTexte(rtcNom, lieu, sizeof(lieu));
+  char corps[480];
+  snprintf(corps, sizeof(corps),
+    "{\"version\":%u,"
+    "\"sonde\":\"%s\","
+    "\"emplacement\":\"%s\","
+    "\"centi\":%s,"
+    "\"capteur_ok\":%s,"
+    "\"pile\":%u,"
+    "\"tension_mv\":%u,"
+    "\"tics\":%lu,"
+    "\"unix_ref\":%lu,"
+    "\"intervalle_min\":%u,"
+    "\"attente\":%u,"
+    "\"offset_centi\":%d,"
+    "\"seuil_min_centi\":%d,"
+    "\"seuil_max_centi\":%d,"
+    "\"drapeaux\":%u,"
+    "\"alerte\":%s,"
+    "\"pile_faible\":%s,"
+    "\"tampon_plein\":%s,"
+    "\"reveil_manuel\":%s}",
+    (unsigned)VERSION_PROTOCOLE, nom, lieu,
+    /* Un capteur muet vaut null, jamais -32768 : un client qui oublierait de
+       vérifier tracerait une chambre froide à -327,68 °C. En JSON, l'absence de
+       mesure se dit avec le mot du langage. */
+    centiJson(rtcDerniere, tampon, sizeof(tampon)),
+    rtcDerniere == TEMPERATURE_INVALIDE ? "false" : "true",
+    (unsigned)rtcPile, (unsigned)rtcTension,
+    (unsigned long)rtcTics, (unsigned long)rtcUnixRef,
+    (unsigned)rtcIntervalle, (unsigned)rtcAttente,
+    (int)rtcOffset, (int)rtcSeuilMin, (int)rtcSeuilMax,
+    (unsigned)rtcDrapeaux,
+    (rtcDrapeaux & DRAPEAU_ALERTE_T)      ? "true" : "false",
+    (rtcDrapeaux & DRAPEAU_PILE_FAIBLE)   ? "true" : "false",
+    (rtcDrapeaux & DRAPEAU_TAMPON_PLEIN)  ? "true" : "false",
+    (rtcDrapeaux & DRAPEAU_REVEIL_MANUEL) ? "true" : "false");
+
+  entetesPortail();
+  portail.send(200, "application/json", corps);
+}
+
+/* L'historique peut faire plusieurs dizaines de milliers d'octets : on
+   l'envoie en morceaux plutôt que de le fabriquer entier en mémoire. */
+static void servirReleves() {
+  char nom[16];
+  nomSonde(nom, sizeof(nom));
+
+  entetesPortail();
+  portail.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  portail.send(200, "application/json", "");
+
+  char tete[200];
+  snprintf(tete, sizeof(tete),
+    "{\"version\":%u,\"sonde\":\"%s\",\"tics\":%lu,\"nombre\":%u,\"releves\":[",
+    (unsigned)VERSION_PROTOCOLE, nom, (unsigned long)rtcTics, (unsigned)rtcAttente);
+  portail.sendContent(tete);
+
+  String lot;
+  lot.reserve(1024);
+  for (uint16_t i = 0; i < rtcAttente; i++) {
+    const Releve *r = releveEnAttente(i);
+    char tampon[12], ligne[150];
+    snprintf(ligne, sizeof(ligne),
+      "%s{\"index\":%u,\"tics\":%lu,\"centi\":%s,\"capteur_ok\":%s,"
+      "\"pile\":%u,\"drapeaux\":%u}",
+      i ? "," : "", (unsigned)i, (unsigned long)r->tics,
+      centiJson(r->centi, tampon, sizeof(tampon)),
+      r->centi == TEMPERATURE_INVALIDE ? "false" : "true",
+      (unsigned)r->pile, (unsigned)r->drapeaux);
+    lot += ligne;
+    if (lot.length() > 768) { portail.sendContent(lot); lot = ""; }
+  }
+  if (lot.length()) portail.sendContent(lot);
+
+  portail.sendContent("]}");
+  portail.sendContent("");
+  trace("portail: %u releves servis", (unsigned)rtcAttente);
+}
+
+/* Acquittement. C'est la seule requête qui fait perdre des données à la sonde :
+   elle ne doit donc arriver qu'après écriture chez le client. Même contrat
+   qu'en Bluetooth (commande 0x03). */
+static void servirAcquitter() {
+  if (!portail.hasArg("jusqua")) {
+    entetesPortail();
+    portail.send(400, "application/json", "{\"erreur\":\"jusqua manquant\"}");
+    return;
+  }
+  long jusqua = portail.arg("jusqua").toInt();
+  if (jusqua < 0 || jusqua >= (long)rtcAttente) {
+    entetesPortail();
+    portail.send(409, "application/json", "{\"erreur\":\"index hors des relevés en attente\"}");
+    return;
+  }
+
+  acquitter((uint16_t)jusqua);
+
+  char corps[80];
+  snprintf(corps, sizeof(corps), "{\"acquitte\":true,\"attente\":%u}", (unsigned)rtcAttente);
+  entetesPortail();
+  portail.send(200, "application/json", corps);
+
+#if PORTAIL_ARRET_APRES_ACQUIT
+  /* Le travail est fait : on coupe la radio sans attendre le plafond. C'est ce
+     qui rend le portail compatible avec des mois d'autonomie. */
+  portailFini = true;
+#endif
+}
+
+static void servirHeure() {
+  if (!portail.hasArg("unix")) {
+    entetesPortail();
+    portail.send(400, "application/json", "{\"erreur\":\"unix manquant\"}");
+    return;
+  }
+  rtcUnixRef   = (uint32_t)strtoul(portail.arg("unix").c_str(), nullptr, 10);
+  rtcDrapeaux |= DRAPEAU_HORLOGE_OK;
+
+  char corps[96];
+  snprintf(corps, sizeof(corps), "{\"unix_ref\":%lu,\"tics\":%lu}",
+           (unsigned long)rtcUnixRef, (unsigned long)rtcTics);
+  entetesPortail();
+  portail.send(200, "application/json", corps);
+}
+
+static void servirEtalonner() {
+  if (!portail.hasArg("centi")) {
+    entetesPortail();
+    portail.send(400, "application/json", "{\"erreur\":\"centi manquant\"}");
+    return;
+  }
+  long v = portail.arg("centi").toInt();
+  if (v < -5000 || v > 5000) {
+    entetesPortail();
+    portail.send(400, "application/json", "{\"erreur\":\"offset invalide\"}");
+    return;
+  }
+  rtcOffset = (int16_t)v;
+
+  char corps[64];
+  snprintf(corps, sizeof(corps), "{\"offset_centi\":%d}", (int)rtcOffset);
+  entetesPortail();
+  portail.send(200, "application/json", corps);
+}
+
+static void servirProlonger() {
+  portailFini  = false;
+  portailFinMs = millis() + 300000UL;   /* cinq minutes, comme la commande 0x07 */
+  entetesPortail();
+  portail.send(200, "application/json", "{\"prolonge_s\":300}");
+  trace("portail prolonge");
+}
+
+/* Page lisible dans un navigateur. Elle n'est pas là pour faire joli : elle
+   permet de vérifier la sonde depuis n'importe quel téléphone, sans aucune
+   application — y compris depuis Safari sur iPhone, ce que le Bluetooth web ne
+   permettra jamais. */
+static void servirAccueil() {
+  char nom[16], t[16];
+  nomSonde(nom, sizeof(nom));
+  centiEnTexte(rtcDerniere, t, sizeof(t));
+
+  String page;
+  page.reserve(1600);
+  page += F("<!doctype html><meta charset=utf-8>"
+            "<meta name=viewport content='width=device-width,initial-scale=1'>"
+            "<title>Sonde ");
+  page += nom;
+  page += F("</title><style>"
+            "body{font:16px/1.5 -apple-system,system-ui,sans-serif;margin:0;"
+            "padding:24px;background:#f6f6f4;color:#1a1a18}"
+            "h1{font-size:1.1rem;margin:0 0 4px}"
+            ".t{font-size:3rem;font-weight:600;margin:16px 0 4px}"
+            ".a{color:#a4262c}small{color:#6a6a66}"
+            "table{border-collapse:collapse;margin-top:20px;width:100%}"
+            "td{padding:4px 0;border-bottom:1px solid #e3e3e0}"
+            "td+td{text-align:right;font-variant-numeric:tabular-nums}"
+            "</style>");
+  char lieu[80];
+  htmlTexte(rtcNom, lieu, sizeof(lieu));
+  page += F("<h1>");
+  page += lieu;
+  page += F("</h1><small>");
+  page += nom;
+  page += F("</small><div class='t");
+  if (rtcDrapeaux & DRAPEAU_ALERTE_T) page += F(" a");
+  page += F("'>");
+  page += t;
+  page += F(" °C</div>");
+  if (rtcDrapeaux & DRAPEAU_ALERTE_T) page += F("<div class=a>Hors des seuils</div>");
+
+  char lignes[420];
+  snprintf(lignes, sizeof(lignes),
+    "<table>"
+    "<tr><td>Pile</td><td>%u %% (%u mV)</td></tr>"
+    "<tr><td>Relevés en attente</td><td>%u</td></tr>"
+    "<tr><td>Intervalle</td><td>%u min</td></tr>"
+    "<tr><td>Seuils</td><td>%d à %d centi-°C</td></tr>"
+    "<tr><td>Étalonnage</td><td>%d centi-°C</td></tr>"
+    "<tr><td>Horloge interne</td><td>%lu s</td></tr>"
+    "</table>",
+    (unsigned)rtcPile, (unsigned)rtcTension, (unsigned)rtcAttente,
+    (unsigned)rtcIntervalle, (int)rtcSeuilMin, (int)rtcSeuilMax,
+    (int)rtcOffset, (unsigned long)rtcTics);
+  page += lignes;
+  page += F("<p><small>Relevés bruts : <a href=/releves>/releves</a> · "
+            "État : <a href=/etat>/etat</a></small>");
+
+  entetesPortail();
+  portail.send(200, "text/html; charset=utf-8", page);
+}
+
+/* iOS et Android testent tout réseau rejoint en appelant une page connue. Sans
+   réponse, iOS affiche « Aucune connexion Internet » et peut quitter le réseau
+   au milieu d'une lecture. On répond donc exactement ce qu'il attend.
+   La sonde ne prétend pas donner accès à Internet : elle dit que le lien
+   fonctionne, ce qui est vrai pour ce qu'on lui demande. */
+static void servirInconnu() {
+#if PORTAIL_REPONDRE_CAPTIF
+  String hote = portail.hostHeader();
+  if (hote.indexOf("captive.apple.com") >= 0 ||
+      hote.indexOf("connectivitycheck") >= 0 ||
+      hote.indexOf("gstatic.com")       >= 0 ||
+      hote.indexOf("msftconnecttest")   >= 0) {
+    portail.send(200, "text/html",
+      F("<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>"));
+    return;
+  }
+#endif
+  entetesPortail();
+  portail.send(404, "application/json", "{\"erreur\":\"inconnu\"}");
+}
+
+static void demarrerPortail() {
+  char nom[16];
+  nomSonde(nom, sizeof(nom));
+
+#if PORTAIL_MODE == PORTAIL_AP
+  char ssid[24];
+  snprintf(ssid, sizeof(ssid), "SONDE-%s", nom + 6);   /* SONDE-C456 */
+  WiFi.mode(WIFI_AP);
+  if (!WiFi.softAP(ssid, PORTAIL_MDP)) {
+    trace("portail: softAP refuse");
+    return;
+  }
+  trace("portail: reseau %s, http://%s", ssid, WiFi.softAPIP().toString().c_str());
+#else
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(PORTAIL_SSID, PORTAIL_MDP_STATION);
+  uint32_t limite = millis() + 12000UL;
+  while (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - limite) < 0) delay(150);
+  if (WiFi.status() != WL_CONNECTED) {
+    trace("portail: %s injoignable", PORTAIL_SSID);
+    WiFi.mode(WIFI_OFF);
+    return;
+  }
+  /* « sonde-c456.local » évite d'avoir à connaître l'adresse distribuée par la
+     box, qui change à chaque bail DHCP. En minuscules : un nom mDNS est
+     insensible à la casse, mais les outils qui l'affichent, non. */
+  uint8_t mac[6];
+  esp_read_mac(mac, ESP_MAC_BT);
+  char hote[24];
+  snprintf(hote, sizeof(hote), "sonde-%02x%02x", mac[4], mac[5]);
+  if (MDNS.begin(hote)) MDNS.addService("http", "tcp", 80);
+  trace("portail: http://%s.local (%s)", hote, WiFi.localIP().toString().c_str());
+#endif
+
+  portail.on("/",           HTTP_GET,  servirAccueil);
+  portail.on("/etat",       HTTP_GET,  servirEtat);
+  portail.on("/releves",    HTTP_GET,  servirReleves);
+  portail.on("/acquitter",  HTTP_POST, servirAcquitter);
+  portail.on("/heure",      HTTP_POST, servirHeure);
+  portail.on("/etalonner",  HTTP_POST, servirEtalonner);
+  portail.on("/prolonger",  HTTP_POST, servirProlonger);
+  portail.onNotFound(servirInconnu);
+  portail.begin();
+
+  portailOuvert = true;
+  portailFini   = false;
+}
+
+static void tenirPortail(uint32_t dureeS) {
+  if (!portailOuvert) return;
+  portailFinMs = millis() + dureeS * 1000UL;
+
+  while (!portailFini && (int32_t)(millis() - portailFinMs) < 0) {
+    portail.handleClient();
+    delay(2);
+  }
+
+  trace(portailFini ? "portail ferme (acquitte)" : "portail ferme (delai)");
+  portail.stop();
+#if PORTAIL_MODE == PORTAIL_STATION
+  MDNS.end();
+  WiFi.disconnect(true, true);
+#else
+  WiFi.softAPdisconnect(true);
+#endif
+  WiFi.mode(WIFI_OFF);
+  portailOuvert = false;
+}
+
+#endif  /* PORTAIL_WIFI */
+
 /* ============ Veille ============ */
 
 static void dormir(uint32_t secondes) {
@@ -669,22 +1081,45 @@ void setup() {
   }
 #endif
 
+  /* Le portail Wi-Fi passe avant le Bluetooth, et coupe complètement sa radio
+     avant de rendre la main : les deux piles protocolaires ne cohabitent pas en
+     mémoire, et deux radios allumées ensemble, c'est le pic de courant doublé.
+
+     Il ne s'ouvre que sur l'aimant — ou à chaque réveil au banc d'essai, faute
+     d'ILS soudé. Jamais sur la simple cadence : ce serait 48 allumages Wi-Fi
+     par jour et quelques jours d'autonomie. */
+  bool portailAcquitte = false;
+#if PORTAIL_WIFI
+  if (manuel || PORTAIL_A_CHAQUE_REVEIL) {
+    demarrerPortail();
+    tenirPortail(PORTAIL_DUREE_S);
+    portailAcquitte = portailFini;
+  }
+#endif
+
   /* Faut-il parler à ce réveil ? Mesurer ne coûte presque rien, émettre coûte
      tout : on saute des fenêtres pour tenir plus longtemps. Mais jamais quand
-     quelqu'un passe l'aimant, ni quand la température sort des clous. */
-  bool annoncer = manuel
-               || (rtcDrapeaux & DRAPEAU_ALERTE_T)
-               || (ANNONCE_UN_CYCLE_SUR <= 1);
+     quelqu'un passe l'aimant, ni quand la température sort des clous.
 
-  if (!annoncer) {
+     Sauf si le portail vient de faire le travail : dans ce cas les relevés sont
+     partis et acquittés, et ouvrir une fenêtre Bluetooth par-dessus ne servirait
+     qu'à consommer. */
+  bool annoncer = !portailAcquitte
+               && (manuel
+                || (rtcDrapeaux & DRAPEAU_ALERTE_T)
+                || (ANNONCE_UN_CYCLE_SUR <= 1));
+
+  if (!annoncer && !portailAcquitte) {
     if (cadence && ++rtcCyclesMuets >= ANNONCE_UN_CYCLE_SUR) annoncer = true;
   }
-  if (annoncer) rtcCyclesMuets = 0;
+  if (annoncer || portailAcquitte) rtcCyclesMuets = 0;
 
   if (annoncer) {
     uint32_t fenetre = manuel ? FENETRE_MANUELLE_S : FENETRE_ANNONCE_S;
     demarrerAnnonce();
     tenirFenetre(fenetre);
+  } else if (portailAcquitte) {
+    trace("pas d'annonce : le portail a deja tout transmis");
   } else {
     trace("pas d'annonce ce cycle (%u/%u)", rtcCyclesMuets, ANNONCE_UN_CYCLE_SUR);
   }

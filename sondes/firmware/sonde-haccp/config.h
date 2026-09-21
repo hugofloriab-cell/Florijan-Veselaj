@@ -133,6 +133,114 @@
   #define ALERTE_MESURES_CONSECUTIVES 2
 #endif
 
+/* ---------- Portail Wi-Fi (optionnel) ---------- */
+
+/* Mettre à 1 pour que la sonde serve ses relevés en HTTP, comme le fait une
+   petite caméra d'inspection : on se connecte à elle, on lit, on repart. Rien
+   ne sort de l'hôtel, rien n'est stocké ailleurs que dans la sonde et dans
+   l'appareil qui vient lire.
+
+   Pourquoi c'est intéressant malgré le coût en énergie :
+
+     - du HTTP et du JSON se lisent en quelques lignes d'URLSession dans une
+       application SwiftUI, là où le Bluetooth demande CoreBluetooth et des
+       centaines de lignes de délégués ;
+     - ça marche depuis Safari sur iPhone et iPad, ce que le Bluetooth web ne
+       fera jamais. La limitation qui obligeait à écrire une application à part
+       disparaît.
+
+   Le Bluetooth reste utile pour autre chose : il donne la température de
+   toutes les sondes d'un coup, à distance, sans se connecter à aucune. Les
+   deux peuvent cohabiter — voir PROTOCOLE-HTTP.md. */
+#define PORTAIL_WIFI 0
+
+/* Deux façons d'être joignable. Le JSON servi est identique : votre
+   application ne change pas d'une ligne, seule l'adresse de base change. */
+#define PORTAIL_AP      0  /* la sonde crée son propre réseau              */
+#define PORTAIL_STATION 1  /* la sonde rejoint le réseau de l'hôtel        */
+
+#if PORTAIL_WIFI
+
+  /* PORTAIL_AP — la sonde crée son réseau « SONDE-XXXX », le téléphone s'y
+     connecte, l'adresse est toujours http://192.168.4.1.
+
+     Avantages : aucun mot de passe d'hôtel dans ce fichier, aucune dépendance
+     au réseau existant, fonctionne dans une cave ou une chambre froide où le
+     Wi-Fi de l'hôtel ne passe pas.
+
+     Inconvénient : le téléphone quitte son réseau pour rejoindre celui de la
+     sonde, et n'en lit donc qu'une à la fois.
+
+     PORTAIL_STATION — la sonde rejoint le réseau de l'hôtel et s'annonce en
+     mDNS sous « sonde-xxxx.local ».
+
+     Avantages : le téléphone ne change pas de réseau, et l'application peut
+     interroger les quatre sondes dans la même tournée.
+
+     Inconvénient : il faut que le Wi-Fi de l'hôtel porte jusqu'à l'enceinte —
+     à vérifier sur place avant de compter dessus, les cuisines et les réserves
+     sont souvent des zones mortes. */
+  #define PORTAIL_MODE PORTAIL_AP
+
+  /* Mot de passe du réseau créé par la sonde, en mode PORTAIL_AP.
+     8 caractères minimum, sinon l'ESP32 refuse et crée un réseau ouvert.
+
+     Ce n'est pas un détail de confort : sur un réseau ouvert, n'importe qui à
+     portée peut lire les relevés et surtout envoyer les commandes d'écriture —
+     acquitter des relevés non lus, donc les faire disparaître, ou déplacer
+     l'étalonnage. Mettez-en un.
+
+     ⚠ Et changez celui-ci : le dépôt de ce projet est public, donc la valeur
+     écrite ici l'est aussi. Un mot de passe qu'on peut lire sur GitHub ne
+     protège rien. */
+  #define PORTAIL_MDP "A-CHANGER-8-CAR-MINIMUM"
+
+  /* Durée maximale pendant laquelle le portail reste ouvert, en secondes.
+     C'est un plafond, pas une durée fixe : le portail se ferme dès que
+     l'application a acquitté ses relevés (voir ci-dessous). */
+  #define PORTAIL_DUREE_S 180
+
+  /* Fermer le portail dès l'acquittement, sans attendre le plafond.
+     C'est ce qui rend l'option abordable : une consultation qui dure 20
+     secondes coûte 20 secondes de radio, pas trois minutes. Laissez à 1. */
+  #define PORTAIL_ARRET_APRES_ACQUIT 1
+
+  /* Ouvrir le portail à chaque réveil, sans attendre l'aimant.
+
+     Réservé à l'établi : en service, ça allume la radio Wi-Fi 48 fois par jour
+     et l'autonomie tombe à quelques jours. Le mode banc le met à 1 tout seul,
+     justement parce qu'à ce stade l'ILS n'est pas soudé et qu'il n'y a donc
+     aucun aimant pour déclencher quoi que ce soit. */
+  #ifndef PORTAIL_A_CHAQUE_REVEIL
+    #define PORTAIL_A_CHAQUE_REVEIL 0
+  #endif
+
+  /* Répondre à la vérification de connectivité d'iOS et d'Android.
+
+     Les deux systèmes testent tout réseau rejoint en appelant une page connue
+     (captive.apple.com pour iOS). Sans réponse, iOS considère le réseau
+     inutilisable, affiche « Aucune connexion Internet » et peut le quitter
+     tout seul au milieu d'une lecture. En répondant, le lien local reste
+     stable.
+
+     La sonde ne donne évidemment aucun accès à Internet : elle dit seulement
+     « je suis un réseau qui fonctionne », ce qui est vrai pour ce qu'on lui
+     demande. C'est ce que fait tout appareil local de ce genre, caméras
+     d'inspection comprises. */
+  #define PORTAIL_REPONDRE_CAPTIF 1
+
+  #if PORTAIL_MODE == PORTAIL_STATION
+    /* ⚠ Le dépôt GitHub de ce projet est PUBLIC.
+       N'écrivez jamais ici le vrai mot de passe du réseau de l'hôtel avant de
+       vous être assuré que ce fichier ne sera pas publié — et sachez qu'un
+       secret poussé une fois reste dans l'historique même après correction.
+       Le plus sûr : garder votre config.h hors du dépôt. */
+    #define PORTAIL_SSID "NOM_DU_RESEAU"
+    #define PORTAIL_MDP_STATION "MOT_DE_PASSE"
+  #endif
+
+#endif
+
 /* ---------- Carte et brochage ---------- */
 
 /* Le programme s'adapte à la puce choisie dans l'IDE Arduino. Deux familles
@@ -243,6 +351,9 @@
   #undef  TRACE
   #define TRACE 1
   #define PILE_SIMULEE 1
+  /* Pas d'ILS soudé au banc : sans ça, le portail ne s'ouvrirait jamais. */
+  #undef  PORTAIL_A_CHAQUE_REVEIL
+  #define PORTAIL_A_CHAQUE_REVEIL 1
 #else
   #define PILE_SIMULEE 0
 #endif

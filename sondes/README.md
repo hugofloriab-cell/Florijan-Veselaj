@@ -484,6 +484,43 @@ Ces chiffres sont des estimations calculées, pas des mesures. Comptez une
 marge : la première sonde vous donnera le chiffre réel, que la fiche affichera
 ensuite d'elle-même à partir de la pente de décharge observée.
 
+### Et avec le portail Wi-Fi ?
+
+Le portail HTTP (`PORTAIL_WIFI`, voir [PROTOCOLE-HTTP.md](PROTOCOLE-HTTP.md))
+allume la radio Wi-Fi, qui consomme **environ dix fois plus que le Bluetooth** :
+100 mA le temps d'une consultation, contre 11 mA pour une fenêtre d'annonce.
+Dit comme ça, c'est disqualifiant. Ça ne l'est pas, à une condition.
+
+Ce qui décide, ce n'est pas le courant, c'est la **durée**. Et la durée dépend
+entièrement du moment où l'application envoie `/acquitter` :
+
+| Une consultation par jour | Radio allumée | Consommation | Autonomie |
+| --- | --- | --- | --- |
+| l'application acquitte en 20 s | 20 s | 2,0 mAh/j | **~3,5 ans** |
+| l'application acquitte en 60 s | 60 s | 3,1 mAh/j | ~2,5 ans |
+| l'application n'acquitte pas | 180 s (plafond) | 6,5 mAh/j | **~14 mois** |
+
+Trois fois l'autonomie entre la première ligne et la dernière, pour la même
+fonction. C'est pourquoi `PORTAIL_ARRET_APRES_ACQUIT` existe et doit rester à
+1 : le portail se referme dès que le travail est fait, au lieu d'attendre son
+plafond.
+
+Autrement dit, **une application qui acquitte proprement tient plus longtemps
+que le montage Bluetooth** (3,5 ans contre 2), parce qu'elle remplace 48 courtes
+fenêtres quotidiennes par une seule consultation. Une application qui oublie
+d'acquitter divise l'autonomie par trois — et perd ses relevés par-dessus,
+puisque la sonde les garde faute de confirmation.
+
+Deux mises en garde qui valent plus que ce tableau :
+
+- ces chiffres valent pour un module **ESP32-C3** de la nomenclature, dont la
+  veille est de 44 µA. Sur une **carte DevKit**, la veille est de 5 à 15 mA et
+  l'autonomie se compte en jours quel que soit le protocole : le portail n'y
+  change rien, ni en bien ni en mal ;
+- le portail ne s'ouvre **que sur l'aimant**. Le mettre sur la cadence, ce sont
+  48 allumages Wi-Fi par jour, et quelques jours d'autonomie. Le programme
+  refuse de le faire sauf en mode banc d'essai, où il n'y a pas d'aimant.
+
 ---
 
 ## 7. Option Wi-Fi — l'alerte de nuit
@@ -574,15 +611,40 @@ En pratique :
 | --- | --- |
 | `PREMIER-ESSAI.md` | Valider la chaîne en une heure, carte en USB |
 | `ios/` | Application **SwiftUI** : lecture des sondes sur iPhone et iPad |
-| `PROTOCOLE-BLE.md` | Format des trames — contrat entre la sonde et la fiche |
+| `PROTOCOLE-BLE.md` | Format des trames Bluetooth — contrat entre la sonde et la fiche |
+| `PROTOCOLE-HTTP.md` | Portail Wi-Fi : la sonde sert son JSON en HTTP. **La voie la plus simple pour une application iOS**, et la seule qui se lise depuis Safari |
 | `firmware/sonde-haccp/sonde-haccp.ino` | Programme de la sonde |
 | `firmware/sonde-haccp/config.h` | Réglages propres à chaque sonde |
 
 Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 `/* ============ Sondes ============ */`.
 
-> **Le firmware compile, mais n'a pas encore tourné sur du matériel réel.**
-> Voici précisément où en est la vérification.
+> **Où en est la vérification, précisément.** Une partie de la chaîne tourne
+> désormais sur la carte ; le reste non, et les deux sont distingués ici.
+>
+> Confirmé **sur le matériel**, carte ESP32 DevKit alimentée en USB :
+>
+> | Ce qui a tourné | Constaté |
+> | --- | --- |
+> | Lecture du DS18B20 | suit la température ; câblage jaune→D4 validé |
+> | Cycle de veille profonde | `DEEPSLEEP_RESET`, mémoire RTC conservée d'un réveil à l'autre |
+> | Arithmétique du sommeil | `veille 59 s` sur un cycle d'une minute |
+> | Affichage en degrés | `T=+32,44 C (3244 centi)` |
+> | Démarrage de l'annonce Bluetooth | `annonce HACCP-C456` émis |
+>
+> Et un défaut trouvé par la carte, pas par le banc : l'annonce Bluetooth
+> faisait redémarrer la carte en boucle (`POWERON_RESET`), le pic de courant de
+> l'émission effondrant le 3,3 V. Diagnostic établi en isolant la radio ;
+> remèdes au § 9 de [PREMIER-ESSAI.md](PREMIER-ESSAI.md).
+>
+> **Jamais vérifié — ce sont les maillons qui restent :**
+>
+> | Ce qui n'a pas tourné | Pourquoi ça compte |
+> | --- | --- |
+> | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
+> | Le **portail HTTP** | écrit et testé en natif, jamais exécuté sur la carte |
+> | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
+> | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >
 > **Compilation réelle réussie** le 11 septembre 2026, Arduino IDE 2.3.10, cœur
 > esp32 3.x, cible *ESP32 Dev Module*, partitionnement *Huge APP* :
@@ -598,15 +660,13 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > découpage par défaut de 1,3 Mo ; *Huge APP* laisse 65 % de marge et évite
 > d'avoir à y repenser, notamment si l'option Wi-Fi est activée.
 >
-> Vérifié aussi : la logique de tampon circulaire, de déversement et d'acquittement
-> est testée en natif (ordre chronologique, acquittement partiel, débordement,
-> découpage sur petit MTU, températures négatives) — tout passe. Le code
-> compile sans avertissement pour les deux puces, en mode banc comme en
-> service, avec et sans l'option Wi-Fi.
->
-> **Reste à faire : le téléverser et le regarder tourner.** Une compilation
-> réussie ne dit rien du comportement au réveil, de la lecture du capteur ni de
-> la tenue de la liaison Bluetooth.
+> Vérifié en natif, sur ordinateur : la logique de tampon circulaire, de
+> déversement et d'acquittement (ordre chronologique, acquittement partiel,
+> débordement, découpage sur petit MTU, températures négatives), et pour le
+> portail HTTP le JSON de chaque route — validé par un analyseur, y compris au
+> pire cas de longueur et avec un libellé d'emplacement contenant guillemets et
+> chevrons. Le code compile sans avertissement dans les **16 combinaisons** des
+> deux puces, mode banc ou service, portail absent / point d'accès / station.
 >
 > Non vérifié : les contrôles en amont s'appuyaient sur des en-têtes de substitution,
 > la chaîne de compilation ESP32 étant inaccessible depuis l'environnement où

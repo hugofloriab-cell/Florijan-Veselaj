@@ -49,10 +49,17 @@ d'enregistreurs autonomes posés sur les enceintes froides : un point toutes les
 Le Bluetooth demande l'adresse web en `https` : depuis un fichier local, la
 section reste visible mais le relevé est indisponible.
 
-**Sur iPhone ou iPad, le relevé ne fonctionne pas** : Safari ne gère pas le
-Bluetooth web, et tous les navigateurs iOS reposent sur Safari. Une application
-SwiftUI qui parle le même protocole aux mêmes sondes est dans
-[`sondes/ios/`](sondes/ios/README.md).
+**Sur iPhone ou iPad, le relevé Bluetooth ne fonctionne pas** : Safari ne gère
+pas le Bluetooth web, et tous les navigateurs iOS reposent sur Safari. Deux
+voies contournent la limitation :
+
+- une application SwiftUI qui parle le même protocole aux mêmes sondes, dans
+  [`sondes/ios/`](sondes/ios/README.md) ;
+- **le portail HTTP de la sonde**, qui se lit depuis n'importe quel navigateur,
+  Safari compris : on rejoint le réseau de la sonde et on ouvre son adresse,
+  comme avec une petite caméra d'inspection. C'est aussi la voie la plus simple
+  pour une application maison — du JSON et `URLSession` au lieu de
+  CoreBluetooth. Voir [`sondes/PROTOCOLE-HTTP.md`](sondes/PROTOCOLE-HTTP.md).
 
 **Pour voir la section sans matériel**, ajoutez `?demo=1` à l'adresse : deux
 sondes fictives apparaissent, avec trois semaines de relevés et un incident de
