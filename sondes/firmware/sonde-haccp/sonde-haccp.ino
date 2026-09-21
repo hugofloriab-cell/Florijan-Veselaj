@@ -903,13 +903,18 @@ static void demarrerPortail() {
   snprintf(ssid, sizeof(ssid), "SONDE-%s", nom + 6);   /* SONDE-C456 */
   WiFi.mode(WIFI_AP);
   if (!WiFi.softAP(ssid, PORTAIL_MDP)) {
-    trace("portail: softAP refuse");
+    trace("portail: softAP refuse (mot de passe de moins de 8 caracteres ?)");
+    WiFi.mode(WIFI_OFF);
     return;
   }
+  /* Après softAP() et pas avant : le pilote Wi-Fi doit tourner, sinon le
+     réglage est ignoré sans rien dire. */
+  WiFi.setTxPower(PUISSANCE_WIFI);
   trace("portail: reseau %s, http://%s", ssid, WiFi.softAPIP().toString().c_str());
 #else
   WiFi.mode(WIFI_STA);
   WiFi.begin(PORTAIL_SSID, PORTAIL_MDP_STATION);
+  WiFi.setTxPower(PUISSANCE_WIFI);
   uint32_t limite = millis() + 12000UL;
   while (WiFi.status() != WL_CONNECTED && (int32_t)(millis() - limite) < 0) delay(150);
   if (WiFi.status() != WL_CONNECTED) {

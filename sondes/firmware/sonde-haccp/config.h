@@ -205,6 +205,27 @@
      secondes coûte 20 secondes de radio, pas trois minutes. Laissez à 1. */
   #define PORTAIL_ARRET_APRES_ACQUIT 1
 
+  /* Puissance d'émission Wi-Fi. Même problème qu'en Bluetooth, en pire : une
+     radio Wi-Fi tire environ 100 mA en continu et bien davantage par bouffée,
+     là où une annonce Bluetooth se contente d'une dizaine de milliampères. Une
+     carte qui redémarrait déjà sur le pic Bluetooth redémarrera sur le Wi-Fi.
+
+     Le symptôme est le même — POWERON_RESET juste après la ligne « portail: »,
+     et « demarrage a froid » qui revient à chaque tour. Le remède aussi :
+     descendre d'un cran.
+
+       WIFI_POWER_19_5dBm   maximum, réglage par défaut du cœur Arduino
+       WIFI_POWER_15dBm     portée déjà très large
+       WIFI_POWER_11dBm     bon compromis pour une sonde sur une porte de frigo
+       WIFI_POWER_7dBm      pour une alimentation fragile
+       WIFI_POWER_2dBm      quelques mètres, pic minimal
+
+     Le mode banc descend à 7 dBm tout seul : sur l'établi le téléphone est à un
+     mètre, et c'est là que les alimentations de fortune se font remarquer. */
+  #ifndef PUISSANCE_WIFI
+    #define PUISSANCE_WIFI WIFI_POWER_11dBm
+  #endif
+
   /* Ouvrir le portail à chaque réveil, sans attendre l'aimant.
 
      Réservé à l'établi : en service, ça allume la radio Wi-Fi 48 fois par jour
@@ -354,6 +375,15 @@
   /* Pas d'ILS soudé au banc : sans ça, le portail ne s'ouvrirait jamais. */
   #undef  PORTAIL_A_CHAQUE_REVEIL
   #define PORTAIL_A_CHAQUE_REVEIL 1
+  /* Émission réduite : c'est au banc, sur une prise USB et une carte de
+     développement, que l'alimentation décroche. Le téléphone est à un mètre. */
+  #undef  PUISSANCE_WIFI
+  #define PUISSANCE_WIFI WIFI_POWER_7dBm
+  /* Le réseau doit rester en l'air le temps qu'on aille le rejoindre dans les
+     réglages du téléphone puis revenir. À 180 s sur un cycle d'une minute, il
+     tomberait et reviendrait sans arrêt, et iOS décrocherait à chaque fois. */
+  #undef  PORTAIL_DUREE_S
+  #define PORTAIL_DUREE_S 600
 #else
   #define PILE_SIMULEE 0
 #endif
