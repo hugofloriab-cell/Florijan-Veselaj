@@ -379,11 +379,18 @@
      développement, que l'alimentation décroche. Le téléphone est à un mètre. */
   #undef  PUISSANCE_WIFI
   #define PUISSANCE_WIFI WIFI_POWER_7dBm
-  /* Le réseau doit rester en l'air le temps qu'on aille le rejoindre dans les
-     réglages du téléphone puis revenir. À 180 s sur un cycle d'une minute, il
-     tomberait et reviendrait sans arrêt, et iOS décrocherait à chaque fois. */
+  /* Le réseau ne doit pas clignoter pendant la mise au point. Chaque fermeture
+     le fait disparaître deux ou trois secondes — le temps de la veille, du
+     démarrage et de la mesure — et ça suffit pour qu'un ordinateur ou un
+     téléphone reparte sur le réseau de la maison, qui a Internet. Il n'y
+     revient pas tout seul, et les requêtes suivantes échouent alors que la
+     sonde va très bien.
+
+     Une heure d'affilée, donc : on branche, on travaille, on ne se demande
+     jamais si le réseau est encore là. L'acquittement le referme quand même
+     par anticipation — c'est justement ce qu'on veut pouvoir observer. */
   #undef  PORTAIL_DUREE_S
-  #define PORTAIL_DUREE_S 600
+  #define PORTAIL_DUREE_S 3600
 #else
   #define PILE_SIMULEE 0
 #endif

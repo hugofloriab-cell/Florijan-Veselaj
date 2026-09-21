@@ -695,6 +695,18 @@ personne n'avait encore vu fonctionner.
 
 ### 11.4 Depuis un ordinateur, si vous préférez
 
+> **L'ordinateur repart sur le réseau de la maison dès qu'il le peut.** C'est le
+> piège de cette étape, et il fait perdre du temps parce que l'erreur accuse la
+> sonde : `curl: (7) Failed to connect to 192.168.4.1`.
+>
+> Chaque fermeture du portail fait disparaître `SONDE-XXXX` deux ou trois
+> secondes. macOS et Windows en profitent pour retourner sur la box, qui a
+> Internet — et ils n'en reviennent pas tout seuls.
+>
+> Le mode banc tient donc le portail ouvert **une heure d'affilée**. Vérifiez
+> quand même le menu Wi-Fi avant chaque essai : si la coche est sur votre box,
+> c'est là qu'est le problème, pas dans la sonde.
+
 Même réseau rejoint, puis :
 
 ```sh
