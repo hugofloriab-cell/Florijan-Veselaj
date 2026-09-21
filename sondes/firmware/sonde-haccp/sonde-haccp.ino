@@ -647,6 +647,9 @@ static const char *centiJson(int16_t centi, char *tampon, size_t taille) {
 }
 
 static void entetesPortail() {
+#if TRACE
+  trace("portail: requete %s", portail.uri().c_str());
+#endif
   /* Sans ça, une page web servie depuis une autre origine — la fiche du petit
      déjeuner publiée sur GitHub Pages, par exemple — ne pourrait pas lire la
      réponse. Une application native n'en a pas besoin, un navigateur si. */
@@ -852,7 +855,7 @@ static void servirAccueil() {
   page += F(" °C</div>");
   if (rtcDrapeaux & DRAPEAU_ALERTE_T) page += F("<div class=a>Hors des seuils</div>");
 
-  char lignes[420];
+  char lignes[560];
   snprintf(lignes, sizeof(lignes),
     "<table>"
     "<tr><td>Pile</td><td>%u %% (%u mV)</td></tr>"
@@ -911,6 +914,12 @@ static void demarrerPortail() {
      réglage est ignoré sans rien dire. */
   WiFi.setTxPower(PUISSANCE_WIFI);
   trace("portail: reseau %s, http://%s", ssid, WiFi.softAPIP().toString().c_str());
+#if TRACE
+  /* Le démarrage de la radio fait perdre des octets au port série : sans ce
+     vidage, la ligne ci-dessus arrive tronquée ou pas du tout, et on croit que
+     le portail ne s'est pas ouvert. */
+  Serial.flush();
+#endif
 #else
   WiFi.mode(WIFI_STA);
   WiFi.begin(PORTAIL_SSID, PORTAIL_MDP_STATION);
@@ -951,8 +960,22 @@ static void tenirPortail(uint32_t dureeS) {
   if (!portailOuvert) return;
   portailFinMs = millis() + dureeS * 1000UL;
 
+#if TRACE && PORTAIL_MODE == PORTAIL_AP
+  /* Savoir où ça casse sans multimètre : un téléphone qui rejoint le réseau
+     sans jamais demander de page, ce n'est pas le même défaut qu'un téléphone
+     qui ne rejoint rien. */
+  uint8_t stationsVues = 0;
+#endif
+
   while (!portailFini && (int32_t)(millis() - portailFinMs) < 0) {
     portail.handleClient();
+#if TRACE && PORTAIL_MODE == PORTAIL_AP
+    uint8_t n = WiFi.softAPgetStationNum();
+    if (n != stationsVues) {
+      trace("portail: %u appareil(s) connecte(s) au reseau", (unsigned)n);
+      stationsVues = n;
+    }
+#endif
     delay(2);
   }
 
