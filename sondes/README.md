@@ -631,6 +631,25 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | Arithmétique du sommeil | `veille 59 s` sur un cycle d'une minute |
 > | Affichage en degrés | `T=+32,44 C (3244 centi)` |
 > | Démarrage de l'annonce Bluetooth | `annonce HACCP-C456` émis |
+> | **Portail Wi-Fi** | réseau `SONDE-C456` créé, DHCP distribue 192.168.4.2 |
+> | **Lecture d'un relevé par un client** | `GET /etat` → `200 OK`, 329 octets de JSON |
+>
+> Cette dernière ligne est la plus importante du tableau : c'est la première
+> fois, depuis le début du projet, qu'un client lit une température dans la
+> sonde. La réponse obtenue le 22 septembre 2026, depuis `curl` sur un Mac
+> rejoignant le réseau de la sonde :
+>
+> ```
+> {"version":1,"sonde":"HACCP-C456","emplacement":"Chambre froide",
+>  "centi":1944,"capteur_ok":true,"pile":100,"tension_mv":4900,"tics":0,
+>  "unix_ref":0,"intervalle_min":1,"attente":1,"offset_centi":0,
+>  "seuil_min_centi":100,"seuil_max_centi":400,"drapeaux":2,"alerte":true,
+>  "pile_faible":false,"tampon_plein":false,"reveil_manuel":false}
+> ```
+>
+> Cohérent de bout en bout : `centi` correspond à la trace série, et
+> `alerte: true` parce que 19,44 °C sort bien des seuils +1/+4 °C — la logique
+> de conformité fonctionne sur du vrai.
 >
 > Et un défaut trouvé par la carte, pas par le banc : l'annonce Bluetooth
 > faisait redémarrer la carte en boucle (`POWERON_RESET`), le pic de courant de
@@ -642,7 +661,9 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | Ce qui n'a pas tourné | Pourquoi ça compte |
 > | --- | --- |
 > | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
-> | Le **portail HTTP** | écrit et testé en natif, jamais exécuté sur la carte |
+> | Le déversement de l'historique (`/releves`) | seul `/etat` a été lu pour l'instant |
+> | L'acquittement (`/acquitter`) | c'est lui qui referme le portail par anticipation, donc toute l'autonomie annoncée |
+> | Safari sur iPhone | voir ci-dessous : le réseau et le serveur vont bien, iOS choisit la 4G |
 > | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
 > | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >

@@ -656,6 +656,32 @@ iPhone. Sans application, sans compte, sans Internet.
 > connectivité (`PORTAIL_REPONDRE_CAPTIF`), ce qui empêche iOS de quitter le
 > réseau tout seul au milieu d'une lecture.
 
+### Si Safari répond « la connexion au serveur est impossible »
+
+Constaté au premier essai réel, et ce n'est **ni le réseau ni la sonde** : le
+téléphone avait bien son adresse (192.168.4.2, routeur 192.168.4.1) et `curl`
+depuis un Mac sur le même réseau obtenait le JSON sans broncher.
+
+C'est iOS qui refuse de sortir par là. Deux mécanismes, souvent les deux à la
+fois :
+
+| Mécanisme | Ce qu'il fait | Où le désactiver |
+| --- | --- | --- |
+| **Assistance Wi-Fi** | bascule sur la 4G quand le Wi-Fi est jugé « peu fiable » — et un réseau sans Internet l'est toujours | Réglages → Données cellulaires, tout en bas |
+| **Relais privé iCloud** | fait passer Safari par les serveurs d'Apple, qui ne peuvent pas joindre votre bureau | Réglages → votre nom → iCloud → Relais privé |
+
+Le test le plus rapide, qui neutralise les deux d'un coup : **mode Avion, puis
+rallumer le Wi-Fi seul**. Sans cellulaire, iOS n'a plus d'autre route que la
+sonde. Si la page s'affiche alors, c'était bien ça.
+
+Safari propose aussi un bouton « Réduire les protections » sur sa page
+d'erreur : il désactive le Relais privé pour ce site.
+
+Une application native n'est pas concernée par le Relais privé — il ne
+s'applique qu'à Safari. `URLSession` vers une adresse locale passe
+directement, une fois `NSAllowsLocalNetworking` déclaré dans `Info.plist`
+(voir PROTOCOLE-HTTP.md § 10).
+
 Puis les relevés bruts, ceux que votre application consommera :
 
 ```
