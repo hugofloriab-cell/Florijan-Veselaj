@@ -584,6 +584,10 @@ static bool pousserAlerte(const char *titre, const char *corps, const char *prio
     HTTPClient http;
     http.setConnectTimeout(8000);
     http.setTimeout(8000);
+    /* L'adresse complète dans la trace : c'est elle qui rend visible un sujet
+       mal saisi. « alerte poussee, code http 200 » sur une adresse fausse a
+       exactement l'air d'un succès. */
+    trace("alerte vers %s", "https://ntfy.sh/" NTFY_SUJET);
     if (http.begin(client, "https://ntfy.sh/" NTFY_SUJET)) {
       http.addHeader("Title", titre);
       http.addHeader("Priority", priorite);

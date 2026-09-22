@@ -119,8 +119,21 @@
   #define WIFI_SSID "NOM_DU_RESEAU"
   #define WIFI_MDP  "MOT_DE_PASSE"
 
-  /* Service de notification. ntfy.sh est gratuit et sans compte : le nom de
-     sujet **tient lieu de mot de passe**. Qui le connaît reçoit vos alertes —
+  /* Service de notification. ntfy.sh est gratuit et sans compte.
+
+     ⚠ Ici va le **nom du sujet seul**, jamais une adresse. Le programme met
+     « https://ntfy.sh/ » devant tout seul. Écrire "ntfy.sh/mon-sujet" publierait
+     donc sur https://ntfy.sh/ntfy.sh/mon-sujet, que personne n'écoute — et la
+     trace dirait « alerte poussee » sans que rien n'arrive.
+
+         bon    : "sonde-ibis-9k3mq7wz"
+         mauvais: "ntfy.sh/sonde-ibis-9k3mq7wz"
+         mauvais: "https://ntfy.sh/sonde-ibis-9k3mq7wz"
+
+     Dans l'application, en revanche, c'est bien « ntfy.sh/sonde-ibis-9k3mq7wz »
+     qui s'affiche : elle montre le serveur et le sujet. C'est normal.
+
+     Ce nom **tient lieu de mot de passe**. Qui le connaît reçoit vos alertes —
      et peut en publier de fausses.
 
      ⚠ Changez celui-ci avant de l'utiliser : le dépôt de ce projet est public,
