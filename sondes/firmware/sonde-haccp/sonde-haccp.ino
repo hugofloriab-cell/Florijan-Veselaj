@@ -608,6 +608,13 @@ static void examinerAlertes(int16_t centi) {
 
   bool repos = (rtcDerniereAlerte != 0) &&
                (rtcTics - rtcDerniereAlerte < (uint32_t)ALERTE_REPOS_MINUTES * 60UL);
+
+  /* Sans ça, une alerte qui ne part pas laisse le programme muet, et on ne sait
+     pas s'il a décidé de se taire ou s'il n'a jamais tourné. */
+  trace("alertes: hors seuils %u/%u, pile %u%%, repos %d",
+        (unsigned)rtcHorsSeuil, (unsigned)ALERTE_MESURES_CONSECUTIVES,
+        (unsigned)rtcPile, (int)repos);
+
   if (repos) return;
 
   char corps[200];
