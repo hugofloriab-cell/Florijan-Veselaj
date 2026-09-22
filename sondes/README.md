@@ -703,7 +703,7 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | Ce qui n'a pas tourné | Pourquoi ça compte |
 > | --- | --- |
 > | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
-> | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
+> | L'alerte Wi-Fi / ntfy | jamais confirmée reçue sur un téléphone |
 > | La survie de l'étalonnage aux piles | logique vérifiée en natif, jamais éprouvée sur la carte |
 > | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >

@@ -107,6 +107,7 @@ RTC_DATA_ATTR static char     rtcNom[17]    = EMPLACEMENT;
 RTC_DATA_ATTR static uint8_t  rtcHorsSeuil  = 0;  /* mesures consécutives hors seuils */
 RTC_DATA_ATTR static uint8_t  rtcCyclesMuets = 0; /* réveils sans fenêtre radio */
 RTC_DATA_ATTR static uint32_t rtcDerniereAlerte = 0;
+RTC_DATA_ATTR static uint8_t  rtcEchecsAlerte   = 0;  /* envois ratés d'affilée */
 
 /* ============ État de la session en cours ============ */
 
@@ -554,7 +555,12 @@ static void centiEnTexte(int16_t centi, char *sortie, size_t taille) {
 #if ALERTE_WIFI
 /* N'allume le Wi-Fi que pour une alerte réelle. En marche normale, la radio
    Wi-Fi n'est jamais alimentée : elle ne coûte rien. */
-static void pousserAlerte(const char *titre, const char *corps, const char *priorite) {
+/* Renvoie vrai si ntfy a réellement accepté le message. Ça compte : une alerte
+   perdue ne doit pas être comptée comme envoyée, sinon la sonde se tairait deux
+   heures sur un congélateur en train de lâcher. */
+static bool pousserAlerte(const char *titre, const char *corps, const char *priorite) {
+  bool reussi = false;
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_MDP);
 
@@ -584,8 +590,8 @@ static void pousserAlerte(const char *titre, const char *corps, const char *prio
       http.addHeader("Tags", "warning,thermometer");
       int code = http.POST((uint8_t *)corps, strlen(corps));
       http.end();
-      (void)code;   /* seule la trace s'en sert, absente en service */
       trace("alerte poussee, code http %d", code);   /* 200 = accepte */
+      if (code >= 200 && code < 300) reussi = true;
     } else {
       trace("ouverture https impossible");
     }
@@ -597,6 +603,27 @@ static void pousserAlerte(const char *titre, const char *corps, const char *prio
      WiFi.mode(WIFI_OFF) faisait apparaître ESP_ERR_WIFI_STOP_STATE dans la
      trace — voir le même correctif dans tenirPortail(). */
   WiFi.disconnect(true, true);
+  return reussi;
+}
+
+/* Une alerte partie se tait deux heures. Une alerte ratée doit repartir au
+   prochain relevé — mais pas indéfiniment : si le réseau est durablement absent,
+   rallumer le Wi-Fi 48 fois par jour viderait les piles en quelques semaines pour
+   rien. Trois essais, puis on attend comme si elle était passée. */
+static void alerteTentee(bool reussi) {
+  if (reussi) {
+    rtcDerniereAlerte = rtcTics;
+    rtcEchecsAlerte   = 0;
+    return;
+  }
+  if (rtcEchecsAlerte < 255) rtcEchecsAlerte++;
+  trace("alerte ratee (%u essai%s)", (unsigned)rtcEchecsAlerte,
+        rtcEchecsAlerte > 1 ? "s" : "");
+  if (rtcEchecsAlerte >= 3) {
+    trace("reseau durablement absent, mise au repos");
+    rtcDerniereAlerte = rtcTics;
+    rtcEchecsAlerte   = 0;
+  }
 }
 
 static void examinerAlertes(int16_t centi) {
@@ -627,8 +654,7 @@ static void examinerAlertes(int16_t centi) {
     snprintf(corps, sizeof(corps),
              "%s : %s C depuis %u releves (seuils %s a %s C). Verifier l'enceinte.",
              rtcNom, t, rtcHorsSeuil, tmin, tmax);
-    pousserAlerte("Temperature non conforme", corps, "urgent");
-    rtcDerniereAlerte = rtcTics;
+    alerteTentee(pousserAlerte("Temperature non conforme", corps, "urgent"));
     return;
   }
 
@@ -636,8 +662,7 @@ static void examinerAlertes(int16_t centi) {
     snprintf(corps, sizeof(corps),
              "%s : pile a %u%% (%u mV). Prevoir le remplacement des piles.",
              rtcNom, rtcPile, rtcTension);
-    pousserAlerte("Pile de sonde faible", corps, "default");
-    rtcDerniereAlerte = rtcTics;
+    alerteTentee(pousserAlerte("Pile de sonde faible", corps, "default"));
   }
 }
 #endif
@@ -1129,6 +1154,7 @@ void setup() {
     rtcHorsSeuil  = 0;
     rtcCyclesMuets = 0;
     rtcDerniereAlerte = 0;
+    rtcEchecsAlerte   = 0;
     strncpy(rtcNom, EMPLACEMENT, sizeof(rtcNom) - 1);
     rtcNom[sizeof(rtcNom) - 1] = '\0';
     trace("demarrage a froid");
