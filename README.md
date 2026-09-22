@@ -11,6 +11,7 @@ conçue pour la tablette de la cuisine.
 | `docs/` | **Version installable publiée sur le web** (voir ci-dessous). Générée. |
 | `.artifact/checklist-petit-dejeuner.html` | Version publication en ligne. Générée. |
 | `build.py` | Régénère `docs/` et `.artifact/` depuis la source. |
+| `sondes/` | **Sondes de température autonomes** : nomenclature, programme de la sonde, protocole, application iOS. |
 
 Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 
@@ -26,6 +27,49 @@ Ne modifiez que `checklist-petit-dejeuner.html`, puis lancez `python3 build.py`.
 - Historique des fiches enregistrées, consultables et rouvrables.
 - Export **CSV** (ouvrable dans Excel) et **JSON** (sauvegarde complète), plus impression / PDF.
 - Mode clair et mode sombre (le service commence à 6h00).
+
+## Sondes de température
+
+La section **2. Sondes de température** de la fiche affiche les relevés
+d'enregistreurs autonomes posés sur les enceintes froides : un point toutes les
+30 minutes, jour et nuit, week-ends compris.
+
+- Bouton **Relever les sondes** en fin de service : la tablette va chercher
+  l'historique de chaque sonde en Bluetooth. Aucun serveur, aucun compte —
+  les données ne sortent pas de l'hôtel.
+- Une carte par enceinte : température, mini/maxi/moyenne du jour, courbe des
+  24 heures, niveau de pile et **autonomie restante estimée**.
+- Bandeau rouge dès qu'une température sort des normes de la fiche
+  (+1 à +4 °C en positif, −23 à −18 °C en négatif) pendant plus d'une heure —
+  la durée évite de compter une porte ouverte ou un dégivrage.
+- Bandeau orange quand une pile passe sous 20 %, plusieurs semaines avant la
+  panne. Les relevés partent dans le CSV, le JSON et le récapitulatif transmis
+  à la direction.
+
+Le Bluetooth demande l'adresse web en `https` : depuis un fichier local, la
+section reste visible mais le relevé est indisponible.
+
+**Sur iPhone ou iPad, le relevé Bluetooth ne fonctionne pas** : Safari ne gère
+pas le Bluetooth web, et tous les navigateurs iOS reposent sur Safari. Deux
+voies contournent la limitation :
+
+- une application SwiftUI qui parle le même protocole aux mêmes sondes, dans
+  [`sondes/ios/`](sondes/ios/README.md) ;
+- **le portail HTTP de la sonde**, qui se lit depuis n'importe quel navigateur,
+  Safari compris : on rejoint le réseau de la sonde et on ouvre son adresse,
+  comme avec une petite caméra d'inspection. C'est aussi la voie la plus simple
+  pour une application maison — du JSON et `URLSession` au lieu de
+  CoreBluetooth. Voir [`sondes/PROTOCOLE-HTTP.md`](sondes/PROTOCOLE-HTTP.md).
+
+**Pour voir la section sans matériel**, ajoutez `?demo=1` à l'adresse : deux
+sondes fictives apparaissent, avec trois semaines de relevés et un incident de
+congélateur.
+
+Pour monter la première sonde : **[`sondes/PREMIER-ESSAI.md`](sondes/PREMIER-ESSAI.md)**
+valide la chaîne complète en une heure, carte branchée en USB, sans batterie ni
+boîtier. Le reste — quoi commander, le câblage définitif, l'autonomie,
+l'étalonnage et ce qu'en dit la réglementation — est dans
+**[`sondes/README.md`](sondes/README.md)**.
 
 ## Transmission à la direction
 
