@@ -601,6 +601,24 @@ static bool pousserAlerte(const char *titre, const char *corps, const char *prio
     }
   } else {
     trace("wifi indisponible (etat %d)", (int)WiFi.status());
+#if TRACE
+    /* La vraie question quand ça échoue : la sonde voit-elle seulement le
+       réseau ? Un ESP32 ne capte QUE le 2,4 GHz — un réseau diffusé en 5 GHz
+       sous ce nom lui est totalement invisible, et l'échec ressemble alors
+       trait pour trait à un mot de passe faux.
+       Le chiffrement compte aussi : 6 = WPA3 seul, que l'ESP32 ne sait pas
+       toujours négocier. 3, 4 ou 7 passent. */
+    int vus = WiFi.scanNetworks();
+    trace("reseaux 2,4 GHz a portee : %d", vus);
+    for (int i = 0; i < vus && i < 12; i++) {
+      trace("  \"%s\"  %d dBm  chiffrement %d%s",
+            WiFi.SSID(i).c_str(), (int)WiFi.RSSI(i),
+            (int)WiFi.encryptionType(i),
+            WiFi.SSID(i) == WIFI_SSID ? "   <-- le votre" : "");
+    }
+    if (vus == 0) trace("aucun reseau vu : antenne ou environnement");
+    WiFi.scanDelete();
+#endif
   }
 
   /* Un seul appel : le premier « true » coupe déjà la radio. Y ajouter un
