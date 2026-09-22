@@ -25,6 +25,7 @@
 #include <BLE2902.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
+#include <Preferences.h>
 #if defined(CONFIG_IDF_TARGET_ESP32)
   #include <driver/rtc_io.h>
 #endif
@@ -128,6 +129,48 @@ static uint16_t          mtu           = 23;
 #else
   #define trace(...) do {} while (0)
 #endif
+
+/* ============ Réglages qui survivent aux piles ============ */
+
+/* La mémoire RTC survit à la veille profonde, pas au retrait des piles. Or
+   l'étalonnage doit survivre à un changement de piles : une sonde qui perd
+   silencieusement sa correction continue d'enregistrer, mais faux, et personne
+   ne s'en aperçoit. Sur un registre sanitaire, c'est la pire des pannes.
+
+   Ces cinq réglages — ceux qu'une tablette peut modifier à distance — vont donc
+   aussi en mémoire flash, qui ne dépend d'aucune alimentation. On n'y écrit que
+   lorsqu'ils changent, c'est-à-dire quelques fois dans la vie de la sonde :
+   aucune usure à craindre. */
+
+static void reglagesCharger() {
+  Preferences p;
+  if (!p.begin("sonde", true)) return;          /* lecture seule */
+  rtcOffset     = p.getShort("offset",     OFFSET_ETALONNAGE_CENTI);
+  rtcSeuilMin   = p.getShort("seuilmin",   SEUIL_MIN_CENTI);
+  rtcSeuilMax   = p.getShort("seuilmax",   SEUIL_MAX_CENTI);
+  rtcIntervalle = p.getUChar("intervalle", INTERVALLE_MINUTES);
+  char nom[sizeof(rtcNom)] = { 0 };
+  if (p.getString("nom", nom, sizeof(nom)) > 0 && nom[0]) {
+    strncpy(rtcNom, nom, sizeof(rtcNom) - 1);
+    rtcNom[sizeof(rtcNom) - 1] = '\0';
+  }
+  p.end();
+  trace("reglages relus de la flash : offset %d, seuils %d/%d, %u min, \"%s\"",
+        (int)rtcOffset, (int)rtcSeuilMin, (int)rtcSeuilMax,
+        (unsigned)rtcIntervalle, rtcNom);
+}
+
+static void reglagesEnregistrer() {
+  Preferences p;
+  if (!p.begin("sonde", false)) { trace("flash indisponible"); return; }
+  p.putShort("offset",     rtcOffset);
+  p.putShort("seuilmin",   rtcSeuilMin);
+  p.putShort("seuilmax",   rtcSeuilMax);
+  p.putUChar("intervalle", rtcIntervalle);
+  p.putString("nom",       rtcNom);
+  p.end();
+  trace("reglages ecrits en flash");
+}
 
 /* ============ Mesures ============ */
 
@@ -364,17 +407,22 @@ class RappelsCommande : public BLECharacteristicCallbacks {
         if (n >= 2 && d[1] >= 1 && d[1] <= 240) {
           rtcIntervalle = d[1];
           rtcProchain   = rtcTics + (uint32_t)rtcIntervalle * 60UL;
+          reglagesEnregistrer();
         }
         break;
 
       case 0x05:                                   /* offset d'étalonnage */
-        if (n >= 3) rtcOffset = (int16_t)lireU16(d + 1);
+        if (n >= 3) {
+          rtcOffset = (int16_t)lireU16(d + 1);
+          reglagesEnregistrer();
+        }
         break;
 
       case 0x06:                                   /* seuils d'alerte */
         if (n >= 5) {
           rtcSeuilMin = (int16_t)lireU16(d + 1);
           rtcSeuilMax = (int16_t)lireU16(d + 3);
+          reglagesEnregistrer();
         }
         break;
 
@@ -387,6 +435,7 @@ class RappelsCommande : public BLECharacteristicCallbacks {
         if (len > 16) len = 16;
         memcpy(rtcNom, d + 1, len);
         rtcNom[len] = '\0';
+        reglagesEnregistrer();
         break;
       }
     }
@@ -813,6 +862,7 @@ static void servirEtalonner() {
     return;
   }
   rtcOffset = (int16_t)v;
+  reglagesEnregistrer();
 
   char corps[64];
   snprintf(corps, sizeof(corps), "{\"offset_centi\":%d}", (int)rtcOffset);
@@ -1075,6 +1125,11 @@ void setup() {
     strncpy(rtcNom, EMPLACEMENT, sizeof(rtcNom) - 1);
     rtcNom[sizeof(rtcNom) - 1] = '\0';
     trace("demarrage a froid");
+
+    /* Les valeurs ci-dessus sont celles d'usine. Si la sonde a déjà été
+       étalonnée, la flash a le dernier mot : c'est ce qui fait qu'un
+       changement de piles ne lui fait pas oublier sa correction. */
+    reglagesCharger();
   }
 
   esp_sleep_wakeup_cause_t cause = esp_sleep_get_wakeup_cause();

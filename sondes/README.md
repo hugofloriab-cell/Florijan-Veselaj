@@ -421,6 +421,16 @@ périodique fait partie du plan de maîtrise sanitaire, sonde maison ou non.
    commande `0x05` depuis la fiche (bouton *Étalonner*).
 5. Noter la date et l'écart dans le registre — c'est ce qu'on vous demandera.
 
+L'offset est **écrit en mémoire flash**, pas seulement en mémoire vive : il
+survit donc au changement de piles. C'est délibéré et ça compte — une sonde qui
+oublierait sa correction continuerait d'enregistrer, mais faux, et personne ne
+s'en apercevrait. Les seuils, l'intervalle et le libellé d'emplacement suivent
+le même chemin.
+
+`OFFSET_ETALONNAGE_CENTI` dans `config.h` ne sert donc que de valeur de départ,
+pour une sonde encore jamais étalonnée. Dès qu'une correction a été envoyée à
+la sonde, c'est elle qui gagne.
+
 L'écart attendu est **inférieur à 0,5 °C** : le DS18B20 est numérique et
 étalonné en usine, il n'a pas de chaîne analogique susceptible de dériver. Un
 écart de plusieurs degrés ne s'étalonne donc pas, il se diagnostique — la
@@ -694,6 +704,7 @@ Côté fiche, tout est dans `checklist-petit-dejeuner.html`, bloc
 > | --- | --- |
 > | La **liaison** Bluetooth avec un client | l'annonce part, mais personne n'a encore lu un relevé par ce chemin |
 > | L'alerte Wi-Fi / ntfy | jamais déclenchée pour de vrai |
+> | La survie de l'étalonnage aux piles | logique vérifiée en natif, jamais éprouvée sur la carte |
 > | L'autonomie | aucun chiffre mesuré ; tout ce qui est annoncé ici est calculé |
 >
 > **Compilation réelle réussie** le 11 septembre 2026, Arduino IDE 2.3.10, cœur
