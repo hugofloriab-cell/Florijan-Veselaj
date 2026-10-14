@@ -5,17 +5,20 @@
 //  L'assistant vocal — première étape : entendre.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  CE QUE CET ÉCRAN FAIT, ET CE QU'IL NE FAIT PAS ENCORE
+//  CE QUE CET ÉCRAN FAIT, ET OÙ IL S'ARRÊTE
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  Il écoute et il écrit. Il ne comprend rien, et n'ouvre aucun onglet : ça
-//  viendra ensuite. Il est livré seul parce qu'il répond à la seule question
-//  qui décide du reste — est-ce que la dictée tient en cuisine, hotte
-//  allumée, à bout de bras, avec l'accent du coin ?
+//  Il écoute, il comprend l'intention, et il propose d'ouvrir l'écran qui
+//  convient avec ce qu'il a compris déjà écrit. Il ne va pas plus loin :
+//  il n'enregistre rien et ne calcule aucune date.
 //
-//  Il affiche donc aussi un diagnostic : reconnaissance locale ou non,
-//  modèle de langage disponible ou non. De quoi savoir, avant d'écrire la
-//  suite, sur quels appareils elle fonctionnera.
+//  Ce qu'il a compris est toujours affiché avant d'agir, et le bouton se
+//  touche volontairement. Une application d'hygiène qui enregistrerait sur
+//  la foi d'une phrase mal entendue serait pire qu'inutile — elle serait
+//  un faux registre.
+//
+//  Il affiche aussi un diagnostic permanent : reconnaissance locale ou non,
+//  modèle disponible ou non. Quand l'une des deux manque, on sait pourquoi.
 //
 //  ─────────────────────────────────────────────────────────────────────────
 //  DESSINÉ POUR UNE MAIN, GRASSE, DANS LE BRUIT
@@ -35,10 +38,15 @@ import SwiftUI
 
 struct AssistantView: View {
 
+    /// Ce que l'écran rend quand on valide : à l'appelant d'ouvrir l'écran
+    /// correspondant. L'assistant ne navigue pas lui-même, il propose.
+    var onAction: (AssistantAction) -> Void = { _ in }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var dictation = VoiceDictation()
+    @State private var understanding = AssistantUnderstanding()
     @State private var intelligence = IntelligenceAvailability.needsNewerSystem
 
     var body: some View {
@@ -53,6 +61,10 @@ struct AssistantView: View {
 
                     transcriptArea
 
+                    understandingCard
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
+
                     microphone
                         .padding(.bottom, 28)
                 }
@@ -64,11 +76,22 @@ struct AssistantView: View {
                     Button("Fermer") { dismiss() }
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Effacer") { dictation.clear() }
+                    Button("Effacer") {
+                        dictation.clear()
+                        understanding.reset()
+                    }
                         .disabled(dictation.transcript.isEmpty)
                 }
             }
             .task { intelligence = .current }
+            // La dictée s'arrête d'elle-même après un silence : c'est ce
+            // moment-là qui déclenche la compréhension, pas un bouton de
+            // plus à toucher les mains occupées.
+            .onChange(of: dictation.isListening) { wasListening, isListening in
+                guard wasListening, !isListening else { return }
+                let text = dictation.transcript
+                Task { await understanding.interpret(text) }
+            }
             .onDisappear { dictation.stop() }
         }
     }
@@ -175,6 +198,88 @@ struct AssistantView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Ce qui a été compris
+
+    /// La proposition, à valider d'un geste délibéré.
+    ///
+    /// Elle affiche ce qui a été compris avant d'agir — on doit pouvoir
+    /// démentir. Un registre d'hygiène rempli sur une phrase mal entendue
+    /// ne serait pas un gain de temps, ce serait un faux.
+    @ViewBuilder
+    private var understandingCard: some View {
+        switch understanding.outcome {
+        case .idle:
+            EmptyView()
+
+        case .thinking:
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Je réfléchis…")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .padding(14)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+        case .failed(let reason):
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+        case .understood(let action):
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: action.systemImage)
+                        .font(.title3)
+                        .foregroundStyle(Color.brand)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(action.title)
+                            .font(.headline)
+                        if let detail = action.detail {
+                            Text(detail)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                if action.isActionable {
+                    Button {
+                        onAction(action)
+                    } label: {
+                        Text(action.actionLabel)
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("Essayez par exemple : « j'entame un kilo de pâtes », « je relève les températures », « je fais le nettoyage ».")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(14)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+    }
+
     // MARK: - Le bouton
 
     private var microphone: some View {
@@ -225,6 +330,9 @@ struct AssistantView: View {
         }
         if dictation.transcript.isEmpty {
             return "Tout se passe sur l'iPhone, sans réseau."
+        }
+        if case .understood = understanding.outcome {
+            return "Rien n'est enregistré tant que vous n'avez pas validé."
         }
         return "Touchez le micro pour dicter à nouveau."
     }

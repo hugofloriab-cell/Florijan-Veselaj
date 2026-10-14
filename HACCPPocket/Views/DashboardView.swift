@@ -51,6 +51,15 @@ struct DashboardView: View {
     /// l'assistant n'a pas fait ses preuves en service, il n'a pas à prendre
     /// la place d'un écran qui, lui, sert tous les jours.
     @State private var showsAssistant = false
+
+    /// L'action retenue, gardée le temps que la feuille se ferme.
+    ///
+    /// iOS refuse d'ouvrir une feuille pendant qu'une autre se referme :
+    /// on attend donc la fermeture pour agir, au lieu de chaîner les deux.
+    @State private var pendingAssistantAction: AssistantAction?
+
+    /// Fiche produit pré-remplie par l'assistant.
+    @State private var assistantPrefill: ProductPrefill?
     /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
     /// l'utilisateur, pas un état par défaut.
     @State private var showsAlerts = true
@@ -106,7 +115,15 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
-            .sheet(isPresented: $showsAssistant) { AssistantView() }
+            .sheet(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
+                AssistantView { action in
+                    pendingAssistantAction = action
+                    showsAssistant = false
+                }
+            }
+            .sheet(item: $assistantPrefill) { prefill in
+                ProductFormView(prefill: prefill, context: modelContext)
+            }
             .sheet(isPresented: $showsPaywall) { PaywallView() }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
@@ -132,6 +149,47 @@ struct DashboardView: View {
                     cleaningViewModel = CleaningPlanViewModel(context: modelContext)
                 }
             }
+        }
+    }
+
+    // MARK: - Ce que l'assistant a demandé
+
+    /// Ouvre l'écran correspondant à ce qui a été dicté.
+    ///
+    /// L'assistant ne navigue pas lui-même : il a proposé, l'utilisateur a
+    /// validé, et c'est l'accueil qui agit. Un écran qui se déplace tout
+    /// seul pendant qu'on parle serait désagréable, et difficile à annuler.
+    private func performPendingAssistantAction() {
+        guard let action = pendingAssistantAction else { return }
+        pendingAssistantAction = nil
+
+        switch action {
+        case .openedProduct(let name, let quantity):
+            // Le nom arrive pré-rempli, jamais la date : celle-ci reste
+            // calculée par le formulaire, à partir de la famille d'aliment
+            // et des règles de conservation.
+            let dictated = [name, quantity].filter { !$0.isEmpty }.joined(separator: " ")
+            assistantPrefill = ProductPrefill(
+                name: name.isEmpty ? nil : name,
+                origin: dictated.isEmpty
+                    ? "Ouvert depuis l'assistant vocal."
+                    : "Dicté à l'assistant : « \(dictated) ». Vérifiez avant d'enregistrer."
+            )
+
+        case .temperatures:
+            router.show(.temperatures)
+
+        case .cleaning:
+            router.show(.cleaning)
+
+        case .foodSample, .delivery:
+            // Ces deux écrans vivent dans les registres : on y conduit,
+            // plutôt que de prétendre ouvrir une fiche qu'on ne sait pas
+            // présenter d'ici.
+            router.show(.registers)
+
+        case .unknown:
+            break
         }
     }
 
