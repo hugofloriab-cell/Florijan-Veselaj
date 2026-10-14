@@ -42,6 +42,15 @@ struct DashboardView: View {
 
     /// Change à chaque tâche terminée, ce qui relance l'animation.
     @State private var showsSettings = false
+
+    /// L'assistant vocal.
+    ///
+    /// Présenté en feuille depuis l'accueil, et non comme un sixième onglet :
+    /// la barre en compte déjà cinq, et iOS replie tout le reste dans un
+    /// « Plus » que personne ne va chercher. C'est aussi un aveu : tant que
+    /// l'assistant n'a pas fait ses preuves en service, il n'a pas à prendre
+    /// la place d'un écran qui, lui, sert tous les jours.
+    @State private var showsAssistant = false
     /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
     /// l'utilisateur, pas un état par défaut.
     @State private var showsAlerts = true
@@ -88,8 +97,16 @@ struct DashboardView: View {
                         Label("Réglages", systemImage: "gearshape")
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showsAssistant = true
+                    } label: {
+                        Label("Assistant", systemImage: "mic.circle")
+                    }
+                }
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
+            .sheet(isPresented: $showsAssistant) { AssistantView() }
             .sheet(isPresented: $showsPaywall) { PaywallView() }
             .sheet(item: $editedProduct) { product in
                 ProductFormView(product: product, context: modelContext)
