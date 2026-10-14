@@ -37,20 +37,36 @@
 //  ajoute son animation, sans une ligne de plus.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  LE RYTHME SUIT LA VOIX
+//  LE RYTHME SUIT LA LONGUEUR DU TEXTE
 //  ─────────────────────────────────────────────────────────────────────────
 //
 //  La première version enchaînait les images sur un minuteur calculé pour
 //  tenir vingt secondes. C'était trop rapide : on n'avait pas fini de lire
 //  qu'on passait à la suite.
 //
-//  Une image reste maintenant affichée tant que sa phrase n'est pas
-//  prononcée, plus une respiration. Une étape longue tient donc l'écran plus
+//  Une image reste maintenant affichée le temps qu'il faut pour lire son
+//  texte, plus une respiration. Une étape longue tient donc l'écran plus
 //  longtemps qu'une étape brève, ce qui est exactement le comportement
 //  attendu — et il n'y a plus de minuteur à régler.
 //
-//  Voix coupée, la durée se calcule sur la longueur du texte, à une vitesse
-//  de lecture confortable. Le rythme reste le même, en silence.
+//  ─────────────────────────────────────────────────────────────────────────
+//  IL Y A EU UNE VOIX OFF, ELLE A ÉTÉ RETIRÉE
+//  ─────────────────────────────────────────────────────────────────────────
+//
+//  Ces animations ont été commentées par une voix de synthèse pendant un
+//  temps. Elle a été supprimée à la demande de l'utilisateur, après avoir
+//  établi ce qui suit :
+//
+//  • Les voix de Siri sont réservées aux applications d'Apple. Aucune
+//    extension, aucune autorisation, aucune clé de configuration n'y donne
+//    accès — `AVSpeechSynthesisVoice.speechVoices()` ne les renvoie pas.
+//  • Apple Intelligence n'y change rien : le framework Foundation Models
+//    génère du texte, il ne produit aucune parole.
+//  • Les voix téléchargeables restent des voix de synthèse. Elles articulent
+//    juste, elles ne jouent pas.
+//
+//  Autrement dit, le plafond était atteint et il ne convenait pas. Mieux
+//  valait le silence qu'une voix qu'on coupe à chaque fois.
 //
 
 import SwiftUI
@@ -72,43 +88,34 @@ struct ProtocolAnimationView: View {
     @State private var frame: Frame = .intro
     @State private var isPlaying = true
     @State private var hasFinished = false
-    @State private var narrator = SpeechNarrator()
-
-    /// La voix est active par défaut, et le choix est retenu : quelqu'un qui
-    /// la coupe une fois ne veut pas la retrouver au protocole suivant.
-    @AppStorage("haccp.protocol.narration") private var narrationEnabled = true
-    @AppStorage("haccp.protocol.voiceHintSeen") private var hasDismissedVoiceHint = false
-
-    /// Feuille de choix de la voix.
-    ///
-    /// Accessible depuis l'écran lui-même, et non seulement depuis les
-    /// réglages : c'est en entendant la voix qu'on décide d'en changer.
-    @State private var showsVoiceSettings = false
 
     /// Résumé ou version détaillée.
     ///
-    /// Les deux souhaits de départ — « une vingtaine de secondes » et « une
-    /// voix qui explique chaque étape de façon claire et précise » — ne
-    /// tiennent pas ensemble : lire les explications complètes d'un mode
-    /// opératoire prend une à deux minutes. Plutôt que de trancher à la
-    /// place de l'utilisateur, l'écran propose les deux.
+    /// Les deux souhaits de départ — « une vingtaine de secondes » et « des
+    /// explications claires et précises » — ne tiennent pas ensemble : lire
+    /// les explications complètes d'un mode opératoire prend une à deux
+    /// minutes. Plutôt que de trancher à la place de l'utilisateur, l'écran
+    /// propose les deux.
+    ///
+    /// La clé de préférence garde son ancien nom, qui parlait de narration :
+    /// la renommer remettrait tout le monde en Résumé sans rien y gagner.
     @AppStorage("haccp.protocol.detailedNarration") private var isDetailed = false
 
     // MARK: - Rythme
 
     /// Respiration entre deux images.
     ///
-    /// Enchaîner à la fin exacte de la phrase donne une impression de
-    /// précipitation, même quand la lecture était au bon rythme.
+    /// Enchaîner à la fin exacte de la lecture donne une impression de
+    /// précipitation, même quand le rythme était bon.
     private static let breath: Double = 0.7
 
-    /// Durée d'une image quand la voix est coupée.
+    /// Durée d'affichage d'une image.
     ///
     /// Calculée sur la longueur du texte : environ quatorze caractères par
     /// seconde, ce qui correspond à une lecture silencieuse confortable en
     /// français. Bornée pour qu'une phrase courte reste lisible et qu'une
     /// longue ne bloque pas l'écran.
-    private func silentDuration(for text: String) -> Double {
+    private func readingDuration(for text: String) -> Double {
         let estimated = Double(text.count) / 14.0
         return min(11, max(3.5, estimated))
     }
@@ -124,9 +131,9 @@ struct ProtocolAnimationView: View {
                         .padding(.top, 12)
 
                     // Défilement plutôt que troncature : la version détaillée
-                    // affiche maintenant le « pourquoi » en entier, et sur un
-                    // petit écran cela dépasse. Un texte coupé serait le même
-                    // défaut que la voix qui saute des passages.
+                    // affiche le « pourquoi » en entier, et sur un petit écran
+                    // cela dépasse. Une consigne coupée en deux ne vaut pas
+                    // mieux qu'une consigne absente.
                     ScrollView {
                         content
                             .padding(.horizontal, 28)
@@ -140,8 +147,6 @@ struct ProtocolAnimationView: View {
                         .padding(.horizontal, 40)
                         .padding(.bottom, 12)
 
-                    voiceHint
-
                     controls
                         .padding(.horizontal, 20)
                         .padding(.bottom, 20)
@@ -150,32 +155,16 @@ struct ProtocolAnimationView: View {
             .navigationTitle(procedure.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button {
-                        narrator.stop()
-                        isPlaying = false
-                        showsVoiceSettings = true
-                    } label: {
-                        Label("Voix", systemImage: "speaker.wave.2.circle")
-                    }
-                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fermer") { dismiss() }
                 }
-            }
-            .sheet(isPresented: $showsVoiceSettings) {
-                VoiceSettingsView(narrator: narrator)
             }
             // Un appui n'importe où met en pause : en cuisine on est
             // interrompu, et courir après un petit bouton les mains grasses
             // n'est pas une option.
             .contentShape(Rectangle())
-            .onTapGesture {
-                isPlaying.toggle()
-                if !isPlaying { narrator.stop() }
-            }
+            .onTapGesture { isPlaying.toggle() }
             .task(id: frameKey) { await advance() }
-            .onDisappear { narrator.stop() }
         }
     }
 
@@ -331,39 +320,29 @@ struct ProtocolAnimationView: View {
         number.isMultiple(of: 2) ? "arrow.down.circle" : procedure.systemImage
     }
 
-    // MARK: - Ce qui est prononcé
+    // MARK: - Le texte de l'image
 
-    /// Le texte lu à voix haute, strictement ce qui est affiché.
+    /// Le texte affiché à l'image courante, mis bout à bout.
     ///
-    /// ─────────────────────────────────────────────────────────────────────
-    /// LA VOIX NE SAUTE PLUS RIEN
-    /// ─────────────────────────────────────────────────────────────────────
-    ///
-    /// Première version : en mode Résumé, la voix ne lisait que le numéro et
-    /// le titre de l'étape, alors que l'écran affichait aussi la consigne.
-    /// Résultat entendu, et à juste titre reproché : « elle ne lit que étape
-    /// un, étape deux, elle ne lit pas les textes ». Le commentaire au-dessus
-    /// prétendait d'ailleurs l'inverse — il mentait.
-    ///
-    /// Règle désormais : **tout ce qui est écrit à l'écran est prononcé**.
-    /// Ce qui distingue les deux modes, c'est la quantité affichée, jamais un
-    /// écart entre l'œil et l'oreille. Quelqu'un qui a les mains occupées
-    /// doit pouvoir suivre sans regarder.
-    private var spokenText: String {
+    /// Il ne sert plus qu'à une chose : mesurer combien de temps l'image doit
+    /// rester à l'écran. Il s'appelait `spokenText` du temps de la voix off ;
+    /// garder ce nom aurait été un commentaire qui ment, et ce projet en a
+    /// déjà assez payé le prix.
+    private var frameText: String {
         switch frame {
         case .intro:
             return "\(procedure.title). \(procedure.subtitle)."
 
         case .step(let index):
             let step = procedure.steps[index]
-            var spoken = "Étape \(index + 1). \(step.title). \(step.detail)"
+            var text = "Étape \(index + 1). \(step.title). \(step.detail)"
 
-            // Le « pourquoi » n'est affiché qu'en version détaillée : il n'est
-            // donc lu que là, pour que l'écran et la voix restent d'accord.
+            // Le « pourquoi » n'est affiché qu'en version détaillée : il ne
+            // compte donc dans la durée que là.
             if isDetailed, let note = step.note {
-                spoken += " \(note.title) \(note.explanation)"
+                text += " \(note.title) \(note.explanation)"
             }
-            return spoken
+            return text
 
         case .outro:
             guard let mistake = procedure.commonMistake else {
@@ -389,47 +368,6 @@ struct ProtocolAnimationView: View {
             Text("Détaillé").tag(true)
         }
         .pickerStyle(.segmented)
-        .onChange(of: isDetailed) { _, _ in
-            // Changer de version en cours de phrase donnerait un mélange des
-            // deux : on repart proprement de l'image courante.
-            narrator.stop()
-        }
-    }
-
-    /// Signale une fois qu'une voix plus naturelle est téléchargeable.
-    ///
-    /// L'application ne peut pas la télécharger elle-même : les voix sont un
-    /// réglage du système. Elle peut seulement dire où aller — et se taire
-    /// dès que c'est fait, ou dès que la personne a compris.
-    ///
-    /// L'indication ne donne pas la marche à suivre : elle renvoie à l'écran
-    /// « Voix », où elle est écrite une seule fois. Deux textes qui disent la
-    /// même chose finissent toujours par diverger.
-    @ViewBuilder
-    private var voiceHint: some View {
-        if narrationEnabled && narrator.usesCompactVoice && !hasDismissedVoiceHint {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "waveform")
-                    .foregroundStyle(Color.brand)
-
-                Text("Voix « \(narrator.voiceName) », la version d'origine. Une voix bien plus naturelle se télécharge gratuitement : touchez « Voix » en haut de cet écran, la marche à suivre y est.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                Button {
-                    hasDismissedVoiceHint = true
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.tertiary)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(12)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
     }
 
     // MARK: - Commandes
@@ -463,16 +401,6 @@ struct ProtocolAnimationView: View {
                     .frame(width: 44, height: 44)
             }
             .disabled(frame == .outro)
-
-            Button {
-                narrationEnabled.toggle()
-                if !narrationEnabled { narrator.stop() }
-            } label: {
-                Image(systemName: narrationEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
-                    .font(.title3)
-                    .frame(width: 44, height: 44)
-            }
-            .accessibilityLabel(narrationEnabled ? "Couper la voix" : "Activer la voix")
         }
         .buttonStyle(.plain)
         .foregroundStyle(Color.brand)
@@ -481,25 +409,19 @@ struct ProtocolAnimationView: View {
     // MARK: - Déroulement
 
     /// Clé qui relance le déroulé : changer d'image, reprendre la lecture ou
-    /// basculer la voix doit repartir d'une attente neuve.
+    /// changer de version doit repartir d'une attente neuve.
     private var frameKey: String {
-        "\(currentSegment)-\(isPlaying)-\(narrationEnabled)-\(isDetailed)"
+        "\(currentSegment)-\(isPlaying)-\(isDetailed)"
     }
 
     /// Fait durer l'image le temps qu'il faut, puis passe à la suivante.
     ///
-    /// La voix dicte le rythme quand elle est active ; sinon c'est la
-    /// longueur du texte. Dans les deux cas, l'attente est annulable : une
-    /// mise en pause ou une fermeture d'écran coupe net.
+    /// L'attente est annulable : une mise en pause ou une fermeture d'écran
+    /// coupe net, sans laisser une image sauter une fois revenu.
     private func advance() async {
         guard isPlaying, !hasFinished else { return }
 
-        if narrationEnabled {
-            await narrator.speak(spokenText)
-        } else {
-            try? await Task.sleep(for: .seconds(silentDuration(for: spokenText)))
-        }
-
+        try? await Task.sleep(for: .seconds(readingDuration(for: frameText)))
         guard !Task.isCancelled, isPlaying else { return }
 
         try? await Task.sleep(for: .seconds(Self.breath))
@@ -521,7 +443,6 @@ struct ProtocolAnimationView: View {
     }
 
     private func goForward() {
-        narrator.stop()
         withAnimation(.easeInOut(duration: 0.25)) {
             switch frame {
             case .intro:
@@ -535,7 +456,6 @@ struct ProtocolAnimationView: View {
     }
 
     private func goBack() {
-        narrator.stop()
         withAnimation(.easeInOut(duration: 0.25)) {
             switch frame {
             case .intro:
@@ -550,7 +470,6 @@ struct ProtocolAnimationView: View {
     }
 
     private func restart() {
-        narrator.stop()
         hasFinished = false
         withAnimation(.easeInOut(duration: 0.25)) { frame = .intro }
         isPlaying = true
