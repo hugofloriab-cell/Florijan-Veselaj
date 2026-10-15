@@ -85,7 +85,11 @@ final class PiperNarrator {
     func prepare() async {
         #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         guard let folder = Self.voiceFolderURL() else {
-            unavailableReason = "Voix française absente de l'application."
+            // Message volontairement précis : ce n'est pas « la voix ne
+            // marche pas », c'est « les fichiers ne sont pas dans le paquet
+            // construit », ce qui se corrige dans Build Phases, pas dans le
+            // code.
+            unavailableReason = "Fichiers de voix hors du paquet (Copy Bundle Resources)."
             return
         }
         unavailableReason = await engine.load(from: folder)
@@ -164,9 +168,35 @@ final class PiperNarrator {
 
     // MARK: - Localisation des fichiers
 
-    /// Le dossier de voix dans le paquet de l'application.
+    /// Le dossier où chercher la voix dans le paquet de l'application.
+    ///
+    /// Deux dispositions sont possibles, selon la façon dont le dossier a été
+    /// ajouté au projet Xcode, et l'une comme l'autre est correcte :
+    ///
+    /// - « Create folder references » (dossier bleu) : l'arborescence est
+    ///   recopiée telle quelle, on trouve `PiperVoice/` dans le paquet.
+    /// - « Create groups » (dossier jaune) : les fichiers sont recopiés **à
+    ///   plat** à la racine des ressources, sans dossier intermédiaire.
+    ///
+    /// Le second cas est un piège classique : tous les fichiers sont bien
+    /// présents, mais chercher un dossier `PiperVoice` ne donne rien, et
+    /// l'application se déclare muette alors qu'il ne manque rien. On accepte
+    /// donc les deux dispositions, en se rabattant sur la racine des
+    /// ressources quand le dossier nommé est introuvable.
     nonisolated static func voiceFolderURL() -> URL? {
-        Bundle.main.url(forResource: voiceFolderName, withExtension: nil)
+        if let named = Bundle.main.url(forResource: voiceFolderName, withExtension: nil) {
+            return named
+        }
+
+        // Rien de nommé : les fichiers sont-ils à plat ? Le modèle est la
+        // pièce qui ne peut pas venir d'ailleurs, donc c'est elle qu'on teste.
+        guard let root = Bundle.main.resourceURL,
+              let contents = try? FileManager.default.contentsOfDirectory(
+                at: root, includingPropertiesForKeys: nil),
+              contents.contains(where: { $0.pathExtension == "onnx" })
+        else { return nil }
+
+        return root
     }
 
     // MARK: - Fin de lecture
@@ -225,8 +255,21 @@ private actor PiperEngine {
         #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         guard !isLoaded else { return nil }
 
-        guard let files = Self.locateFiles(in: folder) else {
-            return "Fichiers de voix incomplets dans « \(folder.lastPathComponent) »."
+        let found = Self.locateFiles(in: folder)
+
+        // On nomme ce qui manque. « Fichiers incomplets » obligeait à fouiller
+        // le paquet à la main pour savoir laquelle des trois pièces manquait.
+        var missing: [String] = []
+        if found.model == nil { missing.append("le modèle .onnx") }
+        if found.tokens == nil { missing.append("tokens.txt") }
+        if found.espeakData == nil { missing.append("espeak-ng-data") }
+
+        guard let model = found.model,
+              let tokens = found.tokens,
+              let espeakData = found.espeakData
+        else {
+            return "Manque dans « \(folder.lastPathComponent) » : "
+                + missing.joined(separator: ", ") + "."
         }
 
         // Les chaînes passées au C sont recopiées à la main puis libérées à la
@@ -249,25 +292,25 @@ private actor PiperEngine {
         // (matcha, kokoro, kitten…). Remplir seulement les champs utiles rend
         // ce code valide quelle que soit la version du framework installée.
         var vits = SherpaOnnxOfflineTtsVitsModelConfig()
-        vits.model = cString(files.model)
-        vits.tokens = cString(files.tokens)
-        vits.data_dir = cString(files.espeakData)
+        vits.model = cString(model)
+        vits.tokens = cString(tokens)
+        vits.data_dir = cString(espeakData)
         vits.lexicon = cString("")
         vits.dict_dir = cString("")
         vits.noise_scale = 0.667
         vits.noise_scale_w = 0.8
         vits.length_scale = 1.0
 
-        var model = SherpaOnnxOfflineTtsModelConfig()
-        model.vits = vits
+        var modelConfig = SherpaOnnxOfflineTtsModelConfig()
+        modelConfig.vits = vits
         // Deux fils : assez pour rester bref sur une phrase courte, pas assez
         // pour faire chauffer le téléphone en plein service.
-        model.num_threads = 2
-        model.debug = 0
-        model.provider = cString("cpu")
+        modelConfig.num_threads = 2
+        modelConfig.debug = 0
+        modelConfig.provider = cString("cpu")
 
         var config = SherpaOnnxOfflineTtsConfig()
-        config.model = model
+        config.model = modelConfig
         config.rule_fsts = cString("")
         config.rule_fars = cString("")
         config.max_num_sentences = 1
@@ -330,10 +373,12 @@ private actor PiperEngine {
 
     // MARK: - Les trois pièces d'une voix
 
-    private struct VoiceFiles {
-        let model: String
-        let tokens: String
-        let espeakData: String
+    /// Ce qu'on a trouvé. Chaque pièce est indépendante pour que l'appelant
+    /// puisse dire laquelle manque, et non seulement qu'il en manque une.
+    private struct FoundFiles {
+        var model: String?
+        var tokens: String?
+        var espeakData: String?
     }
 
     /// Cherche le modèle, les jetons et les données de phonétisation.
@@ -343,35 +388,30 @@ private actor PiperEngine {
     /// exact condamnerait à une correction de code à chaque changement de
     /// voix. On cherche ce qui finit par `.onnx`, le `tokens.txt`, et le
     /// dossier `espeak-ng-data`, où qu'ils soient.
-    private static func locateFiles(in folder: URL) -> VoiceFiles? {
+    private static func locateFiles(in folder: URL) -> FoundFiles {
+        var result = FoundFiles()
+
         let manager = FileManager.default
         guard let walker = manager.enumerator(
             at: folder,
             includingPropertiesForKeys: [.isDirectoryKey]
-        ) else { return nil }
-
-        var model: URL?
-        var tokens: URL?
-        var espeak: URL?
+        ) else { return result }
 
         for case let url as URL in walker {
             switch url.lastPathComponent {
             case "tokens.txt":
-                tokens = url
+                result.tokens = url.path
             case "espeak-ng-data":
-                espeak = url
+                result.espeakData = url.path
                 // Inutile de descendre dans ses milliers de fichiers.
                 walker.skipDescendants()
             default:
-                if url.pathExtension == "onnx" { model = url }
+                // `.onnx.json` accompagne le modèle sans en être un : son
+                // extension est `json`, il ne sera donc jamais pris pour lui.
+                if url.pathExtension == "onnx" { result.model = url.path }
             }
         }
 
-        guard let model, let tokens, let espeak else { return nil }
-        return VoiceFiles(
-            model: model.path,
-            tokens: tokens.path,
-            espeakData: espeak.path
-        )
+        return result
     }
 }
