@@ -100,6 +100,30 @@ enum AssistantAction: Equatable {
     }
 
     var isActionable: Bool { self != .unknown }
+
+    /// Ce que l'assistant dit à voix haute.
+    ///
+    /// Volontairement différent de ce qui est affiché : à l'oreille on
+    /// confirme et on demande, à l'écran on détaille. Et la question finale
+    /// compte — elle dit que rien n'est encore enregistré.
+    var spokenConfirmation: String {
+        switch self {
+        case .openedProduct(let name, _):
+            return name.isEmpty
+                ? "Produit entamé. Quel produit ?"
+                : "\(name). J'ouvre la fiche ?"
+        case .temperatures:
+            return "Relevé de température. J'ouvre ?"
+        case .cleaning:
+            return "Nettoyage. J'ouvre ?"
+        case .foodSample:
+            return "Plat témoin. J'ouvre ?"
+        case .delivery:
+            return "Contrôle à réception. J'ouvre ?"
+        case .unknown:
+            return "Je n'ai pas compris. Vous pouvez répéter ?"
+        }
+    }
 }
 
 // MARK: - Le type que le modèle remplit

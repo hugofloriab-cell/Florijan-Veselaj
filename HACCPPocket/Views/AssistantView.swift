@@ -47,7 +47,11 @@ struct AssistantView: View {
 
     @State private var dictation = VoiceDictation()
     @State private var understanding = AssistantUnderstanding()
+    @State private var narrator = PiperNarrator()
     @State private var intelligence = IntelligenceAvailability.needsNewerSystem
+
+    /// La voix est un confort : on la coupe d'un geste, et le choix tient.
+    @AppStorage("haccp.assistant.voice") private var voiceEnabled = true
 
     var body: some View {
         NavigationStack {
@@ -75,6 +79,16 @@ struct AssistantView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fermer") { dismiss() }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        voiceEnabled.toggle()
+                        if !voiceEnabled { narrator.stop() }
+                    } label: {
+                        Image(systemName: voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    }
+                    .disabled(!narrator.isAvailable)
+                    .accessibilityLabel(voiceEnabled ? "Couper la voix" : "Activer la voix")
+                }
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Effacer") {
                         dictation.clear()
@@ -83,7 +97,12 @@ struct AssistantView: View {
                         .disabled(dictation.transcript.isEmpty)
                 }
             }
-            .task { intelligence = .current }
+            .task {
+                intelligence = .current
+                // Le chargement du modèle prend un instant : on le lance dès
+                // l'ouverture de l'écran, pas au premier mot prononcé.
+                await narrator.prepare()
+            }
             // La dictée s'arrête d'elle-même après un silence : c'est ce
             // moment-là qui déclenche la compréhension, pas un bouton de
             // plus à toucher les mains occupées.
@@ -92,7 +111,16 @@ struct AssistantView: View {
                 let text = dictation.transcript
                 Task { await understanding.interpret(text) }
             }
-            .onDisappear { dictation.stop() }
+            // L'assistant répond dès qu'il a compris, jamais avant : parler
+            // pendant qu'on réfléchit ne rassure personne.
+            .onChange(of: understanding.outcome) { _, outcome in
+                guard voiceEnabled, case .understood(let action) = outcome else { return }
+                Task { await narrator.speak(action.spokenConfirmation) }
+            }
+            .onDisappear {
+                dictation.stop()
+                narrator.stop()
+            }
         }
     }
 
@@ -117,8 +145,18 @@ struct AssistantView: View {
             diagnosticRow(
                 systemImage: intelligence.systemImage,
                 title: intelligence.summary,
-                detail: intelligence.advice ?? "La compréhension des phrases arrivera à la prochaine étape.",
+                detail: intelligence.advice ?? "Les phrases sont comprises sur l'appareil.",
                 isGood: intelligence.isReady
+            )
+
+            Divider()
+
+            diagnosticRow(
+                systemImage: narrator.isAvailable ? "waveform.circle" : "speaker.slash",
+                title: narrator.isAvailable ? "Voix française embarquée" : "Voix indisponible",
+                detail: narrator.unavailableReason
+                    ?? "L'assistant répond à voix haute. Le haut-parleur en haut à gauche la coupe.",
+                isGood: narrator.isAvailable
             )
         }
         .padding(14)
