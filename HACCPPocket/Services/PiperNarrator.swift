@@ -170,20 +170,29 @@ final class PiperNarrator {
 
     /// Le dossier où chercher la voix dans le paquet de l'application.
     ///
-    /// Deux dispositions sont possibles, selon la façon dont le dossier a été
-    /// ajouté au projet Xcode, et l'une comme l'autre est correcte :
+    /// Trois dispositions sont acceptées, et l'ordre compte.
     ///
-    /// - « Create folder references » (dossier bleu) : l'arborescence est
-    ///   recopiée telle quelle, on trouve `PiperVoice/` dans le paquet.
-    /// - « Create groups » (dossier jaune) : les fichiers sont recopiés **à
-    ///   plat** à la racine des ressources, sans dossier intermédiaire.
+    /// **1. `PiperVoice.bundle`** — la seule fiable, et donc celle qu'on
+    /// essaie d'abord. Depuis Xcode 16, « Create folders » ne produit plus un
+    /// dossier-référence : il synchronise le contenu fichier par fichier, ce
+    /// qui recopie les ressources **à plat** et dissout les arborescences.
+    /// `espeak-ng-data`, qui compte des milliers de fichiers organisés en
+    /// sous-dossiers, n'y survit pas — et sans lui, pas de phonétisation,
+    /// donc pas de voix. L'extension `.bundle` règle le problème à la source :
+    /// Xcode la reconnaît comme un paquet insécable et le recopie tel quel,
+    /// sans jamais regarder dedans.
     ///
-    /// Le second cas est un piège classique : tous les fichiers sont bien
-    /// présents, mais chercher un dossier `PiperVoice` ne donne rien, et
-    /// l'application se déclare muette alors qu'il ne manque rien. On accepte
-    /// donc les deux dispositions, en se rabattant sur la racine des
-    /// ressources quand le dossier nommé est introuvable.
+    /// **2. `PiperVoice`** — un vrai dossier-référence, tel que les versions
+    /// antérieures d'Xcode savaient en produire. Toujours valable.
+    ///
+    /// **3. La racine des ressources** — les fichiers à plat. Accepté pour
+    /// que le diagnostic puisse dire ce qui manque plutôt que de prétendre
+    /// que la voix est absente alors qu'une partie est bien là.
     nonisolated static func voiceFolderURL() -> URL? {
+        if let packaged = Bundle.main.url(forResource: voiceFolderName, withExtension: "bundle") {
+            return packaged
+        }
+
         if let named = Bundle.main.url(forResource: voiceFolderName, withExtension: nil) {
             return named
         }
