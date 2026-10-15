@@ -52,6 +52,10 @@ enum AssistantAction: Equatable {
     /// Le cas principal : un produit qu'on ouvre.
     case openedProduct(name: String, quantity: String)
 
+    /// Un relevé à inscrire au registre. La première action de l'assistant
+    /// qui écrit au lieu d'ouvrir un écran.
+    case recordTemperature(equipmentName: String, celsius: Double, isCompliant: Bool)
+
     case temperatures
     case cleaning
     case foodSample
@@ -63,6 +67,8 @@ enum AssistantAction: Equatable {
     var title: String {
         switch self {
         case .openedProduct: return "Produit entamé"
+        case .recordTemperature(_, _, let isCompliant):
+            return isCompliant ? "Relevé conforme" : "Relevé hors plage"
         case .temperatures:  return "Relevé de température"
         case .cleaning:      return "Nettoyage"
         case .foodSample:    return "Plat témoin"
@@ -74,6 +80,8 @@ enum AssistantAction: Equatable {
     var systemImage: String {
         switch self {
         case .openedProduct: return "shippingbox"
+        case .recordTemperature(_, _, let isCompliant):
+            return isCompliant ? "thermometer.medium" : "exclamationmark.triangle.fill"
         case .temperatures:  return "thermometer.medium"
         case .cleaning:      return "sparkles"
         case .foodSample:    return "takeoutbag.and.cup.and.straw"
@@ -86,6 +94,7 @@ enum AssistantAction: Equatable {
     var actionLabel: String {
         switch self {
         case .openedProduct: return "Ouvrir la fiche produit"
+        case .recordTemperature: return "Enregistrer le relevé"
         case .temperatures:  return "Ouvrir les températures"
         case .cleaning:      return "Ouvrir le nettoyage"
         case .foodSample:    return "Ouvrir les plats témoins"
@@ -96,9 +105,22 @@ enum AssistantAction: Equatable {
 
     /// Le détail reconnu, affiché sous le titre pour qu'on puisse démentir.
     var detail: String? {
-        guard case .openedProduct(let name, let quantity) = self else { return nil }
-        let parts = [name, quantity].filter { !$0.isEmpty }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        switch self {
+        case .openedProduct(let name, let quantity):
+            let parts = [name, quantity].filter { !$0.isEmpty }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        case .recordTemperature(let equipmentName, let celsius, _):
+            return "\(equipmentName) · \(AssistantAction.written(celsius)) °C"
+        default:
+            return nil
+        }
+    }
+
+    /// « 3 », « −18,5 ». Le séparateur décimal est celui du français.
+    static func written(_ celsius: Double) -> String {
+        celsius == celsius.rounded()
+            ? String(Int(celsius.rounded()))
+            : String(format: "%.1f", celsius).replacingOccurrences(of: ".", with: ",")
     }
 
     var isActionable: Bool { self != .unknown }
@@ -116,7 +138,10 @@ enum AssistantAction: Equatable {
 @Generable
 enum SpokenIntent {
     case produitEntame
-    case releveDeTemperature
+    /// Un relevé qu'on dicte pour l'inscrire au registre.
+    case enregistrerTemperature
+    /// La demande d'ouvrir l'écran des températures, sans rien y écrire.
+    case ouvrirTemperatures
     case nettoyage
     case platTemoin
     case controleReception
@@ -145,6 +170,9 @@ struct SpokenReply {
 
     @Guide(description: "Le nom de l'aliment, sans la quantité ni l'emballage. Chaîne vide tant qu'il n'est pas connu.")
     var productName: String
+
+    @Guide(description: "Le nom de l'enceinte citée, recopié exactement depuis la liste des enceintes enregistrées. Chaîne vide si aucune n'est citée.")
+    var equipmentName: String
 
     @Guide(description: "Vrai seulement quand il ne manque plus rien et que la phrase dite ci-dessus est une demande de confirmation.")
     var isReadyToAct: Bool
@@ -207,6 +235,24 @@ final class AssistantConversation {
     /// normalement à chaque tour ; s'il l'oublie, on ne le perd pas.
     private(set) var productName = ""
 
+    /// Les enceintes réellement enregistrées, fournies par l'écran.
+    ///
+    /// Elles sont injectées dans les instructions du modèle. Un assistant
+    /// qui ignore le parc invente « Frigo 1 » parce que ça sonne juste, et
+    /// rattache le relevé à rien.
+    private(set) var equipment: [EquipmentBrief] = []
+
+    /// La température lue dans ce qui a été dit, jamais produite par le
+    /// modèle — même règle que pour les quantités et les dates.
+    private(set) var temperature: Double?
+
+    /// L'enceinte reconnue dans le parc réel.
+    private(set) var matchedEquipment: EquipmentBrief?
+
+    /// Vrai quand le tour précédent portait sur un relevé en cours. C'est
+    /// ce qui autorise un nombre nu — « trois » — à valoir une température.
+    private var recordingTemperature = false
+
     /// La session de langage, conservée entre les tours.
     ///
     /// Rangée en `AnyObject` parce que son type n'existe qu'à partir d'iOS
@@ -226,6 +272,32 @@ final class AssistantConversation {
         phase = .idle
         quantity = .none
         productName = ""
+        temperature = nil
+        matchedEquipment = nil
+        recordingTemperature = false
+        sessionBox = nil
+    }
+
+    /// Oublie ce qui ne valait que pour la demande qui vient d'aboutir.
+    ///
+    /// Le fil de la conversation, lui, est conservé : on peut enchaîner
+    /// « et le congélateur est à moins 19 » sans tout réexpliquer.
+    private func forgetCurrentRequest() {
+        quantity = .none
+        productName = ""
+        temperature = nil
+        matchedEquipment = nil
+        recordingTemperature = false
+    }
+
+    /// Donne à l'assistant le parc réel de l'établissement.
+    ///
+    /// Les instructions du modèle en dépendent : changer la liste oblige à
+    /// repartir d'une session neuve, sinon le modèle continuerait de
+    /// raisonner sur l'ancien parc.
+    func load(equipment list: [EquipmentBrief]) {
+        guard list != equipment else { return }
+        equipment = list
         sessionBox = nil
     }
 
@@ -244,6 +316,23 @@ final class AssistantConversation {
         let heard = SpokenQuantity.parse(said)
         if !heard.isEmpty { quantity = heard }
 
+        // Un nombre nu ne vaut température que si l'assistant vient d'en
+        // demander une. Sans cette condition, « frigo 2 » deviendrait deux
+        // degrés à la première phrase venue.
+        if let degrees = SpokenTemperature.parse(
+            said,
+            assumingTemperature: recordingTemperature && temperature == nil
+        ) {
+            temperature = degrees
+        }
+
+        // L'enceinte est cherchée dans la phrase brute, en plus du nom que
+        // le modèle renverra : le cuisinier dit « le congél », le modèle
+        // écrit parfois autre chose, et c'est le parc réel qui tranche.
+        if matchedEquipment == nil {
+            matchedEquipment = EquipmentMatcher.match(said, in: equipment)
+        }
+
         // Trois raccourcis traités dans le code, jamais confiés au modèle.
         //
         // Un « oui » doit valoir accord de façon absolument prévisible : si
@@ -258,11 +347,25 @@ final class AssistantConversation {
             switch Self.agreement(in: said) {
             case .yes:
                 phase = .idle
-                return finish(.act(action, Self.openingSentence(for: action)))
+                let sentence = Self.openingSentence(for: action)
+                // La demande est close : ce qui a été réuni pour elle ne
+                // doit pas déborder sur la suivante. Sans cet oubli, un
+                // « j'entame du beurre » hériterait de la quantité du
+                // sucre, et le registre porterait un chiffre jamais dit.
+                forgetCurrentRequest()
+                return finish(.act(action, sentence))
+
             case .no:
-                // On ne repart pas de zéro : le modèle garde le fil et
-                // demandera ce qu'il faut corriger.
+                // Ce que le code tenait pour acquis redevient à demander.
+                //
+                // Dire « non » sert le plus souvent à corriger l'enceinte
+                // ou le chiffre ; les garder rendrait la correction
+                // impossible, puisqu'ils ne sont relus que lorsqu'ils
+                // manquent. Le modèle, lui, garde le fil de la discussion.
+                matchedEquipment = nil
+                temperature = nil
                 phase = .thinking
+
             case .unclear:
                 phase = .thinking
             }
@@ -293,41 +396,78 @@ final class AssistantConversation {
 
     /// Ce qu'on dit au modèle avant toute chose.
     ///
-    /// Deux consignes y comptent plus que les autres. « Une question à la
-    /// fois » : en cuisine on répond à une question, pas à trois. Et « ne
-    /// demande jamais de date » — non par excès de prudence, mais parce
-    /// qu'une date dictée puis mal entendue produirait un registre faux,
-    /// alors que l'application sait la calculer sans se tromper.
-    private static let instructions = """
-    Tu es l'assistant vocal du registre d'hygiène d'un restaurant français. \
-    Tu t'adresses à un cuisinier en plein service.
+    /// Calculé plutôt que figé, parce que le parc d'enceintes en fait
+    /// partie. Un assistant à qui l'on n'a pas dit quels frigos existent
+    /// invente « Frigo 1 » — c'est plausible, c'est faux, et le relevé se
+    /// retrouve rattaché à rien.
+    ///
+    /// Trois consignes y comptent plus que les autres. « Une question à la
+    /// fois » : en cuisine on répond à une question, pas à trois. « Ne
+    /// prononce jamais de nombre » : les quantités et les températures sont
+    /// relues dans le texte dicté, et un chiffre venu du modèle serait faux
+    /// sans que personne le voie. « N'invente jamais de date » : une durée
+    /// de conservation est une obligation réglementaire que l'application
+    /// calcule elle-même.
+    private var instructions: String {
+        """
+        Tu es l'assistant vocal du registre d'hygiène d'un restaurant \
+        français. Tu t'adresses à un cuisinier en plein service.
 
-    Tu parles, tu ne rédiges pas : une seule phrase courte à chaque fois.
+        Tu parles, tu ne rédiges pas : une seule phrase courte à chaque fois.
 
-    Ton travail est de reconnaître l'action demandée et de réunir ce qui \
-    manque pour l'ouvrir.
-    - Pour un produit entamé, il te faut le nom de l'aliment. Si tu ne l'as \
-    pas, demande-le. Demande la quantité une seule fois, et passe outre si \
-    elle n'est pas donnée.
-    - Pour un relevé de température, un nettoyage, un plat témoin ou un \
-    contrôle à réception, tu n'as besoin d'aucun détail supplémentaire.
+        Ton travail est de reconnaître l'action demandée et de réunir ce qui \
+        manque pour l'accomplir.
+        - Produit entamé : il te faut le nom de l'aliment. Demande la \
+        quantité une seule fois, et passe outre si elle n'est pas donnée.
+        - Relevé de température à enregistrer : il te faut l'enceinte et la \
+        température. Demande ce qui manque, l'un après l'autre.
+        - Nettoyage, plat témoin, contrôle à réception, ouverture de \
+        l'écran des températures : aucun détail supplémentaire n'est requis.
 
-    Pose une question à la fois, jamais deux.
+        \(equipmentBlock)
 
-    Ne prononce jamais de nombre, ni en chiffres ni en lettres. Dis \
-    « quelle quantité ? », jamais « un kilo ? ». L'application relit les \
-    quantités dans ce qui a été dicté ; un nombre venant de toi serait faux.
+        Pose une question à la fois, jamais deux.
 
-    Dès que tu as ce qu'il faut, récapitule en une phrase et demande \
-    confirmation, puis mets isReadyToAct à vrai. Exemple : « Un kilo de \
-    sucre en poudre, j'ouvre la fiche ? »
+        Ne prononce jamais de nombre, ni en chiffres ni en lettres. Dis \
+        « quelle température ? », jamais « trois degrés ? ». L'application \
+        relit les nombres dans ce qui a été dicté ; un nombre venant de toi \
+        serait faux.
 
-    N'invente jamais de date, de durée de conservation ni d'allergène, et \
-    n'en demande jamais : l'application les calcule elle-même.
+        Dès que tu as ce qu'il faut, demande confirmation et mets \
+        isReadyToAct à vrai.
 
-    Si la demande ne correspond à aucune action connue, dis-le simplement \
-    et propose les actions possibles.
-    """
+        N'invente jamais de date, de durée de conservation ni d'allergène, \
+        et n'en demande jamais : l'application les calcule elle-même.
+
+        Si la demande ne correspond à aucune action connue, dis-le \
+        simplement et propose les actions possibles.
+        """
+    }
+
+    /// Le parc réel, écrit pour être lu par le modèle.
+    private var equipmentBlock: String {
+        guard !equipment.isEmpty else {
+            return """
+            Aucune enceinte n'est enregistrée dans cet établissement. Si on \
+            te demande un relevé de température, dis qu'il faut d'abord \
+            créer une enceinte dans l'écran Températures.
+            """
+        }
+
+        let lines = equipment.map { brief in
+            let place = brief.location.isEmpty ? "" : ", \(brief.location)"
+            return "- \(brief.name) (\(brief.typeLabel)\(place))"
+        }
+
+        return """
+        Les enceintes enregistrées dans cet établissement, et elles seules :
+        \(lines.joined(separator: "\n"))
+
+        Recopie le nom exactement tel qu'il figure ci-dessus dans \
+        equipmentName. N'invente jamais d'enceinte : si celle qu'on te cite \
+        n'y est pas, demande laquelle parmi celles de la liste.
+        """
+    }
 
     @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
     private func respond(to said: String) async -> Reaction {
@@ -363,7 +503,7 @@ final class AssistantConversation {
     @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
     private func currentSession() -> LanguageModelSession {
         if let existing = sessionBox as? LanguageModelSession { return existing }
-        let created = LanguageModelSession(instructions: Self.instructions)
+        let created = LanguageModelSession(instructions: instructions)
         sessionBox = created
         return created
     }
@@ -395,13 +535,40 @@ final class AssistantConversation {
         let heard = reply.productName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !heard.isEmpty { productName = heard }
 
+        // Le nom d'enceinte que renvoie le modèle est traité comme une
+        // proposition, pas comme une vérité : il n'est retenu que s'il
+        // correspond à une enceinte réellement enregistrée.
+        let named = reply.equipmentName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !named.isEmpty, let found = EquipmentMatcher.match(named, in: equipment) {
+            matchedEquipment = found
+        }
+
         switch reply.intent {
         case .produitEntame:
             // Sans nom, il n'y a rien à ouvrir : on reste en conversation.
             return productName.isEmpty
                 ? .unknown
                 : .openedProduct(name: productName, quantity: quantity.written)
-        case .releveDeTemperature: return .temperatures
+
+        case .enregistrerTemperature:
+            // On note qu'un relevé est en cours : c'est ce qui autorisera
+            // un « trois » tout seul à valoir trois degrés au tour suivant.
+            recordingTemperature = true
+
+            // Il manque l'enceinte ou le chiffre : l'assistant demande, et
+            // rien n'est proposé à la confirmation tant que les deux ne
+            // sont pas là. Un relevé incomplet n'existe pas.
+            guard let brief = matchedEquipment, let celsius = temperature else {
+                return .unknown
+            }
+
+            return .recordTemperature(
+                equipmentName: brief.name,
+                celsius: celsius,
+                isCompliant: brief.accepts(celsius)
+            )
+
+        case .ouvrirTemperatures:  return .temperatures
         case .nettoyage:           return .cleaning
         case .platTemoin:          return .foodSample
         case .controleReception:   return .delivery
@@ -474,6 +641,23 @@ final class AssistantConversation {
         case .openedProduct(let name, _):
             let what = quantity.isEmpty ? name : "\(quantity.spoken) de \(name)"
             return "\(what). J'ouvre la fiche ?"
+
+        case .recordTemperature(let equipmentName, let celsius, let isCompliant):
+            // L'écart est annoncé avant la question, pas après.
+            //
+            // Un relevé hors plage impose une action corrective ; la
+            // personne doit l'apprendre au moment de dire oui, pas en
+            // relisant son registre trois semaines plus tard.
+            let verdict: String
+            if isCompliant {
+                verdict = "C'est dans la plage."
+            } else if let brief = matchedEquipment {
+                verdict = "Attention, c'est hors plage : la consigne est \(brief.spokenRange)."
+            } else {
+                verdict = "Attention, c'est hors plage."
+            }
+            return "\(equipmentName), \(Self.spokenDegrees(celsius)). \(verdict) J'enregistre ?"
+
         case .temperatures: return "Relevé de température. J'ouvre ?"
         case .cleaning:     return "Nettoyage. J'ouvre ?"
         case .foodSample:   return "Plat témoin. J'ouvre ?"
@@ -482,11 +666,24 @@ final class AssistantConversation {
         }
     }
 
+    /// « trois degrés », « moins 18 degrés », « 4 virgule 5 degrés ».
+    ///
+    /// Le signe se dit en toutes lettres : lu tel quel, le tiret d'un
+    /// « −18 » se perd, et le congélateur paraît être à dix-huit degrés.
+    private static func spokenDegrees(_ celsius: Double) -> String {
+        let written = AssistantAction.written(abs(celsius))
+            .replacingOccurrences(of: ",", with: " virgule ")
+        let sign = celsius < 0 ? "moins " : ""
+        let unit = abs(celsius) <= 1 ? "degré" : "degrés"
+        return "\(sign)\(written) \(unit)"
+    }
+
     /// Ce qu'on dit en ouvrant l'écran, une fois l'accord donné.
     private static func openingSentence(for action: AssistantAction) -> String {
         switch action {
         case .openedProduct(let name, _):
             return name.isEmpty ? "J'ouvre la fiche." : "J'ouvre la fiche de \(name)."
+        case .recordTemperature: return "C'est noté."
         case .temperatures: return "J'ouvre les températures."
         case .cleaning:     return "J'ouvre le nettoyage."
         case .foodSample:   return "J'ouvre les plats témoins."

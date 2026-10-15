@@ -118,7 +118,7 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
             .sheet(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
-                AssistantView { action in
+                AssistantView(equipment: equipmentBriefs) { action in
                     pendingAssistantAction = action
                     showsAssistant = false
                 }
@@ -204,6 +204,24 @@ struct DashboardView: View {
 
     // MARK: - Ce que l'assistant a demandé
 
+    /// Le parc réel, réduit à ce que l'assistant doit en savoir.
+    ///
+    /// Les enceintes hors service sont écartées : proposer d'y inscrire un
+    /// relevé n'aurait pas de sens.
+    private var equipmentBriefs: [EquipmentBrief] {
+        equipments
+            .filter(\.isActive)
+            .map { equipment in
+                EquipmentBrief(
+                    name: equipment.name,
+                    typeLabel: equipment.type.label,
+                    location: equipment.location,
+                    minTemperature: equipment.acceptedRange.lowerBound,
+                    maxTemperature: equipment.acceptedRange.upperBound
+                )
+            }
+    }
+
     /// Ouvre l'écran correspondant à ce qui a été dicté.
     ///
     /// L'assistant ne navigue pas lui-même : il a proposé, l'utilisateur a
@@ -225,6 +243,26 @@ struct DashboardView: View {
                     ? "Ouvert depuis l'assistant vocal."
                     : "Dicté à l'assistant : « \(dictated) ». Vérifiez avant d'enregistrer."
             )
+
+        case .recordTemperature(let equipmentName, let celsius, _):
+            // L'écriture se fait ici, et pas dans l'assistant.
+            //
+            // L'accord a été donné sur une phrase énoncée par le code ; le
+            // relevé qui s'inscrit est construit à partir des mêmes valeurs.
+            // `TemperatureReading` recalcule seul ses seuils et sa
+            // conformité d'après l'enceinte, donc rien de réglementaire ne
+            // dépend de ce qui a été dit.
+            guard let target = equipments.first(where: { $0.name == equipmentName }) else {
+                router.show(.temperatures)
+                return
+            }
+            let reading = TemperatureReading(value: celsius, equipment: target)
+            modelContext.insert(reading)
+            try? modelContext.save()
+            celebrationMessage = reading.isCompliant
+                ? "Relevé enregistré"
+                : "Relevé enregistré — hors plage, pensez à l'action corrective"
+            celebration = UUID()
 
         case .temperatures:
             router.show(.temperatures)

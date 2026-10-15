@@ -41,8 +41,15 @@ import SwiftUI
 
 struct AssistantView: View {
 
+    /// Le parc réel de l'établissement, fourni par l'écran d'accueil.
+    ///
+    /// Déclaré avant `onAction` pour que l'appel garde la fermeture en
+    /// dernier : `AssistantView(equipment: …) { action in … }`.
+    var equipment: [EquipmentBrief] = []
+
     /// Ce que l'écran rend quand l'accord est donné : à l'appelant d'ouvrir
-    /// l'écran correspondant. L'assistant ne navigue pas, il propose.
+    /// l'écran correspondant, ou d'écrire au registre. L'assistant ne
+    /// navigue pas et n'enregistre pas lui-même : il propose.
     var onAction: (AssistantAction) -> Void = { _ in }
 
     @Environment(\.dismiss) private var dismiss
@@ -110,6 +117,10 @@ struct AssistantView: View {
             }
             .task {
                 intelligence = .current
+                // Le parc est donné avant le premier mot : les instructions
+                // du modèle le contiennent, et il ne peut donc pas inventer
+                // une enceinte qui n'existe pas.
+                conversation.load(equipment: equipment)
                 // Le modèle de voix pèse soixante mégaoctets : on le charge
                 // à l'ouverture de l'écran, pas au premier mot prononcé.
                 await narrator.prepare()
