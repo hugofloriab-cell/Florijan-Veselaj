@@ -79,6 +79,8 @@ struct DashboardView: View {
                     // l'utilisateur doit le voir au premier lancement.
                     StoreStatusBanner()
 
+                    assistantButton
+
                     if !subscription.isSubscribed {
                         subscriptionCard
                     }
@@ -150,6 +152,54 @@ struct DashboardView: View {
                 }
             }
         }
+    }
+
+    // MARK: - L'entrée principale
+
+    /// Le gros bouton : on parle, et l'application s'occupe du reste.
+    ///
+    /// Il est placé haut et il est large parce que c'est devenu le chemin
+    /// normal, pas un raccourci pour initiés. Les tuiles en dessous restent
+    /// là pour qui préfère toucher, ou pour les jours où le bruit de la
+    /// cuisine rend la dictée pénible.
+    ///
+    /// L'icône du micro reste aussi dans la barre du haut : une fois la
+    /// page défilée, le bouton n'est plus visible, et il ne faut pas avoir
+    /// à remonter pour parler.
+    private var assistantButton: some View {
+        Button {
+            showsAssistant = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.18))
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "mic.fill")
+                        .font(.system(size: 26, weight: .medium))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Demandez à l'assistant")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Produit entamé, températures, nettoyage : dites-le, il ouvre ce qu'il faut.")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(18)
+            .frame(maxWidth: .infinity)
+            .background(Color.brand, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Demandez à l'assistant")
+        .accessibilityHint("Ouvre l'assistant vocal.")
     }
 
     // MARK: - Ce que l'assistant a demandé

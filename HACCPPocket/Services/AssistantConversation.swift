@@ -125,8 +125,14 @@ enum SpokenIntent {
 
 /// Un tour de parole de l'assistant.
 ///
-/// Noter ce qui n'y est pas : aucune date, aucune durée, aucun allergène.
-/// Le modèle ne peut pas en produire puisqu'il n'a nulle part où les mettre.
+/// Noter ce qui n'y est pas : aucune date, aucune durée, aucun allergène,
+/// et plus aucune quantité. Le modèle ne peut pas en produire puisqu'il n'a
+/// nulle part où les mettre.
+///
+/// La quantité en a été retirée après coup. Le schéma portait un exemple —
+/// « par exemple 1 kg » — et le modèle le recopiait : dix kilos de farine
+/// devenaient un kilo. C'est `SpokenQuantity` qui la lit maintenant, dans
+/// le texte dicté, par du code.
 @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
 @Generable(description: "Ce que l'assistant répond au cuisinier")
 struct SpokenReply {
@@ -139,9 +145,6 @@ struct SpokenReply {
 
     @Guide(description: "Le nom de l'aliment, sans la quantité ni l'emballage. Chaîne vide tant qu'il n'est pas connu.")
     var productName: String
-
-    @Guide(description: "La quantité ou le conditionnement, par exemple « 1 kg ». Chaîne vide si elle n'a pas été dite.")
-    var quantity: String
 
     @Guide(description: "Vrai seulement quand il ne manque plus rien et que la phrase dite ci-dessus est une demande de confirmation.")
     var isReadyToAct: Bool
@@ -195,6 +198,15 @@ final class AssistantConversation {
     private(set) var turns: [Turn] = []
     private(set) var phase: Phase = .idle
 
+    /// La quantité, lue dans ce qui a été dit et jamais produite par le
+    /// modèle. Conservée d'un tour à l'autre : « un kilo » arrive souvent
+    /// une phrase après « j'entame du sucre ».
+    private(set) var quantity: SpokenQuantity = .none
+
+    /// Le nom de l'aliment, retenu de la même façon. Le modèle le répète
+    /// normalement à chaque tour ; s'il l'oublie, on ne le perd pas.
+    private(set) var productName = ""
+
     /// La session de langage, conservée entre les tours.
     ///
     /// Rangée en `AnyObject` parce que son type n'existe qu'à partir d'iOS
@@ -212,6 +224,8 @@ final class AssistantConversation {
     func reset() {
         turns = []
         phase = .idle
+        quantity = .none
+        productName = ""
         sessionBox = nil
     }
 
@@ -223,6 +237,12 @@ final class AssistantConversation {
         guard !said.isEmpty else { return .speak("Je n'ai rien entendu.") }
 
         append(.cook, said)
+
+        // Lue avant tout le reste, et sur la phrase brute. Une quantité
+        // trouvée remplace la précédente ; une phrase qui n'en contient pas
+        // laisse la dernière en place.
+        let heard = SpokenQuantity.parse(said)
+        if !heard.isEmpty { quantity = heard }
 
         // Trois raccourcis traités dans le code, jamais confiés au modèle.
         //
@@ -294,6 +314,10 @@ final class AssistantConversation {
 
     Pose une question à la fois, jamais deux.
 
+    Ne prononce jamais de nombre, ni en chiffres ni en lettres. Dis \
+    « quelle quantité ? », jamais « un kilo ? ». L'application relit les \
+    quantités dans ce qui a été dicté ; un nombre venant de toi serait faux.
+
     Dès que tu as ce qu'il faut, récapitule en une phrase et demande \
     confirmation, puis mets isReadyToAct à vrai. Exemple : « Un kilo de \
     sucre en poudre, j'ouvre la fiche ? »
@@ -349,26 +373,34 @@ final class AssistantConversation {
         let spoken = reply.spoken.trimmingCharacters(in: .whitespacesAndNewlines)
         let sentence = spoken.isEmpty ? "Je n'ai pas compris." : spoken
 
-        let action = Self.action(from: reply)
+        let action = self.action(from: reply)
 
         guard reply.isReadyToAct, action.isActionable else {
             phase = .awaitingDetail
             return finish(.speak(sentence))
         }
 
+        // Le récapitulatif est écrit ici, pas par le modèle.
+        //
+        // C'est la phrase sur laquelle le cuisinier dit « oui » : elle doit
+        // énoncer exactement ce qui sera ouvert. Laisser le modèle la
+        // formuler, c'est accepter qu'il prononce un nombre — et c'est
+        // précisément par là que « dix kilos » devenait « un kilo ».
         phase = .awaitingConfirmation(action)
-        return finish(.confirm(action, sentence))
+        return finish(.confirm(action, confirmationSentence(for: action)))
     }
 
     @available(iOS 26.0, macOS 26.0, visionOS 26.0, *)
-    private static func action(from reply: SpokenReply) -> AssistantAction {
-        let name = reply.productName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let quantity = reply.quantity.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func action(from reply: SpokenReply) -> AssistantAction {
+        let heard = reply.productName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !heard.isEmpty { productName = heard }
 
         switch reply.intent {
         case .produitEntame:
             // Sans nom, il n'y a rien à ouvrir : on reste en conversation.
-            return name.isEmpty ? .unknown : .openedProduct(name: name, quantity: quantity)
+            return productName.isEmpty
+                ? .unknown
+                : .openedProduct(name: productName, quantity: quantity.written)
         case .releveDeTemperature: return .temperatures
         case .nettoyage:           return .cleaning
         case .platTemoin:          return .foodSample
@@ -430,6 +462,24 @@ final class AssistantConversation {
         let folded = text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "fr_FR"))
         let pieces = folded.split { !$0.isLetter }
         return Set(pieces.map(String.init))
+    }
+
+    /// Le récapitulatif sur lequel on demande l'accord.
+    ///
+    /// Écrit ici, en français parlé, à partir de ce que le code a lu : le
+    /// nom vient du modèle, la quantité de `SpokenQuantity`. Ce qu'on
+    /// entend est donc exactement ce qui sera ouvert.
+    private func confirmationSentence(for action: AssistantAction) -> String {
+        switch action {
+        case .openedProduct(let name, _):
+            let what = quantity.isEmpty ? name : "\(quantity.spoken) de \(name)"
+            return "\(what). J'ouvre la fiche ?"
+        case .temperatures: return "Relevé de température. J'ouvre ?"
+        case .cleaning:     return "Nettoyage. J'ouvre ?"
+        case .foodSample:   return "Plat témoin. J'ouvre ?"
+        case .delivery:     return "Contrôle à réception. J'ouvre ?"
+        case .unknown:      return "Je n'ai pas compris."
+        }
     }
 
     /// Ce qu'on dit en ouvrant l'écran, une fois l'accord donné.
