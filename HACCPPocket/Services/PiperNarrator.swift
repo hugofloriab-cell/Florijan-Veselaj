@@ -42,8 +42,15 @@ import AVFoundation
 import Foundation
 import Observation
 
-#if canImport(SherpaOnnx)
+// Le paquet Swift de sherpa-onnx ne livre que le framework C/C++ ; l'enrobage
+// Swift du dépôt n'est qu'un exemple, à recopier. Plutôt que de recopier
+// 2 200 lignes dont la signature change à chaque version, on appelle l'API C
+// directement, ci-dessous dans `PiperEngine`. Le nom du module diffère selon
+// la distribution du framework, d'où les deux tentatives.
+#if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
 import SherpaOnnx
+#elseif canImport(SherpaOnnxC)
+import SherpaOnnxC
 #endif
 
 @MainActor
@@ -76,7 +83,7 @@ final class PiperNarrator {
     /// La réponse demande de charger le modèle, donc elle prend un instant
     /// la première fois. L'écran s'en sert pour savoir s'il annonce une voix.
     func prepare() async {
-        #if canImport(SherpaOnnx)
+        #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         guard let folder = Self.voiceFolderURL() else {
             unavailableReason = "Voix française absente de l'application."
             return
@@ -99,7 +106,7 @@ final class PiperNarrator {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, isAvailable else { return }
 
-        #if canImport(SherpaOnnx)
+        #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         stop()
 
         guard let wavURL = await engine.synthesize(trimmed) else { return }
@@ -202,37 +209,83 @@ final class PiperNarrator {
 /// fois — le moteur n'est pas réentrant.
 private actor PiperEngine {
 
-    #if canImport(SherpaOnnx)
-    private var tts: SherpaOnnxOfflineTtsWrapper?
+    #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
+    /// Le moteur côté C. Type opaque : on ne voit qu'une adresse.
+    ///
+    /// Il n'est jamais libéré, et c'est volontaire : l'objet est créé une
+    /// seule fois et vit aussi longtemps que l'application. Écrire un `deinit`
+    /// ici n'apporterait rien et compliquerait la gestion d'isolation.
+    private var tts: OpaquePointer?
     #endif
 
     private var isLoaded = false
 
     /// Charge le modèle. Renvoie `nil` si tout va bien, sinon la raison.
     func load(from folder: URL) async -> String? {
-        #if canImport(SherpaOnnx)
+        #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         guard !isLoaded else { return nil }
 
         guard let files = Self.locateFiles(in: folder) else {
             return "Fichiers de voix incomplets dans « \(folder.lastPathComponent) »."
         }
 
-        let vits = sherpaOnnxOfflineTtsVitsModelConfig(
-            model: files.model,
-            tokens: files.tokens,
-            dataDir: files.espeakData
-        )
+        // Les chaînes passées au C sont recopiées à la main puis libérées à la
+        // sortie. On ne se repose pas sur la durée de vie d'une chaîne Swift :
+        // elle n'est garantie que pendant l'appel, et la configuration est
+        // assemblée en plusieurs étapes avant d'être transmise.
+        var allocated: [UnsafeMutablePointer<CChar>] = []
+        defer { allocated.forEach { free($0) } }
 
+        func cString(_ value: String) -> UnsafePointer<CChar> {
+            let copy = strdup(value)!
+            allocated.append(copy)
+            return UnsafePointer(copy)
+        }
+
+        // Les structures C sont créées à zéro puis remplies champ par champ.
+        //
+        // C'est le point important : l'initialiseur complet de ces structures
+        // change à chaque version de sherpa-onnx, qui ajoute des moteurs
+        // (matcha, kokoro, kitten…). Remplir seulement les champs utiles rend
+        // ce code valide quelle que soit la version du framework installée.
+        var vits = SherpaOnnxOfflineTtsVitsModelConfig()
+        vits.model = cString(files.model)
+        vits.tokens = cString(files.tokens)
+        vits.data_dir = cString(files.espeakData)
+        vits.lexicon = cString("")
+        vits.dict_dir = cString("")
+        vits.noise_scale = 0.667
+        vits.noise_scale_w = 0.8
+        vits.length_scale = 1.0
+
+        var model = SherpaOnnxOfflineTtsModelConfig()
+        model.vits = vits
         // Deux fils : assez pour rester bref sur une phrase courte, pas assez
         // pour faire chauffer le téléphone en plein service.
-        let model = sherpaOnnxOfflineTtsModelConfig(numThreads: 2, vits: vits)
+        model.num_threads = 2
+        model.debug = 0
+        model.provider = cString("cpu")
 
-        // `var` obligatoire : `withUnsafePointer(to:)` veut une adresse.
-        var config = sherpaOnnxOfflineTtsConfig(model: model)
+        var config = SherpaOnnxOfflineTtsConfig()
+        config.model = model
+        config.rule_fsts = cString("")
+        config.rule_fars = cString("")
+        config.max_num_sentences = 1
+        // Durée du silence entre deux phrases. À zéro, le débit est précipité.
+        config.silence_scale = 0.2
 
-        tts = withUnsafePointer(to: &config) { pointer in
-            SherpaOnnxOfflineTtsWrapper(config: pointer)
+        tts = withUnsafePointer(to: &config) { SherpaOnnxCreateOfflineTts($0) }
+
+        guard tts != nil else {
+            // Deux causes possibles, et une seule se voit dans la console.
+            //
+            // Soit les fichiers sont illisibles, soit le framework a été
+            // compilé sans la synthèse vocale — dans ce cas sherpa-onnx écrit
+            // « TTS is not enabled. Please rebuild sherpa-onnx » dans la
+            // console Xcode. Le message ci-dessous invite à aller voir.
+            return "Voix refusée par le moteur. Voir la console Xcode."
         }
+
         isLoaded = true
         return nil
         #else
@@ -242,23 +295,40 @@ private actor PiperEngine {
 
     /// Produit un fichier WAV temporaire, ou `nil` en cas d'échec.
     func synthesize(_ text: String) async -> URL? {
-        #if canImport(SherpaOnnx)
+        #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
         guard let tts else { return nil }
 
-        let audio = tts.generate(text: text, sid: 0, speed: 1.0)
-        guard audio.n > 0 else { return nil }
+        // `SherpaOnnxOfflineTtsGenerate` est marquée obsolète depuis la 1.13 au
+        // profit d'une variante qui prend une structure de configuration. On
+        // garde l'ancienne volontairement : elle existe dans toutes les
+        // versions du framework, la nouvelle non. Xcode affichera un
+        // avertissement, pas une erreur.
+        guard let audio = text.withCString({ pointer in
+            SherpaOnnxOfflineTtsGenerate(tts, pointer, 0, 1.0)
+        }) else { return nil }
+
+        defer { SherpaOnnxDestroyOfflineTtsGeneratedAudio(audio) }
+
+        guard audio.pointee.n > 0, let samples = audio.pointee.samples else {
+            return nil
+        }
 
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("piper-\(UUID().uuidString).wav")
 
-        guard audio.save(filename: url.path) == 1 else { return nil }
+        let written = url.path.withCString { filename in
+            SherpaOnnxWriteWave(samples, audio.pointee.n,
+                                audio.pointee.sample_rate, filename)
+        }
+
+        guard written == 1 else { return nil }
         return url
         #else
         return nil
         #endif
     }
 
-    // MARK: - Trouver les trois pièces
+    // MARK: - Les trois pièces d'une voix
 
     private struct VoiceFiles {
         let model: String
