@@ -208,27 +208,51 @@ struct DashboardView: View {
                 : "Relevé enregistré — hors plage, pensez à l'action corrective"
             celebration = UUID()
 
-        case .recordDelivery(let reading, let photo):
+        case .recordDelivery(let reading, let photo, let operatorName):
             // Ce que la photo donne est inscrit ; ce qu'elle ne peut pas
             // donner reste à constater sur le quai.
             //
-            // La décision est « acceptée » par défaut et l'assistant le dit
-            // à voix haute : un refus doit rester un geste conscient, et
-            // une température à cœur ne se lit pas sur un papier.
+            // Le seuil de température compte autant que le reste : le
+            // formulaire de réception en déduit la famille de marchandise.
+            // Ne pas le renseigner classait une livraison de viande en
+            // épicerie sèche, ce qui supprime l'exigence de température —
+            // exactement le contraire du but.
             var notes = "Contrôle créé par l'assistant à partir du bon de livraison."
+            if !reading.reference.isEmpty {
+                notes += " Bon n° \(reading.reference)."
+            }
+            if reading.products.count > 1 {
+                notes += " Produits lus : \(reading.products.joined(separator: ", "))."
+            }
+            if reading.lots.count > 1 {
+                notes += " Lots lus : \(reading.lots.joined(separator: ", "))."
+            }
             if let expiry = reading.expiry {
-                notes += " DLC lue sur le bon : \(AppFormatters.shortDate(expiry))."
+                notes += " DLC la plus proche lue sur le bon : \(AppFormatters.shortDate(expiry))."
             }
 
             let check = DeliveryCheck(
                 supplierName: reading.supplier.isEmpty ? "Fournisseur à préciser" : reading.supplier,
-                productLabel: reading.product,
-                batchNumber: reading.batch,
-                operatorName: preferences.operatorName,
+                productLabel: reading.mainProduct,
+                temperatureLimit: reading.temperatureLimit,
+                batchNumber: reading.mainLot,
+                operatorName: operatorName,
                 photoData: photo,
                 notes: notes
             )
             modelContext.insert(check)
+
+            // La photo du bon est une pièce justificative, et c'est à ce
+            // titre que l'écran de réception l'affiche. Rangée ailleurs,
+            // elle existait dans la base sans apparaître nulle part.
+            let document = DeliveryDocument(
+                kind: .deliveryNote,
+                photoData: photo,
+                note: reading.reference.isEmpty ? "" : "Bon n° \(reading.reference)",
+                delivery: check
+            )
+            modelContext.insert(document)
+
             try? modelContext.save()
             celebrationMessage = "Contrôle à réception enregistré"
             celebration = UUID()

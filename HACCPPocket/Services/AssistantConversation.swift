@@ -57,7 +57,7 @@ enum AssistantAction: Equatable {
     case recordTemperature(equipmentName: String, celsius: Double, isCompliant: Bool)
 
     /// Un contrôle à réception tiré d'une photo du bon de livraison.
-    case recordDelivery(reading: DeliveryNoteReader.Reading, photo: Data)
+    case recordDelivery(reading: DeliveryNoteReader.Reading, photo: Data, operatorName: String)
 
     case temperatures
     case cleaning
@@ -117,8 +117,9 @@ enum AssistantAction: Equatable {
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
         case .recordTemperature(let equipmentName, let celsius, _):
             return "\(equipmentName) · \(AssistantAction.written(celsius)) °C"
-        case .recordDelivery(let reading, _):
-            return reading.summary.isEmpty ? nil : reading.summary
+        case .recordDelivery(let reading, _, let operatorName):
+            let parts = [reading.summary, operatorName].filter { !$0.isEmpty }
+            return parts.isEmpty ? nil : parts.joined(separator: " · ")
         default:
             return nil
         }
@@ -254,6 +255,22 @@ final class AssistantConversation {
     /// tableau déjà mis en forme les traverse sans difficulté.
     private(set) var temperatureReport: AssistantReport?
 
+    /// Le nom de la personne qui contrôle, repris des réglages.
+    ///
+    /// Un contrôle à réception sans nom d'opérateur n'est pas un contrôle :
+    /// le règlement 852/2004 veut savoir qui a vérifié. Quand les réglages
+    /// n'en portent pas, l'assistant le demande plutôt que d'inscrire un
+    /// registre anonyme.
+    private(set) var operatorName = ""
+
+    /// La livraison lue, en attente du nom de qui la contrôle.
+    private struct PendingDelivery {
+        var reading: DeliveryNoteReader.Reading
+        var photo: Data
+    }
+
+    private var pendingDelivery: PendingDelivery?
+
     /// Les enceintes réellement enregistrées, fournies par l'écran.
     ///
     /// Elles sont injectées dans les instructions du modèle. Un assistant
@@ -285,6 +302,8 @@ final class AssistantConversation {
         case temperature
         /// On attend une photo du bon de livraison.
         case photo
+        /// On attend le nom de la personne qui contrôle.
+        case operatorName
         /// On attend un oui ou un non sur une proposition.
         case confirmation
         /// On ne sait même pas de quoi il s'agit.
@@ -296,7 +315,7 @@ final class AssistantConversation {
         /// proposition, ou reconnaître une demande, demande de classer.
         var isAnsweredByCode: Bool {
             switch self {
-            case .productName, .equipment, .temperature: return true
+            case .productName, .equipment, .temperature, .operatorName: return true
             // Une photo n'est pas du texte, et parler pendant qu'on en
             // attend une est une demande neuve : au modèle de trancher.
             case .photo, .confirmation, .intent: return false
@@ -342,6 +361,7 @@ final class AssistantConversation {
         pending = nil
         attempts = 0
         lastUtterance = ""
+        pendingDelivery = nil
         sessionBox = nil
     }
 
@@ -364,8 +384,13 @@ final class AssistantConversation {
     /// Les instructions du modèle en dépendent : changer la liste oblige à
     /// repartir d'une session neuve, sinon le modèle continuerait de
     /// raisonner sur l'ancien parc.
-    func load(equipment list: [EquipmentBrief], temperatures: AssistantReport? = nil) {
+    func load(
+        equipment list: [EquipmentBrief],
+        temperatures: AssistantReport? = nil,
+        operator name: String = ""
+    ) {
         temperatureReport = temperatures
+        operatorName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard list != equipment else { return }
         equipment = list
         sessionBox = nil
@@ -629,6 +654,11 @@ final class AssistantConversation {
         case .equipment, .temperature:
             return proposeTemperatureReading()
 
+        case .operatorName:
+            let name = Self.operatorName(in: lastUtterance)
+            if !name.isEmpty { operatorName = name }
+            return proposeDelivery()
+
         case .photo, .confirmation, .intent:
             // Jamais atteint : `isAnsweredByCode` les exclut du raccourci.
             // Le cas existe pour que l'ajout d'une question future ne passe
@@ -820,10 +850,84 @@ final class AssistantConversation {
             return askForPhoto("Je n'ai rien pu lire. Reprenez-la de plus près, bien à plat.")
         }
 
+        // Tout ce qui a été lu est montré, sans qu'on ait à le demander.
+        //
+        // La version précédente n'annonçait que le fournisseur, et demander
+        // « donne-moi plus de détails » se heurtait à la garde du oui/non.
+        // Un tableau affiché d'office règle les deux : on vérifie d'un coup
+        // d'œil, et il n'y a plus de question à poser.
+        append(.assistant, "Voilà ce que j'ai lu sur le bon.", report: AssistantReport(
+            title: "Bon de livraison",
+            rows: DeliveryNoteReader.rows(for: reading),
+            spoken: "",
+            note: "Vérifiez avant de valider : ce qui est lu de travers s'inscrit au registre."
+        ))
+
+        pendingDelivery = PendingDelivery(reading: reading, photo: data)
         pending = nil
         attempts = 0
-        return propose(.recordDelivery(reading: reading, photo: data))
+
+        return proposeDelivery()
     }
+
+    /// Propose le contrôle, une fois qu'on sait qui le signe.
+    private func proposeDelivery() -> Reaction {
+        guard let delivery = pendingDelivery else { return offerTheMenu() }
+
+        guard !operatorName.isEmpty else { return askForOperator() }
+
+        pendingDelivery = nil
+        return propose(.recordDelivery(
+            reading: delivery.reading,
+            photo: delivery.photo,
+            operatorName: operatorName
+        ))
+    }
+
+    /// Demande qui contrôle la livraison.
+    ///
+    /// Jamais sauté : un contrôle sans nom d'opérateur ne vaut rien devant
+    /// un inspecteur, et c'est la mention que le cuisinier a signalée comme
+    /// la plus importante. Faute de réponse, on le dit au lieu de signer à
+    /// la place de quelqu'un.
+    private func askForOperator() -> Reaction {
+        phase = .awaitingDetail
+
+        switch attempt(.operatorName) {
+        case 1:
+            return finish(.speak("Qui contrôle la livraison ?"))
+        case 2:
+            return finish(.speak("Dites juste votre prénom."))
+        default:
+            pending = nil
+            attempts = 0
+            operatorName = "Non renseigné"
+            return proposeDelivery()
+        }
+    }
+
+    /// Le prénom dit, débarrassé de ce qui l'entoure.
+    private static func operatorName(in said: String) -> String {
+        let words = said
+            .split { !$0.isLetter && $0 != "-" }
+            .map(String.init)
+            .filter { word in
+                let folded = word.folding(
+                    options: [.diacriticInsensitive, .caseInsensitive],
+                    locale: Locale(identifier: "fr_FR")
+                )
+                return folded.count > 1 && !nameFillers.contains(folded)
+            }
+
+        return words.prefix(2)
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
+    }
+
+    private static let nameFillers: Set<String> = [
+        "cest", "est", "je", "suis", "moi", "mon", "prenom", "nom",
+        "appelle", "sappelle", "le", "la", "les", "un", "une", "de", "du"
+    ]
 
     /// Quand la demande ne correspond à rien de connu.
     private func offerTheMenu() -> Reaction {
@@ -933,7 +1037,7 @@ final class AssistantConversation {
             }
             return "\(equipmentName), \(Self.spokenDegrees(celsius)). \(verdict) J'enregistre ?"
 
-        case .recordDelivery(let reading, _):
+        case .recordDelivery(let reading, _, _):
             let what = reading.summary.isEmpty ? "Bon de livraison lu" : reading.summary
             return "\(what). J'enregistre le contrôle comme acceptée ?"
 

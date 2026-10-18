@@ -48,6 +48,10 @@ struct AssistantPanel: View {
     /// Le parc réel, pour que l'assistant n'invente pas d'enceinte.
     var equipment: [EquipmentBrief] = []
 
+    /// Le nom de la personne qui contrôle, repris des réglages. Vide, il
+    /// sera demandé — un registre anonyme ne vaut rien.
+    var operatorName: String = ""
+
     /// Comment obtenir le relevé du jour, au moment où on le demande.
     ///
     /// Une fermeture, et non un tableau tout fait : construit à chaque
@@ -216,7 +220,11 @@ struct AssistantPanel: View {
     }
 
     private func beginListening() {
-        conversation.load(equipment: equipment, temperatures: makeTemperatureReport())
+        conversation.load(
+            equipment: equipment,
+            temperatures: makeTemperatureReport(),
+            operator: operatorName
+        )
         isTyping = false
         handsFree = true
         isConversing = true
@@ -228,7 +236,11 @@ struct AssistantPanel: View {
         let trimmed = request.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        conversation.load(equipment: equipment, temperatures: makeTemperatureReport())
+        conversation.load(
+            equipment: equipment,
+            temperatures: makeTemperatureReport(),
+            operator: operatorName
+        )
         typed = ""
         isTyping = false
         handsFree = false
