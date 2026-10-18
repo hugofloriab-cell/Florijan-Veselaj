@@ -73,6 +73,10 @@ struct AssistantPanel: View {
     @State private var typed = ""
     @FocusState private var isTyping: Bool
 
+    /// La photo attendue, et le texte qui l'accompagne.
+    @State private var captureRequest: String?
+    @State private var isPresentingCamera = false
+
     /// La voix est un confort : on la coupe d'un geste, et le choix tient.
     @AppStorage("haccp.assistant.voice") private var voiceEnabled = true
 
@@ -87,6 +91,7 @@ struct AssistantPanel: View {
                 greeting
             }
 
+            captureCard
             confirmationCard
 
             microphone
@@ -108,6 +113,17 @@ struct AssistantPanel: View {
         // La dictée s'arrête d'elle-même après un silence. C'est ce
         // moment-là qui fait avancer l'échange, pas un bouton de plus à
         // toucher les mains occupées.
+        #if canImport(UIKit)
+        .sheet(isPresented: $isPresentingCamera) {
+            CameraPicker(
+                onCapture: { data in
+                    Task { await advance(photo: data) }
+                },
+                onFinish: { isPresentingCamera = false }
+            )
+            .ignoresSafeArea()
+        }
+        #endif
         .onChange(of: dictation.isListening) { wasListening, isListening in
             guard wasListening, !isListening else { return }
             let said = dictation.transcript
@@ -133,7 +149,12 @@ struct AssistantPanel: View {
             return
         }
 
-        switch await conversation.send(text) {
+        await handle(await conversation.send(text))
+    }
+
+    /// Ce que l'écran fait de la décision de la conversation.
+    private func handle(_ reaction: AssistantConversation.Reaction) async {
+        switch reaction {
         case .speak(let sentence):
             await say(sentence)
             await listenAgain()
@@ -148,6 +169,13 @@ struct AssistantPanel: View {
             await say(report.spoken)
             await listenAgain()
 
+        case .capture(let prompt):
+            // On ne rouvre pas le micro : ce qu'on attend est une photo, et
+            // un micro ouvert ne capterait que le bruit du quai pendant
+            // qu'on cadre.
+            captureRequest = prompt
+            await say(prompt)
+
         case .act(let action, let sentence):
             await say(sentence)
             isConversing = false
@@ -160,6 +188,14 @@ struct AssistantPanel: View {
         case .failed:
             isConversing = false
         }
+    }
+
+    /// La photo prise, lue, et transformée en proposition.
+    private func advance(photo data: Data) async {
+        captureRequest = nil
+        isConversing = true
+        handsFree = false
+        await handle(await conversation.receivePhoto(data))
     }
 
     private func say(_ sentence: String) async {
@@ -207,6 +243,7 @@ struct AssistantPanel: View {
         narrator.stop()
         conversation.reset()
         typed = ""
+        captureRequest = nil
     }
 
     // MARK: - En haut : l'accueil, ou l'échange
@@ -389,6 +426,64 @@ struct AssistantPanel: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 9)
+    }
+
+    // MARK: - La photo
+
+    /// L'appareil photo dans le fil, et non dans un écran à part.
+    ///
+    /// Le bon de livraison se photographie sur le quai, une main sur le
+    /// carton. Sortir de la conversation pour revenir ensuite ferait perdre
+    /// le fil, et le livreur n'attend pas.
+    @ViewBuilder
+    private var captureCard: some View {
+        if let prompt = captureRequest {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.viewfinder")
+                        .font(.title3)
+                        .foregroundStyle(Color.brand)
+                        .frame(width: 28)
+
+                    Text(prompt)
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Spacer(minLength: 0)
+                }
+
+                #if canImport(UIKit)
+                if CameraPicker.isAvailable {
+                    Button {
+                        isTyping = false
+                        isPresentingCamera = true
+                    } label: {
+                        Label("Prendre la photo", systemImage: "camera.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("L'appareil photo n'est pas disponible ici. Ouvrez le registre des réceptions pour saisir le contrôle.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                #endif
+
+                Text("La lecture se fait sur l'iPhone. La photo ne quitte pas l'appareil.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(
+                Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+        }
     }
 
     // MARK: - L'accord

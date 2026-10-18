@@ -208,6 +208,31 @@ struct DashboardView: View {
                 : "Relevé enregistré — hors plage, pensez à l'action corrective"
             celebration = UUID()
 
+        case .recordDelivery(let reading, let photo):
+            // Ce que la photo donne est inscrit ; ce qu'elle ne peut pas
+            // donner reste à constater sur le quai.
+            //
+            // La décision est « acceptée » par défaut et l'assistant le dit
+            // à voix haute : un refus doit rester un geste conscient, et
+            // une température à cœur ne se lit pas sur un papier.
+            var notes = "Contrôle créé par l'assistant à partir du bon de livraison."
+            if let expiry = reading.expiry {
+                notes += " DLC lue sur le bon : \(AppFormatters.shortDate(expiry))."
+            }
+
+            let check = DeliveryCheck(
+                supplierName: reading.supplier.isEmpty ? "Fournisseur à préciser" : reading.supplier,
+                productLabel: reading.product,
+                batchNumber: reading.batch,
+                operatorName: preferences.operatorName,
+                photoData: photo,
+                notes: notes
+            )
+            modelContext.insert(check)
+            try? modelContext.save()
+            celebrationMessage = "Contrôle à réception enregistré"
+            celebration = UUID()
+
         case .temperatures:
             router.show(.temperatures)
 

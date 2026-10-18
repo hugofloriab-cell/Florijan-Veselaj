@@ -56,6 +56,9 @@ enum AssistantAction: Equatable {
     /// qui écrit au lieu d'ouvrir un écran.
     case recordTemperature(equipmentName: String, celsius: Double, isCompliant: Bool)
 
+    /// Un contrôle à réception tiré d'une photo du bon de livraison.
+    case recordDelivery(reading: DeliveryNoteReader.Reading, photo: Data)
+
     case temperatures
     case cleaning
     case foodSample
@@ -69,6 +72,7 @@ enum AssistantAction: Equatable {
         case .openedProduct: return "Produit entamé"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "Relevé conforme" : "Relevé hors plage"
+        case .recordDelivery: return "Contrôle à réception"
         case .temperatures:  return "Relevé de température"
         case .cleaning:      return "Nettoyage"
         case .foodSample:    return "Plat témoin"
@@ -82,6 +86,7 @@ enum AssistantAction: Equatable {
         case .openedProduct: return "shippingbox"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "thermometer.medium" : "exclamationmark.triangle.fill"
+        case .recordDelivery: return "shippingbox.and.arrow.backward"
         case .temperatures:  return "thermometer.medium"
         case .cleaning:      return "sparkles"
         case .foodSample:    return "takeoutbag.and.cup.and.straw"
@@ -95,6 +100,7 @@ enum AssistantAction: Equatable {
         switch self {
         case .openedProduct: return "Ouvrir la fiche produit"
         case .recordTemperature: return "Enregistrer le relevé"
+        case .recordDelivery: return "Enregistrer le contrôle"
         case .temperatures:  return "Ouvrir les températures"
         case .cleaning:      return "Ouvrir le nettoyage"
         case .foodSample:    return "Ouvrir les plats témoins"
@@ -111,6 +117,8 @@ enum AssistantAction: Equatable {
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
         case .recordTemperature(let equipmentName, let celsius, _):
             return "\(equipmentName) · \(AssistantAction.written(celsius)) °C"
+        case .recordDelivery(let reading, _):
+            return reading.summary.isEmpty ? nil : reading.summary
         default:
             return nil
         }
@@ -219,6 +227,8 @@ final class AssistantConversation {
         case act(AssistantAction, String)
         /// Montrer un tableau, en n'en disant que la conclusion.
         case show(AssistantReport)
+        /// Demander une photo, et l'attendre. L'appareil s'ouvre dans le fil.
+        case capture(String)
         /// Fin de l'échange : dire la phrase et refermer le micro.
         case stop(String)
         /// Rien ne s'est passé comme prévu, et on dit pourquoi.
@@ -273,6 +283,8 @@ final class AssistantConversation {
         case productName
         case equipment
         case temperature
+        /// On attend une photo du bon de livraison.
+        case photo
         /// On attend un oui ou un non sur une proposition.
         case confirmation
         /// On ne sait même pas de quoi il s'agit.
@@ -285,7 +297,9 @@ final class AssistantConversation {
         var isAnsweredByCode: Bool {
             switch self {
             case .productName, .equipment, .temperature: return true
-            case .confirmation, .intent: return false
+            // Une photo n'est pas du texte, et parler pendant qu'on en
+            // attend une est une demande neuve : au modèle de trancher.
+            case .photo, .confirmation, .intent: return false
             }
         }
     }
@@ -584,7 +598,7 @@ final class AssistantConversation {
         case .recapTemperatures:      return showTemperatures()
         case .nettoyage:              return propose(.cleaning)
         case .platTemoin:             return propose(.foodSample)
-        case .controleReception:      return propose(.delivery)
+        case .controleReception:      return askForPhoto()
         case .autre:                  return offerTheMenu()
         }
     }
@@ -615,7 +629,7 @@ final class AssistantConversation {
         case .equipment, .temperature:
             return proposeTemperatureReading()
 
-        case .confirmation, .intent:
+        case .photo, .confirmation, .intent:
             // Jamais atteint : `isAnsweredByCode` les exclut du raccourci.
             // Le cas existe pour que l'ajout d'une question future ne passe
             // pas silencieusement par ici.
@@ -764,6 +778,53 @@ final class AssistantConversation {
         return finish(.show(report))
     }
 
+    /// Demande la photo du bon de livraison.
+    ///
+    /// Le contrôle à réception se saisissait à la main : fournisseur,
+    /// produit, lot, date, tapés sur une tablette pendant qu'un livreur
+    /// attend. C'est le travail que personne n'a le temps de faire, et qui
+    /// manque ensuite au registre le jour d'un contrôle. Le bon porte déjà
+    /// tout : il suffit de le photographier.
+    private func askForPhoto(_ reason: String? = nil) -> Reaction {
+        phase = .awaitingDetail
+
+        switch attempt(.photo) {
+        case 1:
+            return finish(.capture(reason ?? "Prenez le bon de livraison en photo."))
+        case 2:
+            return finish(.capture(reason ?? "Cadrez le bon bien à plat, l'en-tête visible."))
+        default:
+            // Deux lectures manquées : la photo n'y arrivera pas, et
+            // insister ferait perdre plus de temps que la saisie.
+            pending = nil
+            attempts = 0
+            return propose(.delivery)
+        }
+    }
+
+    /// Lit la photo et propose le contrôle qui en découle.
+    ///
+    /// La lecture est faite par `DateOCRService`, qui servait déjà aux
+    /// étiquettes : Vision, hors ligne, rien ne sort de l'appareil.
+    func receivePhoto(_ data: Data) async -> Reaction {
+        append(.cook, "Photo du bon de livraison.")
+        phase = .thinking
+
+        guard let scan = try? await DateOCRService.scan(imageData: data) else {
+            return askForPhoto("La lecture a échoué. Reprenez la photo.")
+        }
+
+        let reading = DeliveryNoteReader.read(scan)
+
+        guard !reading.isEmpty else {
+            return askForPhoto("Je n'ai rien pu lire. Reprenez-la de plus près, bien à plat.")
+        }
+
+        pending = nil
+        attempts = 0
+        return propose(.recordDelivery(reading: reading, photo: data))
+    }
+
     /// Quand la demande ne correspond à rien de connu.
     private func offerTheMenu() -> Reaction {
         phase = .awaitingDetail
@@ -872,6 +933,10 @@ final class AssistantConversation {
             }
             return "\(equipmentName), \(Self.spokenDegrees(celsius)). \(verdict) J'enregistre ?"
 
+        case .recordDelivery(let reading, _):
+            let what = reading.summary.isEmpty ? "Bon de livraison lu" : reading.summary
+            return "\(what). J'enregistre le contrôle comme acceptée ?"
+
         case .temperatures: return "Relevé de température. J'ouvre ?"
         case .cleaning:     return "Nettoyage. J'ouvre ?"
         case .foodSample:   return "Plat témoin. J'ouvre ?"
@@ -898,6 +963,9 @@ final class AssistantConversation {
         case .openedProduct(let name, _):
             return name.isEmpty ? "J'ouvre la fiche." : "J'ouvre la fiche de \(name)."
         case .recordTemperature: return "C'est noté."
+        case .recordDelivery:
+            // Ce que la photo ne dit pas, et qui se constate sur le quai.
+            return "C'est enregistré. Vérifiez la température et l'état des emballages avant de laisser repartir le livreur."
         case .temperatures: return "J'ouvre les températures."
         case .cleaning:     return "J'ouvre le nettoyage."
         case .foodSample:   return "J'ouvre les plats témoins."
@@ -927,6 +995,8 @@ final class AssistantConversation {
         case .show(let report):
             // La conclusion au fil, le détail dans le tableau attaché.
             append(.assistant, report.spoken, report: report)
+        case .capture(let text):
+            append(.assistant, text)
         case .failed:
             break
         }
