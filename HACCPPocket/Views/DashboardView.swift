@@ -44,6 +44,9 @@ struct DashboardView: View {
     /// Change à chaque tâche terminée, ce qui relance l'animation.
     @State private var showsSettings = false
 
+    /// La fiche tout juste créée, pour proposer d'imprimer son étiquette.
+    @State private var printTarget: TrackedProduct?
+
     /// Fiche produit pré-remplie par l'assistant.
     @State private var assistantPrefill: ProductPrefill?
     /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
@@ -118,6 +121,12 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
+            // L'impression suit la création : le geste de cuisine est
+            // « j'entame, je note, je colle », pas « je note, et je
+            // retrouverai l'étiquette plus tard ».
+            .sheet(item: $printTarget) { product in
+                LabelPrintView(product: product)
+            }
             .sheet(item: $assistantPrefill) { prefill in
                 ProductFormView(prefill: prefill, context: modelContext)
             }
@@ -207,6 +216,41 @@ struct DashboardView: View {
                 ? "Relevé enregistré"
                 : "Relevé enregistré — hors plage, pensez à l'action corrective"
             celebration = UUID()
+
+        case .createProduct(let built):
+            // Tout ce que l'assistant a lu ou calculé est inscrit, et la
+            // raison de la date part avec : c'est elle qui rend la durée
+            // justifiable, comme le demande le règlement 852/2004.
+            var notes = built.explanation
+            if !built.quantity.isEmpty {
+                notes += " Quantité dictée : \(built.quantity)."
+            }
+            if built.printedKind != .unknown, let printed = built.printedDate {
+                notes += " \(built.printedKind.label) de l'emballage : "
+                    + "\(AppFormatters.shortDate(printed))."
+            }
+            if built.openingDateGoverns {
+                notes += " L'étiquette porte la date d'ouverture."
+            }
+
+            let created = TrackedProduct(
+                name: built.name,
+                openedAt: built.openedAt,
+                secondaryLimitDate: built.secondaryLimit,
+                storage: built.storage,
+                batchNumber: built.batchNumber,
+                supplier: built.supplier,
+                supplierExpiryDate: built.printedDate,
+                labelPhotoData: built.photo,
+                notes: notes,
+                allergens: built.allergens
+            )
+            modelContext.insert(created)
+            try? modelContext.save()
+
+            celebrationMessage = "Fiche produit créée"
+            celebration = UUID()
+            printTarget = created
 
         case .recordDelivery(let draft):
             let reading = draft.reading

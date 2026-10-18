@@ -56,6 +56,9 @@ enum AssistantAction: Equatable {
     /// qui écrit au lieu d'ouvrir un écran.
     case recordTemperature(equipmentName: String, celsius: Double, isCompliant: Bool)
 
+    /// Une fiche produit complète, dates comprises.
+    case createProduct(ProductDraft)
+
     /// Un contrôle à réception tiré d'une photo du bon de livraison.
     case recordDelivery(DeliveryDraft)
 
@@ -70,6 +73,7 @@ enum AssistantAction: Equatable {
     var title: String {
         switch self {
         case .openedProduct: return "Produit entamé"
+        case .createProduct: return "Nouvelle fiche produit"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "Relevé conforme" : "Relevé hors plage"
         case .recordDelivery(let draft):
@@ -85,6 +89,7 @@ enum AssistantAction: Equatable {
     var systemImage: String {
         switch self {
         case .openedProduct: return "shippingbox"
+        case .createProduct: return "tag.fill"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "thermometer.medium" : "exclamationmark.triangle.fill"
         case .recordDelivery(let draft):
@@ -103,6 +108,7 @@ enum AssistantAction: Equatable {
     var actionLabel: String {
         switch self {
         case .openedProduct: return "Ouvrir la fiche produit"
+        case .createProduct: return "Créer la fiche"
         case .recordTemperature: return "Enregistrer le relevé"
         case .recordDelivery: return "Enregistrer le contrôle"
         case .temperatures:  return "Ouvrir les températures"
@@ -119,6 +125,13 @@ enum AssistantAction: Equatable {
         case .openedProduct(let name, let quantity):
             let parts = [name, quantity].filter { !$0.isEmpty }
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        case .createProduct(let draft):
+            let parts = [
+                draft.name,
+                draft.quantity,
+                "à retirer le \(AppFormatters.shortDate(draft.secondaryLimit))"
+            ].filter { !$0.isEmpty }
+            return parts.joined(separator: " · ")
         case .recordTemperature(let equipmentName, let celsius, _):
             return "\(equipmentName) · \(AssistantAction.written(celsius)) °C"
         case .recordDelivery(let draft):
@@ -240,7 +253,11 @@ final class AssistantConversation {
         /// Montrer un tableau, en n'en disant que la conclusion.
         case show(AssistantReport)
         /// Demander une photo, et l'attendre. L'appareil s'ouvre dans le fil.
-        case capture(String)
+        ///
+        /// `canSkip` distingue les deux usages : la photo d'un bon de
+        /// livraison est tout l'intérêt de la démarche, celle d'une
+        /// étiquette produit fait gagner du temps sans être indispensable.
+        case capture(prompt: String, canSkip: Bool)
         /// Fin de l'échange : dire la phrase et refermer le micro.
         case stop(String)
         /// Rien ne s'est passé comme prévu, et on dit pourquoi.
@@ -277,6 +294,9 @@ final class AssistantConversation {
     /// Le contrôle en cours de constitution, entre la photo et l'accord.
     private var draft: DeliveryDraft?
 
+    /// La fiche produit en cours, entre l'accord de création et la photo.
+    private var product: ProductDraft?
+
     /// Les enceintes réellement enregistrées, fournies par l'écran.
     ///
     /// Elles sont injectées dans les instructions du modèle. Un assistant
@@ -308,6 +328,8 @@ final class AssistantConversation {
         case temperature
         /// On attend une photo du bon de livraison.
         case photo
+        /// On attend une photo de l'étiquette d'un produit.
+        case labelPhoto
         /// On attend le nom de la personne qui contrôle.
         case operatorName
         /// On attend la température de la marchandise.
@@ -334,7 +356,7 @@ final class AssistantConversation {
                 return true
             // Une photo n'est pas du texte, et parler pendant qu'on en
             // attend une est une demande neuve : au modèle de trancher.
-            case .photo, .confirmation, .intent: return false
+            case .photo, .labelPhoto, .confirmation, .intent: return false
             }
         }
     }
@@ -378,6 +400,7 @@ final class AssistantConversation {
         attempts = 0
         lastUtterance = ""
         draft = nil
+        product = nil
         skipped = []
         hasDecided = false
         sessionBox = nil
@@ -396,6 +419,7 @@ final class AssistantConversation {
         pending = nil
         attempts = 0
         draft = nil
+        product = nil
         skipped = []
         hasDecided = false
     }
@@ -472,6 +496,17 @@ final class AssistantConversation {
             switch Self.agreement(in: said) {
             case .yes:
                 phase = .idle
+
+                // Accepter la création d'une fiche n'est pas la fin de
+                // l'échange, c'est son début : l'étiquette porte le lot, la
+                // date du fabricant et les allergènes, que personne n'a
+                // envie de dicter.
+                if case .openedProduct(let name, let quantity) = action {
+                    product = ProductDraft(name: name, quantity: quantity)
+                    forgetCurrentRequest()
+                    return askForLabelPhoto()
+                }
+
                 let sentence = Self.openingSentence(for: action)
                 // La demande est close : ce qui a été réuni pour elle ne
                 // doit pas déborder sur la suivante. Sans cet oubli, un
@@ -723,7 +758,7 @@ final class AssistantConversation {
             }
             return proposeDelivery()
 
-        case .photo, .confirmation, .intent:
+        case .photo, .labelPhoto, .confirmation, .intent:
             // Jamais atteint : `isAnsweredByCode` les exclut du raccourci.
             // Le cas existe pour que l'ajout d'une question future ne passe
             // pas silencieusement par ici.
@@ -884,9 +919,15 @@ final class AssistantConversation {
 
         switch attempt(.photo) {
         case 1:
-            return finish(.capture(reason ?? "Prenez le bon de livraison en photo."))
+            return finish(.capture(
+                prompt: reason ?? "Prenez le bon de livraison en photo.",
+                canSkip: false
+            ))
         case 2:
-            return finish(.capture(reason ?? "Cadrez le bon bien à plat, l'en-tête visible."))
+            return finish(.capture(
+                prompt: reason ?? "Cadrez le bon bien à plat, l'en-tête visible.",
+                canSkip: false
+            ))
         default:
             // Deux lectures manquées : la photo n'y arrivera pas, et
             // insister ferait perdre plus de temps que la saisie.
@@ -896,11 +937,72 @@ final class AssistantConversation {
         }
     }
 
+    /// Demande l'étiquette du produit en photo.
+    ///
+    /// Facultative, et c'est dit : une fiche sans photo reste une fiche
+    /// valable. La photo fait gagner le lot, la date du fabricant et les
+    /// allergènes — trois mentions qu'on ne dicte jamais de bon cœur.
+    private func askForLabelPhoto() -> Reaction {
+        phase = .awaitingDetail
+
+        switch attempt(.labelPhoto) {
+        case 1:
+            return finish(.capture(
+                prompt: "Prenez l'étiquette du produit en photo. "
+                    + "J'y lirai le lot, la date et les allergènes.",
+                canSkip: true
+            ))
+        default:
+            return skipLabelPhoto()
+        }
+    }
+
+    /// Continue sans photo : la fiche se fera sur ce qui a été dit.
+    func skipLabelPhoto() -> Reaction {
+        pending = nil
+        attempts = 0
+        return proposeProduct(scan: nil, photo: nil)
+    }
+
+    /// Construit la fiche à partir de ce qui a été lu, et l'annonce.
+    private func proposeProduct(scan: LabelScanResult?, photo: Data?) -> Reaction {
+        guard let started = product else { return offerTheMenu() }
+
+        let built = ProductDateReader.draft(
+            name: started.name,
+            quantity: started.quantity,
+            scan: scan,
+            photo: photo
+        )
+
+        // Le tableau d'abord, la question ensuite. La date proposée engage
+        // le registre : elle doit pouvoir être contestée avant d'être dite.
+        append(.assistant, "Voilà la fiche que je prépare.", report: AssistantReport(
+            title: "Fiche produit",
+            rows: ProductDateReader.rows(for: built),
+            spoken: "",
+            note: built.explanation
+        ))
+
+        product = nil
+        pending = nil
+        attempts = 0
+        return propose(.createProduct(built))
+    }
+
     /// Lit la photo et propose le contrôle qui en découle.
     ///
     /// La lecture est faite par `DateOCRService`, qui servait déjà aux
     /// étiquettes : Vision, hors ligne, rien ne sort de l'appareil.
     func receivePhoto(_ data: Data) async -> Reaction {
+        // Une fiche produit attend son étiquette : c'est elle qu'on lit.
+        if product != nil {
+            append(.cook, "Photo de l'étiquette.")
+            phase = .thinking
+            let scan = try? await DateOCRService.scan(imageData: data)
+            return proposeProduct(scan: scan, photo: data)
+        }
+
         append(.cook, "Photo du bon de livraison.")
         phase = .thinking
 
@@ -1272,6 +1374,13 @@ final class AssistantConversation {
             }
             return "\(equipmentName), \(Self.spokenDegrees(celsius)). \(verdict) J'enregistre ?"
 
+        case .createProduct(let built):
+            // La phrase dit la date ET d'où elle vient. Une date proposée
+            // sans sa raison ne se conteste pas, et ce qui ne se conteste
+            // pas finit par être accepté sans être lu.
+            let retrait = "À retirer le \(AppFormatters.shortDate(built.secondaryLimit))."
+            return "\(built.name). \(built.explanation) \(retrait) Je crée la fiche ?"
+
         case .recordDelivery(let draft):
             // Le récapitulatif dit tout ce qui sera inscrit, dans l'ordre du
             // quai. C'est la phrase sur laquelle on dit « oui » : elle doit
@@ -1319,6 +1428,11 @@ final class AssistantConversation {
         case .openedProduct(let name, _):
             return name.isEmpty ? "J'ouvre la fiche." : "J'ouvre la fiche de \(name)."
         case .recordTemperature: return "C'est noté."
+        case .createProduct(let built):
+            return built.openingDateGoverns
+                ? "La fiche est créée. L'étiquette portera la date d'ouverture."
+                : "La fiche est créée."
+
         case .recordDelivery(let draft):
             if draft.decision == .refused {
                 return "C'est enregistré comme refusée, avec le motif. "
@@ -1357,7 +1471,7 @@ final class AssistantConversation {
         case .show(let report):
             // La conclusion au fil, le détail dans le tableau attaché.
             append(.assistant, report.spoken, report: report)
-        case .capture(let text):
+        case .capture(let text, _):
             append(.assistant, text)
         case .failed:
             break

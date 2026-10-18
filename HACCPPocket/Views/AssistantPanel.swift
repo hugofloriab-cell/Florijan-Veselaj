@@ -79,6 +79,8 @@ struct AssistantPanel: View {
 
     /// La photo attendue, et le texte qui l'accompagne.
     @State private var captureRequest: String?
+    /// Vrai quand on peut continuer sans elle.
+    @State private var captureCanSkip = false
     @State private var isPresentingCamera = false
 
     /// La voix est un confort : on la coupe d'un geste, et le choix tient.
@@ -173,11 +175,12 @@ struct AssistantPanel: View {
             await say(report.spoken)
             await listenAgain()
 
-        case .capture(let prompt):
+        case .capture(let prompt, let canSkip):
             // On ne rouvre pas le micro : ce qu'on attend est une photo, et
             // un micro ouvert ne capterait que le bruit du quai pendant
             // qu'on cadre.
             captureRequest = prompt
+            captureCanSkip = canSkip
             await say(prompt)
 
         case .act(let action, let sentence):
@@ -200,6 +203,14 @@ struct AssistantPanel: View {
         isConversing = true
         handsFree = false
         await handle(await conversation.receivePhoto(data))
+    }
+
+    /// Continuer sans photo, quand elle n'est qu'un gain de temps.
+    private func skipPhoto() async {
+        captureRequest = nil
+        isConversing = true
+        handsFree = false
+        await handle(conversation.skipLabelPhoto())
     }
 
     private func say(_ sentence: String) async {
@@ -256,6 +267,7 @@ struct AssistantPanel: View {
         conversation.reset()
         typed = ""
         captureRequest = nil
+        captureCanSkip = false
     }
 
     // MARK: - En haut : l'accueil, ou l'échange
@@ -485,6 +497,15 @@ struct AssistantPanel: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 #endif
+
+                if captureCanSkip {
+                    Button("Continuer sans photo") {
+                        Task { await skipPhoto() }
+                    }
+                    .font(.subheadline)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(Color.brand)
+                }
 
                 Text("La lecture se fait sur l'iPhone. La photo ne quitte pas l'appareil.")
                     .font(.caption2)
