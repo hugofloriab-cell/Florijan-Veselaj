@@ -223,7 +223,7 @@ struct AssistantPanel: View {
         conversation.load(
             equipment: equipment,
             temperatures: makeTemperatureReport(),
-            operator: operatorName
+            checkedBy: operatorName
         )
         isTyping = false
         handsFree = true
@@ -239,7 +239,7 @@ struct AssistantPanel: View {
         conversation.load(
             equipment: equipment,
             temperatures: makeTemperatureReport(),
-            operator: operatorName
+            checkedBy: operatorName
         )
         typed = ""
         isTyping = false

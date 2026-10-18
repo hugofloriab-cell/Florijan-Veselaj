@@ -384,10 +384,12 @@ final class AssistantConversation {
     /// Les instructions du modèle en dépendent : changer la liste oblige à
     /// repartir d'une session neuve, sinon le modèle continuerait de
     /// raisonner sur l'ancien parc.
+    /// L'étiquette est `checkedBy` et non `operator` : ce dernier est un
+    /// mot-clé Swift, et le compilateur y lit une déclaration d'opérateur.
     func load(
         equipment list: [EquipmentBrief],
         temperatures: AssistantReport? = nil,
-        operator name: String = ""
+        checkedBy name: String = ""
     ) {
         temperatureReport = temperatures
         operatorName = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -655,7 +657,7 @@ final class AssistantConversation {
             return proposeTemperatureReading()
 
         case .operatorName:
-            let name = Self.operatorName(in: lastUtterance)
+            let name = Self.personName(in: lastUtterance)
             if !name.isEmpty { operatorName = name }
             return proposeDelivery()
 
@@ -907,7 +909,10 @@ final class AssistantConversation {
     }
 
     /// Le prénom dit, débarrassé de ce qui l'entoure.
-    private static func operatorName(in said: String) -> String {
+    ///
+    /// Nommée `personName` et non `operatorName` : une propriété stockée et
+    /// une fonction ne peuvent pas porter le même nom dans un même type.
+    private static func personName(in said: String) -> String {
         let words = said
             .split { !$0.isLetter && $0 != "-" }
             .map(String.init)
