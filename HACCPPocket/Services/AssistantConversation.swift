@@ -57,7 +57,7 @@ enum AssistantAction: Equatable {
     case recordTemperature(equipmentName: String, celsius: Double, isCompliant: Bool)
 
     /// Un contrôle à réception tiré d'une photo du bon de livraison.
-    case recordDelivery(reading: DeliveryNoteReader.Reading, photo: Data, operatorName: String)
+    case recordDelivery(DeliveryDraft)
 
     case temperatures
     case cleaning
@@ -72,7 +72,8 @@ enum AssistantAction: Equatable {
         case .openedProduct: return "Produit entamé"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "Relevé conforme" : "Relevé hors plage"
-        case .recordDelivery: return "Contrôle à réception"
+        case .recordDelivery(let draft):
+            return draft.hasAnomaly ? "Réception avec anomalie" : "Contrôle à réception"
         case .temperatures:  return "Relevé de température"
         case .cleaning:      return "Nettoyage"
         case .foodSample:    return "Plat témoin"
@@ -86,7 +87,10 @@ enum AssistantAction: Equatable {
         case .openedProduct: return "shippingbox"
         case .recordTemperature(_, _, let isCompliant):
             return isCompliant ? "thermometer.medium" : "exclamationmark.triangle.fill"
-        case .recordDelivery: return "shippingbox.and.arrow.backward"
+        case .recordDelivery(let draft):
+            return draft.hasAnomaly
+                ? "exclamationmark.triangle.fill"
+                : "shippingbox.and.arrow.backward"
         case .temperatures:  return "thermometer.medium"
         case .cleaning:      return "sparkles"
         case .foodSample:    return "takeoutbag.and.cup.and.straw"
@@ -117,9 +121,16 @@ enum AssistantAction: Equatable {
             return parts.isEmpty ? nil : parts.joined(separator: " · ")
         case .recordTemperature(let equipmentName, let celsius, _):
             return "\(equipmentName) · \(AssistantAction.written(celsius)) °C"
-        case .recordDelivery(let reading, _, let operatorName):
-            let parts = [reading.summary, operatorName].filter { !$0.isEmpty }
-            return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        case .recordDelivery(let draft):
+            var parts = [draft.reading.summary]
+            if let goods = draft.goodsTemperature {
+                parts.append("\(AssistantAction.written(goods)) °C")
+            }
+            if draft.packagingIntact == false { parts.append("emballages abîmés") }
+            if draft.decision == .refused { parts.append("refusée") }
+            parts.append(draft.operatorName)
+            let kept = parts.filter { !$0.isEmpty }
+            return kept.isEmpty ? nil : kept.joined(separator: " · ")
         default:
             return nil
         }
@@ -263,13 +274,8 @@ final class AssistantConversation {
     /// registre anonyme.
     private(set) var operatorName = ""
 
-    /// La livraison lue, en attente du nom de qui la contrôle.
-    private struct PendingDelivery {
-        var reading: DeliveryNoteReader.Reading
-        var photo: Data
-    }
-
-    private var pendingDelivery: PendingDelivery?
+    /// Le contrôle en cours de constitution, entre la photo et l'accord.
+    private var draft: DeliveryDraft?
 
     /// Les enceintes réellement enregistrées, fournies par l'écran.
     ///
@@ -304,6 +310,14 @@ final class AssistantConversation {
         case photo
         /// On attend le nom de la personne qui contrôle.
         case operatorName
+        /// On attend la température de la marchandise.
+        case goodsTemperature
+        /// On attend la température affichée par le camion.
+        case truckTemperature
+        /// On attend l'état des emballages.
+        case packaging
+        /// On attend d'accepter ou de refuser une livraison non conforme.
+        case decision
         /// On attend un oui ou un non sur une proposition.
         case confirmation
         /// On ne sait même pas de quoi il s'agit.
@@ -315,7 +329,9 @@ final class AssistantConversation {
         /// proposition, ou reconnaître une demande, demande de classer.
         var isAnsweredByCode: Bool {
             switch self {
-            case .productName, .equipment, .temperature, .operatorName: return true
+            case .productName, .equipment, .temperature, .operatorName,
+                 .goodsTemperature, .truckTemperature, .packaging, .decision:
+                return true
             // Une photo n'est pas du texte, et parler pendant qu'on en
             // attend une est une demande neuve : au modèle de trancher.
             case .photo, .confirmation, .intent: return false
@@ -361,7 +377,9 @@ final class AssistantConversation {
         pending = nil
         attempts = 0
         lastUtterance = ""
-        pendingDelivery = nil
+        draft = nil
+        skipped = []
+        hasDecided = false
         sessionBox = nil
     }
 
@@ -377,6 +395,9 @@ final class AssistantConversation {
         recordingTemperature = false
         pending = nil
         attempts = 0
+        draft = nil
+        skipped = []
+        hasDecided = false
     }
 
     /// Donne à l'assistant le parc réel de l'établissement.
@@ -658,7 +679,48 @@ final class AssistantConversation {
 
         case .operatorName:
             let name = Self.personName(in: lastUtterance)
-            if !name.isEmpty { operatorName = name }
+            if !name.isEmpty {
+                operatorName = name
+                draft?.operatorName = name
+            }
+            return proposeDelivery()
+
+        case .goodsTemperature:
+            if let degrees = SpokenTemperature.parse(lastUtterance, assumingTemperature: true) {
+                draft?.goodsTemperature = degrees
+            } else if Self.declinesToAnswer(lastUtterance) {
+                giveUp(on: .goodsTemperature)
+            }
+            return proposeDelivery()
+
+        case .truckTemperature:
+            if let degrees = SpokenTemperature.parse(lastUtterance, assumingTemperature: true) {
+                draft?.truckTemperature = degrees
+            } else {
+                // Tous les transporteurs n'affichent pas de température :
+                // une réponse qui n'en contient pas vaut « pas d'affichage ».
+                giveUp(on: .truckTemperature)
+            }
+            return proposeDelivery()
+
+        case .packaging:
+            switch Self.agreement(in: lastUtterance) {
+            case .yes: draft?.packagingIntact = true
+            case .no:  draft?.packagingIntact = false
+            case .unclear: break
+            }
+            return proposeDelivery()
+
+        case .decision:
+            if Self.refuses(lastUtterance) {
+                draft?.decision = .refused
+                draft?.reason = Self.refusalReason(for: draft)
+                hasDecided = true
+            } else if Self.accepts(lastUtterance) {
+                draft?.decision = .accepted
+                draft?.reason = Self.refusalReason(for: draft)
+                hasDecided = true
+            }
             return proposeDelivery()
 
         case .photo, .confirmation, .intent:
@@ -865,33 +927,82 @@ final class AssistantConversation {
             note: "Vérifiez avant de valider : ce qui est lu de travers s'inscrit au registre."
         ))
 
-        pendingDelivery = PendingDelivery(reading: reading, photo: data)
+        draft = DeliveryDraft(reading: reading, photo: data, operatorName: operatorName)
         pending = nil
         attempts = 0
 
         return proposeDelivery()
     }
 
-    /// Propose le contrôle, une fois qu'on sait qui le signe.
+    /// Mène le contrôle jusqu'au bout, une question à la fois.
+    ///
+    /// L'ordre suit celui du quai : qui contrôle, à quelle température la
+    /// marchandise est arrivée, ce qu'affichait le camion, dans quel état
+    /// sont les emballages. Chaque réponse rappelle cette méthode, qui
+    /// reprend là où elle s'était arrêtée.
+    ///
+    /// Le bon de livraison ne dit rien de tout cela. Il dit ce qui a été
+    /// livré ; le contrôle dit dans quel état c'est arrivé. Enregistrer le
+    /// premier sans le second produit un document qui ressemble à un
+    /// contrôle, se compte comme un contrôle, et ne prouve rien.
     private func proposeDelivery() -> Reaction {
-        guard let delivery = pendingDelivery else { return offerTheMenu() }
+        guard var current = draft else { return offerTheMenu() }
 
-        guard !operatorName.isEmpty else { return askForOperator() }
+        if current.operatorName.isEmpty, !operatorName.isEmpty {
+            current.operatorName = operatorName
+            draft = current
+        }
 
-        pendingDelivery = nil
-        return propose(.recordDelivery(
-            reading: delivery.reading,
-            photo: delivery.photo,
-            operatorName: operatorName
-        ))
+        guard !current.operatorName.isEmpty else { return askForOperator() }
+
+        // L'épicerie sèche n'a pas de seuil : lui demander une température
+        // serait une question pour rien, et les questions pour rien sont ce
+        // qui fait abandonner un registre.
+        if current.reading.temperatureLimit != nil,
+           current.goodsTemperature == nil,
+           !hasGivenUp(on: .goodsTemperature) {
+            return askForGoodsTemperature()
+        }
+
+        if current.truckTemperature == nil, !hasGivenUp(on: .truckTemperature) {
+            return askForTruckTemperature()
+        }
+
+        if current.packagingIntact == nil, !hasGivenUp(on: .packaging) {
+            return askForPackaging()
+        }
+
+        // Une anomalie impose une décision explicite. Accepter sans le dire
+        // une marchandise hors limite, c'est signer une conformité fausse.
+        if current.hasAnomaly, !hasDecided, !hasGivenUp(on: .decision) {
+            return askForDecision(current)
+        }
+
+        draft = nil
+        skipped = []
+        hasDecided = false
+        return propose(.recordDelivery(current))
+    }
+
+    /// Les questions auxquelles on a renoncé, pour ne pas les reposer.
+    private var skipped: Set<PendingQuestion> = []
+    private var hasDecided = false
+
+    private func hasGivenUp(on question: PendingQuestion) -> Bool {
+        skipped.contains(question)
+    }
+
+    private func giveUp(on question: PendingQuestion) {
+        skipped.insert(question)
+        pending = nil
+        attempts = 0
     }
 
     /// Demande qui contrôle la livraison.
     ///
     /// Jamais sauté : un contrôle sans nom d'opérateur ne vaut rien devant
-    /// un inspecteur, et c'est la mention que le cuisinier a signalée comme
-    /// la plus importante. Faute de réponse, on le dit au lieu de signer à
-    /// la place de quelqu'un.
+    /// un inspecteur. Faute de réponse, on l'écrit « non renseigné » au lieu
+    /// de signer à la place de quelqu'un.
     private func askForOperator() -> Reaction {
         phase = .awaitingDetail
 
@@ -903,9 +1014,128 @@ final class AssistantConversation {
         default:
             pending = nil
             attempts = 0
-            operatorName = "Non renseigné"
+            draft?.operatorName = "Non renseigné"
             return proposeDelivery()
         }
+    }
+
+    /// La température de la marchandise, sonde entre deux produits.
+    private func askForGoodsTemperature() -> Reaction {
+        phase = .awaitingDetail
+
+        switch attempt(.goodsTemperature) {
+        case 1:
+            let limit = draft?.reading.temperatureLimit
+            let consigne = limit.map { " La consigne est \(Self.spokenDegrees($0)) au plus." } ?? ""
+            return finish(.speak("À combien était la marchandise, sonde entre deux produits ?" + consigne))
+        case 2:
+            return finish(.speak("Dites le chiffre suivi du mot degrés, ou « pas prise »."))
+        default:
+            giveUp(on: .goodsTemperature)
+            return proposeDelivery()
+        }
+    }
+
+    /// La température du camion, telle que le transporteur l'affiche.
+    private func askForTruckTemperature() -> Reaction {
+        phase = .awaitingDetail
+
+        // Deux essais seulement : tous les transporteurs n'affichent pas de
+        // température, et insister sur une information qui n'existe pas
+        // ferait abandonner la saisie.
+        switch attempt(.truckTemperature) {
+        case 1:
+            return finish(.speak("Et la température affichée par le camion ?"))
+        default:
+            giveUp(on: .truckTemperature)
+            return proposeDelivery()
+        }
+    }
+
+    /// L'état des emballages : propreté et intégrité.
+    private func askForPackaging() -> Reaction {
+        phase = .awaitingDetail
+
+        switch attempt(.packaging) {
+        case 1:
+            return finish(.speak("Les emballages sont propres et intacts ?"))
+        case 2:
+            return finish(.speak("Répondez oui ou non."))
+        default:
+            giveUp(on: .packaging)
+            return proposeDelivery()
+        }
+    }
+
+    /// Accepter malgré l'anomalie, ou refuser.
+    private func askForDecision(_ current: DeliveryDraft) -> Reaction {
+        phase = .awaitingDetail
+
+        let trouble: String
+        if !current.isTemperatureCompliant, let goods = current.goodsTemperature {
+            trouble = "La marchandise est à \(Self.spokenDegrees(goods)), au-dessus de la consigne."
+        } else {
+            trouble = "Les emballages ne sont pas intacts."
+        }
+
+        switch attempt(.decision) {
+        case 1:
+            return finish(.speak("\(trouble) Vous acceptez quand même, ou vous refusez ?"))
+        case 2:
+            return finish(.speak("Dites « j'accepte » ou « je refuse »."))
+        default:
+            giveUp(on: .decision)
+            hasDecided = true
+            return proposeDelivery()
+        }
+    }
+
+    /// « Pas prise », « je ne sais pas », « non ».
+    ///
+    /// Sert aux questions dont la réponse peut légitimement ne pas exister.
+    /// Insister sur une mesure qui n'a pas été faite ne la fait pas
+    /// apparaître ; cela fait seulement abandonner la saisie.
+    private static func declinesToAnswer(_ text: String) -> Bool {
+        let words = normalizedWords(of: text)
+        return !Set(["pas", "sais", "non", "rien", "aucune", "aucun",
+                     "oublie", "oubli", "prise", "pris", "passe"])
+            .isDisjoint(with: words)
+    }
+
+    /// « Je refuse », « je retourne la palette ».
+    private static func refuses(_ text: String) -> Bool {
+        let words = normalizedWords(of: text)
+        return !Set(["refuse", "refus", "refuser", "retourne", "retour",
+                     "renvoie", "renvoyer", "rejette"]).isDisjoint(with: words)
+    }
+
+    private static func accepts(_ text: String) -> Bool {
+        let words = normalizedWords(of: text)
+        return !Set(["accepte", "accepter", "garde", "garder", "prends",
+                     "prendre", "quand", "meme", "oui"]).isDisjoint(with: words)
+    }
+
+    /// Le motif écrit au registre, qui doit dire ce qui n'allait pas.
+    ///
+    /// Un refus sans motif, comme une acceptation d'une marchandise hors
+    /// limite sans justification, est un dossier incomplet aux yeux d'un
+    /// inspecteur. La phrase est donc construite, jamais laissée vide.
+    private static func refusalReason(for draft: DeliveryDraft?) -> String {
+        guard let draft else { return "" }
+        var causes: [String] = []
+        if !draft.isTemperatureCompliant, let goods = draft.goodsTemperature {
+            let limit = draft.reading.temperatureLimit ?? 0
+            causes.append(
+                "température à réception \(AssistantAction.written(goods)) °C "
+                + "pour une consigne de \(AssistantAction.written(limit)) °C"
+            )
+        }
+        if draft.packagingIntact == false {
+            causes.append("emballages non intacts")
+        }
+        guard !causes.isEmpty else { return "" }
+        return causes.joined(separator: " ; ").prefix(1).uppercased()
+            + causes.joined(separator: " ; ").dropFirst()
     }
 
     /// Le prénom dit, débarrassé de ce qui l'entoure.
@@ -1042,9 +1272,26 @@ final class AssistantConversation {
             }
             return "\(equipmentName), \(Self.spokenDegrees(celsius)). \(verdict) J'enregistre ?"
 
-        case .recordDelivery(let reading, _, _):
-            let what = reading.summary.isEmpty ? "Bon de livraison lu" : reading.summary
-            return "\(what). J'enregistre le contrôle comme acceptée ?"
+        case .recordDelivery(let draft):
+            // Le récapitulatif dit tout ce qui sera inscrit, dans l'ordre du
+            // quai. C'est la phrase sur laquelle on dit « oui » : elle doit
+            // contenir ce qu'un inspecteur lira dans le registre.
+            var pieces: [String] = [
+                draft.reading.summary.isEmpty ? "Bon de livraison lu" : draft.reading.summary
+            ]
+            if let goods = draft.goodsTemperature {
+                pieces.append("marchandise à \(Self.spokenDegrees(goods))")
+            }
+            if let truck = draft.truckTemperature {
+                pieces.append("camion à \(Self.spokenDegrees(truck))")
+            }
+            if draft.packagingIntact == true { pieces.append("emballages intacts") }
+            if draft.packagingIntact == false { pieces.append("emballages abîmés") }
+
+            let question = draft.decision == .refused
+                ? "J'enregistre le refus ?"
+                : "J'enregistre le contrôle ?"
+            return pieces.joined(separator: ", ") + ". " + question
 
         case .temperatures: return "Relevé de température. J'ouvre ?"
         case .cleaning:     return "Nettoyage. J'ouvre ?"
@@ -1072,9 +1319,15 @@ final class AssistantConversation {
         case .openedProduct(let name, _):
             return name.isEmpty ? "J'ouvre la fiche." : "J'ouvre la fiche de \(name)."
         case .recordTemperature: return "C'est noté."
-        case .recordDelivery:
-            // Ce que la photo ne dit pas, et qui se constate sur le quai.
-            return "C'est enregistré. Vérifiez la température et l'état des emballages avant de laisser repartir le livreur."
+        case .recordDelivery(let draft):
+            if draft.decision == .refused {
+                return "C'est enregistré comme refusée, avec le motif. "
+                    + "Photographiez ce que vous refusez : c'est cette photo qui le justifie."
+            }
+            if draft.hasAnomaly {
+                return "C'est enregistré, avec l'anomalie et son motif."
+            }
+            return "C'est enregistré."
         case .temperatures: return "J'ouvre les températures."
         case .cleaning:     return "J'ouvre le nettoyage."
         case .foodSample:   return "J'ouvre les plats témoins."

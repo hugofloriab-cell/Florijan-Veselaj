@@ -208,15 +208,15 @@ struct DashboardView: View {
                 : "Relevé enregistré — hors plage, pensez à l'action corrective"
             celebration = UUID()
 
-        case .recordDelivery(let reading, let photo, let operatorName):
-            // Ce que la photo donne est inscrit ; ce qu'elle ne peut pas
-            // donner reste à constater sur le quai.
+        case .recordDelivery(let draft):
+            let reading = draft.reading
+
+            // Les notes disent aussi ce qui n'a PAS été relevé.
             //
-            // Le seuil de température compte autant que le reste : le
-            // formulaire de réception en déduit la famille de marchandise.
-            // Ne pas le renseigner classait une livraison de viande en
-            // épicerie sèche, ce qui supprime l'exigence de température —
-            // exactement le contraire du but.
+            // Un contrôle muet sur la température se lit comme un contrôle
+            // conforme, alors qu'il est seulement incomplet. L'écrire noir
+            // sur blanc évite de prendre l'un pour l'autre trois semaines
+            // plus tard.
             var notes = "Contrôle créé par l'assistant à partir du bon de livraison."
             if !reading.reference.isEmpty {
                 notes += " Bon n° \(reading.reference)."
@@ -230,14 +230,27 @@ struct DashboardView: View {
             if let expiry = reading.expiry {
                 notes += " DLC la plus proche lue sur le bon : \(AppFormatters.shortDate(expiry))."
             }
+            if let truck = draft.truckTemperature {
+                notes += " Température affichée par le camion : \(AppFormatters.temperature(truck))."
+            }
+            if draft.goodsTemperature == nil {
+                notes += " Température de la marchandise non relevée."
+            }
+            if draft.packagingIntact == nil {
+                notes += " État des emballages non renseigné."
+            }
 
             let check = DeliveryCheck(
                 supplierName: reading.supplier.isEmpty ? "Fournisseur à préciser" : reading.supplier,
                 productLabel: reading.mainProduct,
+                temperature: draft.goodsTemperature,
                 temperatureLimit: reading.temperatureLimit,
+                packagingIntact: draft.packagingIntact ?? true,
+                decision: draft.decision,
+                reason: draft.reason,
                 batchNumber: reading.mainLot,
-                operatorName: operatorName,
-                photoData: photo,
+                operatorName: draft.operatorName,
+                photoData: draft.photo,
                 notes: notes
             )
             modelContext.insert(check)
@@ -247,14 +260,21 @@ struct DashboardView: View {
             // elle existait dans la base sans apparaître nulle part.
             let document = DeliveryDocument(
                 kind: .deliveryNote,
-                photoData: photo,
+                photoData: draft.photo,
                 note: reading.reference.isEmpty ? "" : "Bon n° \(reading.reference)",
                 delivery: check
             )
             modelContext.insert(document)
 
             try? modelContext.save()
-            celebrationMessage = "Contrôle à réception enregistré"
+
+            if draft.decision == .refused {
+                celebrationMessage = "Réception refusée, motif enregistré"
+            } else if draft.hasAnomaly {
+                celebrationMessage = "Contrôle enregistré avec anomalie"
+            } else {
+                celebrationMessage = "Contrôle à réception enregistré"
+            }
             celebration = UUID()
 
         case .temperatures:

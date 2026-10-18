@@ -40,6 +40,58 @@
 
 import Foundation
 
+/// Un contrôle à réception en cours de constitution.
+///
+/// ─────────────────────────────────────────────────────────────────────────
+/// POURQUOI CES TROIS QUESTIONS NE SE SAUTENT PAS
+/// ─────────────────────────────────────────────────────────────────────────
+///
+/// Le bon de livraison dit ce qui a été livré. Il ne dit rien de l'état
+/// dans lequel la marchandise est arrivée, et c'est pourtant tout l'objet
+/// d'un contrôle à réception : le règlement 852/2004 demande de vérifier la
+/// chaîne du froid et l'intégrité des emballages à la livraison.
+///
+/// Un contrôle enregistré sans température ni état des emballages ressemble
+/// à un contrôle, se compte comme un contrôle, et ne prouve rien. C'est
+/// même pire qu'une absence de contrôle : il donne l'illusion que la
+/// vérification a eu lieu.
+///
+/// La température se prend **entre deux produits**, pas en piquant dans la
+/// marchandise — c'est la méthode admise, et la seule qui n'abîme pas le
+/// produit livré.
+struct DeliveryDraft: Equatable, Sendable {
+    var reading: DeliveryNoteReader.Reading
+    var photo: Data
+    var operatorName: String = ""
+
+    /// Température de la marchandise, sonde entre deux produits.
+    var goodsTemperature: Double?
+
+    /// Température affichée par le camion, quand le transporteur la donne.
+    var truckTemperature: Double?
+
+    var packagingIntact: Bool?
+
+    var decision: DeliveryDecision = .accepted
+    var reason: String = ""
+
+    /// La température relevée respecte-t-elle le seuil de la famille ?
+    ///
+    /// `true` aussi quand il n'y a pas de seuil — l'épicerie sèche n'en a
+    /// pas — ou quand rien n'a été relevé : on ne déclare pas une
+    /// non-conformité sur une mesure absente.
+    var isTemperatureCompliant: Bool {
+        guard let limit = reading.temperatureLimit, let measured = goodsTemperature else {
+            return true
+        }
+        return limit < 0 ? measured <= limit + 3 : measured <= limit
+    }
+
+    var hasAnomaly: Bool {
+        !isTemperatureCompliant || packagingIntact == false
+    }
+}
+
 enum DeliveryNoteReader {
 
     /// Ce qu'on a pu lire sur le bon.
