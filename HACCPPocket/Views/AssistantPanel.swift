@@ -43,14 +43,14 @@ import SwiftUI
 struct AssistantPanel: View {
 
     /// Le prénom saisi dans les réglages, s'il y en a un.
+    ///
+    /// Il sert à deux choses : la salutation, et la signature du contrôle à
+    /// réception. Vide, l'assistant demandera qui contrôle — un registre
+    /// anonyme ne vaut rien devant un inspecteur.
     var operatorName: String = ""
 
     /// Le parc réel, pour que l'assistant n'invente pas d'enceinte.
     var equipment: [EquipmentBrief] = []
-
-    /// Le nom de la personne qui contrôle, repris des réglages. Vide, il
-    /// sera demandé — un registre anonyme ne vaut rien.
-    var operatorName: String = ""
 
     /// Comment obtenir le relevé du jour, au moment où on le demande.
     ///
