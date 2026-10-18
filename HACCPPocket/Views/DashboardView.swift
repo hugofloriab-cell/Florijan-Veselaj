@@ -44,25 +44,6 @@ struct DashboardView: View {
     /// Change à chaque tâche terminée, ce qui relance l'animation.
     @State private var showsSettings = false
 
-    /// L'assistant vocal.
-    ///
-    /// Présenté en feuille depuis l'accueil, et non comme un sixième onglet :
-    /// la barre en compte déjà cinq, et iOS replie tout le reste dans un
-    /// « Plus » que personne ne va chercher. C'est aussi un aveu : tant que
-    /// l'assistant n'a pas fait ses preuves en service, il n'a pas à prendre
-    /// la place d'un écran qui, lui, sert tous les jours.
-    @State private var showsAssistant = false
-
-    /// L'action retenue, gardée le temps que la feuille se ferme.
-    ///
-    /// iOS refuse d'ouvrir une feuille pendant qu'une autre se referme :
-    /// on attend donc la fermeture pour agir, au lieu de chaîner les deux.
-    @State private var pendingAssistantAction: AssistantAction?
-
-    /// La demande déjà formulée au moment d'ouvrir l'assistant : tapée dans
-    /// le champ de l'accueil, ou venue d'une suggestion.
-    @State private var assistantRequest = ""
-
     /// Fiche produit pré-remplie par l'assistant.
     @State private var assistantPrefill: ProductPrefill?
     /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
@@ -86,11 +67,12 @@ struct DashboardView: View {
 
                     AssistantPanel(
                         operatorName: preferences.operatorName,
-                        drawsBackground: false
-                    ) { request in
-                        assistantRequest = request
-                        showsAssistant = true
-                    }
+                        equipment: equipmentBriefs,
+                        makeTemperatureReport: {
+                            AssistantReportBuilder.temperatures(for: equipments)
+                        },
+                        onAction: perform
+                    )
 
                     if !subscription.isSubscribed {
                         subscriptionCard
@@ -134,28 +116,8 @@ struct DashboardView: View {
                         Label("Réglages", systemImage: "gearshape")
                     }
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showsAssistant = true
-                    } label: {
-                        Label("Assistant", systemImage: "mic.circle")
-                    }
-                }
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
-            // Plein écran, et non une feuille : l'assistant est un endroit
-            // où l'on reste le temps d'un échange, pas une fenêtre qu'on
-            // fait glisser par mégarde en plein milieu d'une phrase.
-            .fullScreenCover(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
-                AssistantView(
-                    equipment: equipmentBriefs,
-                    temperatureReport: AssistantReportBuilder.temperatures(for: equipments),
-                    initialRequest: assistantRequest
-                ) { action in
-                    pendingAssistantAction = action
-                    showsAssistant = false
-                }
-            }
             .sheet(item: $assistantPrefill) { prefill in
                 ProductFormView(prefill: prefill, context: modelContext)
             }
@@ -212,10 +174,7 @@ struct DashboardView: View {
     /// L'assistant ne navigue pas lui-même : il a proposé, l'utilisateur a
     /// validé, et c'est l'accueil qui agit. Un écran qui se déplace tout
     /// seul pendant qu'on parle serait désagréable, et difficile à annuler.
-    private func performPendingAssistantAction() {
-        guard let action = pendingAssistantAction else { return }
-        pendingAssistantAction = nil
-
+    private func perform(_ action: AssistantAction) {
         switch action {
         case .openedProduct(let name, let quantity):
             // Le nom arrive pré-rempli, jamais la date : celle-ci reste

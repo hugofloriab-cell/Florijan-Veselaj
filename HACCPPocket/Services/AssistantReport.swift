@@ -73,7 +73,6 @@ enum AssistantReportBuilder {
     /// Une enceinte sans relevé apparaît quand même, signalée : un tableau
     /// qui ne montrerait que ce qui a été fait laisserait croire que tout
     /// est fait. C'est précisément l'oubli qu'un contrôle sanctionne.
-    @MainActor
     static func temperatures(
         for equipment: [Equipment],
         on day: Date = .now,

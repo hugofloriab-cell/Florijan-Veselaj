@@ -473,6 +473,19 @@ final class AssistantConversation {
 
         #if canImport(FoundationModels)
         if #available(iOS 26.0, macOS 26.0, visionOS 26.0, *) {
+            // L'aiguillage par mots-clés d'abord.
+            //
+            // « Montre-moi les températures » ne laisse aucune place au
+            // doute, et le modèle s'y trompait. Trois mots suffisent à
+            // décider : inutile de déranger un modèle, qui met un instant
+            // à répondre et peut se tromper. Il garde tout le reste.
+            if let guessed = SpokenIntentGuess.intent(in: said) {
+                if guessed == .produitEntame, productName.isEmpty {
+                    productName = SpokenProduct.name(in: said)
+                }
+                return decide(guessed)
+            }
+
             return await respond(to: said)
         }
         #endif

@@ -2,29 +2,40 @@
 //  AssistantPanel.swift
 //  HACCPPocket
 //
-//  L'assistant en haut de l'accueil, et tout le reste en dessous.
+//  L'assistant, sur la page d'accueil, sans jamais en sortir.
 //
 //  ─────────────────────────────────────────────────────────────────────────
-//  POURQUOI CE BLOC NE RESSEMBLE À RIEN D'AUTRE DANS L'APPLICATION
+//  POURQUOI TOUT TIENT ICI
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  Le reste de l'application est une suite de listes grises : c'est un
-//  registre, et un registre doit être sobre et lisible. L'assistant, lui,
-//  est l'endroit où l'on parle. S'il avait la même apparence, il passerait
-//  pour une rubrique parmi douze.
+//  L'assistant s'ouvrait dans un écran séparé. Une page blanche recouvrait
+//  la page bleue au premier mot, et il fallait la refermer pour revenir.
+//  Deux endroits pour une seule conversation : l'un où l'on demande,
+//  l'autre où l'on répond.
 //
-//  D'où le fond coloré, le texte blanc et la taille : on doit le trouver
-//  sans chercher, les mains occupées, en entrant en cuisine.
+//  Tout se passe désormais au même endroit. La salutation laisse place au
+//  fil de l'échange, le micro ne bouge pas, et les cartes du registre
+//  restent en dessous. Rien ne s'ouvre, rien ne se referme.
 //
 //  ─────────────────────────────────────────────────────────────────────────
 //  DEUX FAÇONS DE DEMANDER
 //  ─────────────────────────────────────────────────────────────────────────
 //
-//  La voix d'abord, parce que c'est le but : parler au lieu de taper. Mais
-//  une hotte à pleine puissance couvre une voix, et il y a des services où
-//  la dictée ne passera pas. Le champ de saisie est là pour ces moments,
-//  pas comme un pis-aller : une demande tapée suit exactement le même
-//  chemin qu'une demande dite.
+//  La voix d'abord : c'est le but, parler au lieu de taper, les mains dans
+//  un bac. Mais une hotte à pleine puissance couvre une voix. Le champ de
+//  saisie n'est pas un pis-aller : une demande tapée suit exactement le
+//  même chemin qu'une demande dite.
+//
+//  Le micro ne se rouvre seul qu'après une demande parlée. Quelqu'un qui
+//  écrit le fait parce que la voix ne passe pas ; lui ouvrir le micro ne
+//  capterait que la hotte.
+//
+//  ─────────────────────────────────────────────────────────────────────────
+//  CE QUI ARRÊTE LA BOUCLE
+//  ─────────────────────────────────────────────────────────────────────────
+//
+//  Un silence, un mot d'arrêt, ou un accord donné. Le silence compte : sans
+//  lui, une cuisine vide relancerait le micro indéfiniment.
 //
 
 import SwiftUI
@@ -34,45 +45,171 @@ struct AssistantPanel: View {
     /// Le prénom saisi dans les réglages, s'il y en a un.
     var operatorName: String = ""
 
-    /// Dessine son propre fond coloré.
+    /// Le parc réel, pour que l'assistant n'invente pas d'enceinte.
+    var equipment: [EquipmentBrief] = []
+
+    /// Comment obtenir le relevé du jour, au moment où on le demande.
     ///
-    /// Faux quand la page entière est déjà bleue : un cadre dans un fond de
-    /// même couleur ne délimiterait rien et ferait une tache.
-    var drawsBackground: Bool = true
+    /// Une fermeture, et non un tableau tout fait : construit à chaque
+    /// rendu, un tableau porte un identifiant neuf à chaque fois, ce qui
+    /// passait pour un changement, provoquait un nouveau rendu, et bouclait.
+    /// Et le relevé doit de toute façon refléter l'état du registre à
+    /// l'instant de la question, pas à l'ouverture de la page.
+    var makeTemperatureReport: () -> AssistantReport? = { nil }
 
-    /// Lance l'assistant. Chaîne vide pour la voix, sinon la demande déjà
-    /// écrite — l'assistant la traitera comme si elle avait été dite.
-    var onStart: (String) -> Void
+    /// Ce que l'accueil doit faire une fois l'accord donné : ouvrir un
+    /// écran, ou inscrire au registre. L'assistant propose, il n'agit pas.
+    var onAction: (AssistantAction) -> Void = { _ in }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @State private var dictation = VoiceDictation()
+    @State private var conversation = AssistantConversation()
+    @State private var narrator = PiperNarrator()
+    @State private var intelligence = IntelligenceAvailability.needsNewerSystem
+
+    @State private var isConversing = false
+    @State private var handsFree = true
     @State private var typed = ""
     @FocusState private var isTyping: Bool
 
+    /// La voix est un confort : on la coupe d'un geste, et le choix tient.
+    @AppStorage("haccp.assistant.voice") private var voiceEnabled = true
+
+    private var hasStarted: Bool { !conversation.turns.isEmpty }
+
     var body: some View {
-        VStack(spacing: 18) {
-            greeting
+        VStack(spacing: 16) {
+            if hasStarted {
+                threadHeader
+                thread
+            } else {
+                greeting
+            }
+
+            confirmationCard
+
             microphone
             field
-            suggestions
-        }
-        .padding(.vertical, drawsBackground ? 24 : 8)
-        .padding(.horizontal, 18)
-        .frame(maxWidth: .infinity)
-        .background {
-            if drawsBackground {
-                background.clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+
+            if !hasStarted {
+                suggestions
             }
+
+            trouble
+        }
+        .padding(.horizontal, 2)
+        .task {
+            intelligence = .current
+            // Le modèle de voix pèse soixante mégaoctets : on le charge à
+            // l'ouverture de la page, pas au premier mot prononcé.
+            await narrator.prepare()
+        }
+        // La dictée s'arrête d'elle-même après un silence. C'est ce
+        // moment-là qui fait avancer l'échange, pas un bouton de plus à
+        // toucher les mains occupées.
+        .onChange(of: dictation.isListening) { wasListening, isListening in
+            guard wasListening, !isListening else { return }
+            let said = dictation.transcript
+            dictation.clear()
+            Task { await advance(with: said) }
         }
     }
 
-    // MARK: - Les morceaux
+    // MARK: - La boucle
 
-    private var background: some View {
-        LinearGradient(
-            colors: [Color.brand, Color.brand.opacity(0.78)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    private func advance(with said: String) async {
+        // Toucher le bouton pendant qu'on écoute, c'est renoncer. Le micro
+        // s'arrête alors comme à la fin d'une phrase, mais `isConversing`
+        // est déjà retombé.
+        guard isConversing else { return }
+
+        let text = said.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Un silence ferme l'échange. Sans cette porte de sortie, une
+        // cuisine vide relancerait le micro sans fin.
+        guard !text.isEmpty else {
+            isConversing = false
+            return
+        }
+
+        switch await conversation.send(text) {
+        case .speak(let sentence):
+            await say(sentence)
+            await listenAgain()
+
+        case .confirm(_, let sentence):
+            await say(sentence)
+            await listenAgain()
+
+        case .show(let report):
+            // Seule la conclusion est dite. Le détail est à l'écran, et
+            // l'échange continue.
+            await say(report.spoken)
+            await listenAgain()
+
+        case .act(let action, let sentence):
+            await say(sentence)
+            isConversing = false
+            onAction(action)
+
+        case .stop(let sentence):
+            await say(sentence)
+            isConversing = false
+
+        case .failed:
+            isConversing = false
+        }
     }
+
+    private func say(_ sentence: String) async {
+        guard voiceEnabled, narrator.isAvailable else { return }
+        await narrator.speak(sentence)
+    }
+
+    private func listenAgain() async {
+        guard isConversing, handsFree else { return }
+
+        // Un court silence laisse retomber le haut-parleur. Sans lui, le
+        // micro rattrape la fin de la phrase et l'assistant se répond.
+        try? await Task.sleep(for: .milliseconds(350))
+
+        guard isConversing, !dictation.isListening else { return }
+        dictation.clear()
+        await dictation.start()
+    }
+
+    private func beginListening() {
+        conversation.load(equipment: equipment, temperatures: makeTemperatureReport())
+        isTyping = false
+        handsFree = true
+        isConversing = true
+        dictation.clear()
+        Task { await dictation.start() }
+    }
+
+    private func send(_ request: String) {
+        let trimmed = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        conversation.load(equipment: equipment, temperatures: makeTemperatureReport())
+        typed = ""
+        isTyping = false
+        handsFree = false
+        isConversing = true
+        Task { await advance(with: trimmed) }
+    }
+
+    private func clearEverything() {
+        isConversing = false
+        dictation.stop()
+        dictation.clear()
+        narrator.stop()
+        conversation.reset()
+        typed = ""
+    }
+
+    // MARK: - En haut : l'accueil, ou l'échange
 
     private var greeting: some View {
         VStack(spacing: 4) {
@@ -85,33 +222,303 @@ struct AssistantPanel: View {
                 .foregroundStyle(.white.opacity(0.85))
         }
         .multilineTextAlignment(.center)
+        .padding(.top, 8)
     }
+
+    private var threadHeader: some View {
+        HStack {
+            Button {
+                voiceEnabled.toggle()
+                if !voiceEnabled { narrator.stop() }
+            } label: {
+                Image(systemName: voiceEnabled ? "speaker.wave.2.fill" : "speaker.slash.fill")
+                    .foregroundStyle(.white.opacity(0.9))
+            }
+            .buttonStyle(.plain)
+            .disabled(!narrator.isAvailable)
+            .accessibilityLabel(voiceEnabled ? "Couper la voix" : "Activer la voix")
+
+            Spacer()
+
+            Button("Effacer", action: clearEverything)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white.opacity(0.9))
+                .buttonStyle(.plain)
+        }
+        .padding(.top, 4)
+    }
+
+    // MARK: - Le fil
+
+    private var thread: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(conversation.turns) { turn in
+                bubble(for: turn)
+            }
+
+            // Ce qui est en train d'être dit, avant même que la phrase soit
+            // finie. Voir les mots arriver vaut tous les voyants.
+            if !dictation.transcript.isEmpty {
+                textBubble(for: .init(speaker: .cook, text: dictation.transcript))
+                    .opacity(0.6)
+            }
+
+            if case .thinking = conversation.phase {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .tint(.white)
+                    Text("Je réfléchis…")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func bubble(for turn: AssistantConversation.Turn) -> some View {
+        if let report = turn.report {
+            VStack(alignment: .leading, spacing: 8) {
+                textBubble(for: turn)
+                reportCard(report)
+            }
+        } else {
+            textBubble(for: turn)
+        }
+    }
+
+    /// Le cuisinier en translucide, l'assistant en blanc plein.
+    ///
+    /// L'asymétrie est volontaire : ce que dit l'assistant se relit, se
+    /// vérifie et se montre, donc il lui faut le fond le plus lisible.
+    private func textBubble(for turn: AssistantConversation.Turn) -> some View {
+        HStack {
+            if turn.speaker == .cook { Spacer(minLength: 36) }
+
+            Text(turn.text)
+                .font(.callout)
+                .foregroundStyle(turn.speaker == .cook ? Color.white : Color.primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(
+                    turn.speaker == .cook
+                        ? AnyShapeStyle(.white.opacity(0.22))
+                        : AnyShapeStyle(Color(.secondarySystemGroupedBackground)),
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+                )
+                .fixedSize(horizontal: false, vertical: true)
+
+            if turn.speaker == .assistant { Spacer(minLength: 36) }
+        }
+    }
+
+    // MARK: - Montrer plutôt que dire
+
+    /// Le tableau attaché à une réplique.
+    ///
+    /// Pleine largeur, contrairement aux bulles : on le parcourt du regard,
+    /// on le montre à un contrôleur, on le photographie. Une bulle de
+    /// conversation ne se prête à aucun des trois.
+    private func reportCard(_ report: AssistantReport) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(report.title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 0)
+                if report.alertCount > 0 {
+                    Text("\(report.alertCount) à voir")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.orange, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            if report.rows.isEmpty {
+                Text("Rien à afficher.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 12)
+            } else {
+                ForEach(report.rows) { row in
+                    if row.id != report.rows.first?.id {
+                        Divider().padding(.leading, 14)
+                    }
+                    reportRow(row)
+                }
+            }
+
+            if let note = report.note {
+                Divider()
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(14)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+    }
+
+    private func reportRow(_ row: AssistantReport.Row) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.label)
+                    .font(.callout)
+                Text(row.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(row.value)
+                .font(.callout.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(row.isAlert ? Color.orange : Color.primary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+    }
+
+    // MARK: - L'accord
+
+    /// La carte n'apparaît qu'au moment de décider.
+    ///
+    /// Elle double la voix sans la remplacer : « oui » suffit quand les
+    /// mains sont prises, le bouton reste là quand le bruit couvre tout.
+    @ViewBuilder
+    private var confirmationCard: some View {
+        switch conversation.phase {
+        case .failed(let reason):
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(reason)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(
+                Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+
+        case .awaitingConfirmation(let action):
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    Image(systemName: action.systemImage)
+                        .font(.title3)
+                        .foregroundStyle(Color.brand)
+                        .frame(width: 28)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(action.title)
+                            .font(.headline)
+                        if let detail = action.detail {
+                            Text(detail)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                Button {
+                    isConversing = false
+                    dictation.stop()
+                    onAction(action)
+                } label: {
+                    Text(action.actionLabel)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(Color.brand, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+
+                Text("Dites « oui » pour valider, « non » pour corriger.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(14)
+            .background(
+                Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            )
+
+        case .idle, .thinking, .awaitingDetail:
+            EmptyView()
+        }
+    }
+
+    // MARK: - Le micro
 
     private var microphone: some View {
         Button {
-            isTyping = false
-            onStart("")
+            if isConversing || dictation.isListening {
+                isConversing = false
+                dictation.stop()
+                narrator.stop()
+            } else {
+                beginListening()
+            }
         } label: {
             ZStack {
+                // L'anneau suit la voix. Il ne décore pas : le voir rester
+                // plat pendant qu'on parle, c'est comprendre aussitôt que
+                // le micro est couvert.
                 Circle()
-                    .fill(.white.opacity(0.16))
+                    .fill(.white.opacity(0.18))
                     .frame(width: 104, height: 104)
+                    .scaleEffect(reduceMotion ? 1 : 1 + dictation.level * 0.4)
+                    .animation(.easeOut(duration: 0.12), value: dictation.level)
 
                 Circle()
                     .strokeBorder(.white.opacity(0.35), lineWidth: 1)
                     .frame(width: 104, height: 104)
 
-                Image(systemName: "mic.fill")
-                    .font(.system(size: 38, weight: .medium))
+                Circle()
+                    .fill(circleFill)
+                    .frame(width: 84, height: 84)
+
+                Image(systemName: circleSymbol)
+                    .font(.system(size: 34, weight: .medium))
                     .foregroundStyle(.white)
             }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Parler à l'assistant")
-
+        .accessibilityLabel(isConversing ? "Arrêter l'échange" : "Parler à l'assistant")
     }
 
-    /// Le champ de saisie, pour les services où la voix ne passe pas.
+    private var circleFill: some ShapeStyle {
+        if dictation.isListening { return AnyShapeStyle(Color.red) }
+        if narrator.isSpeaking { return AnyShapeStyle(Color.green) }
+        return AnyShapeStyle(.white.opacity(0.22))
+    }
+
+    private var circleSymbol: String {
+        if dictation.isListening { return "stop.fill" }
+        if narrator.isSpeaking { return "speaker.wave.2.fill" }
+        return "mic.fill"
+    }
+
+    // MARK: - Écrire plutôt que parler
+
     private var field: some View {
         HStack(spacing: 10) {
             Image(systemName: "text.cursor")
@@ -121,18 +528,19 @@ struct AssistantPanel: View {
             TextField(
                 "",
                 text: $typed,
-                prompt: Text("Je voudrais… (ex : créer un produit)")
-                    .foregroundStyle(.white.opacity(0.6))
+                prompt: Text(fieldPrompt).foregroundStyle(.white.opacity(0.6))
             )
             .textFieldStyle(.plain)
             .foregroundStyle(.white)
             .tint(.white)
             .submitLabel(.send)
             .focused($isTyping)
-            .onSubmit(send)
+            .onSubmit { send(typed) }
 
             if !typed.isEmpty {
-                Button(action: send) {
+                Button {
+                    send(typed)
+                } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(.title3)
                         .foregroundStyle(.white)
@@ -144,19 +552,25 @@ struct AssistantPanel: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 11)
         .background(.white.opacity(0.14), in: Capsule())
+        .disabled(dictation.isListening)
+        .opacity(dictation.isListening ? 0.5 : 1)
     }
 
-    /// Trois départs possibles, pour qui ne sait pas quoi dire.
-    ///
-    /// Elles partent directement : une suggestion qu'il faudrait ensuite
-    /// valider d'un second geste ne ferait gagner aucun temps.
+    private var fieldPrompt: String {
+        if dictation.isListening { return "Je vous écoute…" }
+        if narrator.isSpeaking { return "Je parle…" }
+        if hasStarted { return "Répondre ou demander autre chose" }
+        return "Je voudrais… (ex : créer un produit)"
+    }
+
+    // MARK: - Trois départs possibles
+
     private var suggestions: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(Self.examples, id: \.self) { example in
                     Button {
-                        isTyping = false
-                        onStart(example)
+                        send(example)
                     } label: {
                         Text(example)
                             .font(.caption.weight(.medium))
@@ -174,24 +588,63 @@ struct AssistantPanel: View {
     }
 
     private static let examples = [
+        "Montre-moi les températures d'aujourd'hui",
         "J'entame un produit",
-        "Relever une température",
-        "J'ai fini un nettoyage"
+        "Relever une température"
     ]
 
-    private func send() {
-        let request = typed.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !request.isEmpty else { return }
-        typed = ""
-        isTyping = false
-        onStart(request)
+    // MARK: - Ce qui ne marche pas
+
+    /// Rien tant que tout va bien.
+    ///
+    /// Les trois voyants permanents répétaient la même bonne nouvelle sur
+    /// la moitié de l'écran. Ils ne servent que le jour où quelque chose
+    /// manque, et ce jour-là ils doivent nommer ce qui manque.
+    @ViewBuilder
+    private var trouble: some View {
+        let problems = currentProblems
+        if !problems.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(problems, id: \.self) { problem in
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.yellow)
+                        Text(problem)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.9))
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var currentProblems: [String] {
+        var problems: [String] = []
+        if !dictation.supportsFrenchOnDevice {
+            problems.append("Dictée française hors ligne indisponible sur cet iPhone.")
+        }
+        if !intelligence.isReady {
+            problems.append(intelligence.advice ?? intelligence.summary)
+        }
+        if let reason = narrator.unavailableReason {
+            problems.append(reason)
+        }
+        return problems
     }
 }
 
 #Preview {
     ZStack {
-        Color(.systemGroupedBackground).ignoresSafeArea()
-        AssistantPanel(operatorName: "Florijan") { _ in }
-            .padding(16)
+        Color.brand.ignoresSafeArea()
+        ScrollView {
+            AssistantPanel(operatorName: "Florijan")
+                .padding(16)
+        }
     }
 }
