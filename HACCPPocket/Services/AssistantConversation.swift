@@ -142,6 +142,8 @@ enum SpokenIntent {
     case enregistrerTemperature
     /// La demande d'ouvrir l'écran des températures, sans rien y écrire.
     case ouvrirTemperatures
+    /// « Les températures d'aujourd'hui », « y a-t-il eu des écarts ».
+    case recapTemperatures
     case nettoyage
     case platTemoin
     case controleReception
@@ -167,7 +169,7 @@ enum SpokenIntent {
 @Generable(description: "Ce que demande un cuisinier à son registre d'hygiène")
 struct SpokenReply {
 
-    @Guide(description: "L'action demandée. « autre » si la phrase ne correspond à rien de précis.")
+    @Guide(description: "L'action demandée. enregistrerTemperature pour dicter un relevé, recapTemperatures pour consulter ceux de la journée, ouvrirTemperatures pour ouvrir l'écran. « autre » si rien ne correspond.")
     var intent: SpokenIntent
 
     @Guide(description: "Le nom de l'aliment cité, sans la quantité ni l'emballage. Chaîne vide si aucun aliment n'est cité.")
@@ -188,6 +190,8 @@ final class AssistantConversation {
         let id = UUID()
         let speaker: Speaker
         let text: String
+        /// Le tableau affiché sous la réplique, quand il y en a un.
+        var report: AssistantReport? = nil
     }
 
     /// Où en est l'échange. Sert à l'affichage, pas à décider.
@@ -213,6 +217,8 @@ final class AssistantConversation {
         case confirm(AssistantAction, String)
         /// L'accord est donné : dire la phrase, puis ouvrir l'écran.
         case act(AssistantAction, String)
+        /// Montrer un tableau, en n'en disant que la conclusion.
+        case show(AssistantReport)
         /// Fin de l'échange : dire la phrase et refermer le micro.
         case stop(String)
         /// Rien ne s'est passé comme prévu, et on dit pourquoi.
@@ -230,6 +236,13 @@ final class AssistantConversation {
     /// Le nom de l'aliment, retenu de la même façon. Le modèle le répète
     /// normalement à chaque tour ; s'il l'oublie, on ne le perd pas.
     private(set) var productName = ""
+
+    /// Le relevé du jour, préparé par l'écran à partir du registre.
+    ///
+    /// Calculé au moment d'ouvrir l'assistant, pas ici : les objets
+    /// SwiftData ne traversent pas les frontières de concurrence, et un
+    /// tableau déjà mis en forme les traverse sans difficulté.
+    private(set) var temperatureReport: AssistantReport?
 
     /// Les enceintes réellement enregistrées, fournies par l'écran.
     ///
@@ -337,7 +350,8 @@ final class AssistantConversation {
     /// Les instructions du modèle en dépendent : changer la liste oblige à
     /// repartir d'une session neuve, sinon le modèle continuerait de
     /// raisonner sur l'ancien parc.
-    func load(equipment list: [EquipmentBrief]) {
+    func load(equipment list: [EquipmentBrief], temperatures: AssistantReport? = nil) {
+        temperatureReport = temperatures
         guard list != equipment else { return }
         equipment = list
         sessionBox = nil
@@ -554,6 +568,7 @@ final class AssistantConversation {
         case .produitEntame:          return proposeOpenedProduct()
         case .enregistrerTemperature: return proposeTemperatureReading()
         case .ouvrirTemperatures:     return propose(.temperatures)
+        case .recapTemperatures:      return showTemperatures()
         case .nettoyage:              return propose(.cleaning)
         case .platTemoin:             return propose(.foodSample)
         case .controleReception:      return propose(.delivery)
@@ -720,6 +735,22 @@ final class AssistantConversation {
         return found.compare(name, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame
     }
 
+    /// Montre le relevé du jour, sans rien demander ni rien écrire.
+    ///
+    /// Aucune confirmation : lire n'engage à rien. C'est la différence de
+    /// nature entre montrer et agir, et elle se voit à l'usage — on ne dit
+    /// pas « oui » pour consulter un tableau.
+    private func showTemperatures() -> Reaction {
+        pending = nil
+        attempts = 0
+        phase = .idle
+
+        guard let report = temperatureReport else {
+            return finish(.speak("Je n'ai pas encore le relevé du jour."))
+        }
+        return finish(.show(report))
+    }
+
     /// Quand la demande ne correspond à rien de connu.
     private func offerTheMenu() -> Reaction {
         phase = .awaitingDetail
@@ -864,8 +895,8 @@ final class AssistantConversation {
 
     // MARK: - Le fil affiché
 
-    private func append(_ speaker: Turn.Speaker, _ text: String) {
-        turns.append(Turn(speaker: speaker, text: text))
+    private func append(_ speaker: Turn.Speaker, _ text: String, report: AssistantReport? = nil) {
+        turns.append(Turn(speaker: speaker, text: text, report: report))
         if turns.count > Self.maximumTurns {
             turns.removeFirst(turns.count - Self.maximumTurns)
         }
@@ -880,6 +911,9 @@ final class AssistantConversation {
             append(.assistant, text)
         case .confirm(_, let text), .act(_, let text):
             append(.assistant, text)
+        case .show(let report):
+            // La conclusion au fil, le détail dans le tableau attaché.
+            append(.assistant, report.spoken, report: report)
         case .failed:
             break
         }

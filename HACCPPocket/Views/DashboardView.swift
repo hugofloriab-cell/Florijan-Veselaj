@@ -77,14 +77,17 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: DS.sectionSpacing) {
                     Text(AppFormatters.sentenceCased(AppFormatters.longDay(.now)))
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.white.opacity(0.85))
                         .frame(maxWidth: .infinity, alignment: .leading)
 
                     // Un problème de stockage passe avant tout le reste :
                     // l'utilisateur doit le voir au premier lancement.
                     StoreStatusBanner()
 
-                    AssistantPanel(operatorName: preferences.operatorName) { request in
+                    AssistantPanel(
+                        operatorName: preferences.operatorName,
+                        drawsBackground: false
+                    ) { request in
                         assistantRequest = request
                         showsAssistant = true
                     }
@@ -105,7 +108,22 @@ struct DashboardView: View {
                 // devient illisible : on la borne et on la centre.
                 .readableWidth()
             }
-            .background(Color(.systemGroupedBackground))
+            // La page entière est bleue, bord à bord.
+            //
+            // L'assistant n'est plus une rubrique de l'accueil : il est
+            // l'accueil. Les cartes blanches du registre flottent dessus,
+            // ce qui dit l'ordre des choses — on parle d'abord, on consulte
+            // ensuite.
+            .background {
+                LinearGradient(
+                    colors: [Color.brand, Color.brand.opacity(0.88)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            }
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
             .successBurst(trigger: celebration, message: celebrationMessage)
             .navigationTitle("Aujourd'hui")
             .toolbar {
@@ -131,6 +149,7 @@ struct DashboardView: View {
             .fullScreenCover(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
                 AssistantView(
                     equipment: equipmentBriefs,
+                    temperatureReport: AssistantReportBuilder.temperatures(for: equipments),
                     initialRequest: assistantRequest
                 ) { action in
                     pendingAssistantAction = action

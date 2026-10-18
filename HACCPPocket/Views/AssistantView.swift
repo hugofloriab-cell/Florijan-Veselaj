@@ -47,6 +47,9 @@ struct AssistantView: View {
     /// dernier : `AssistantView(equipment: …) { action in … }`.
     var equipment: [EquipmentBrief] = []
 
+    /// Le relevé du jour, préparé par l'écran d'accueil.
+    var temperatureReport: AssistantReport?
+
     /// Une demande déjà formulée à l'ouverture de l'écran.
     ///
     /// L'accueil permet de taper ou de toucher une suggestion ; la demande
@@ -151,7 +154,7 @@ struct AssistantView: View {
                 // Le parc est donné avant le premier mot : les instructions
                 // du modèle le contiennent, et il ne peut donc pas inventer
                 // une enceinte qui n'existe pas.
-                conversation.load(equipment: equipment)
+                conversation.load(equipment: equipment, temperatures: temperatureReport)
 
                 // La demande venue de l'accueil part immédiatement. Elle a
                 // déjà coûté un geste : la faire répéter serait absurde.
@@ -213,6 +216,12 @@ struct AssistantView: View {
             await say(sentence)
             isConversing = false
             onAction(action)
+
+        case .show(let report):
+            // Seule la conclusion est dite. Le détail est à l'écran, et
+            // l'échange continue : on enchaîne souvent sur une correction.
+            await say(report.spoken)
+            await listenAgain()
 
         case .stop(let sentence):
             await say(sentence)
@@ -422,7 +431,19 @@ struct AssistantView: View {
     private static let pendingBubbleID = "en-cours"
     private static let thinkingBubbleID = "reflexion"
 
+    @ViewBuilder
     private func bubble(for turn: AssistantConversation.Turn) -> some View {
+        if let report = turn.report {
+            VStack(alignment: .leading, spacing: 8) {
+                textBubble(for: turn)
+                reportCard(report)
+            }
+        } else {
+            textBubble(for: turn)
+        }
+    }
+
+    private func textBubble(for turn: AssistantConversation.Turn) -> some View {
         HStack {
             if turn.speaker == .cook { Spacer(minLength: 40) }
 
@@ -439,6 +460,84 @@ struct AssistantView: View {
 
             if turn.speaker == .assistant { Spacer(minLength: 40) }
         }
+    }
+
+    // MARK: - Montrer plutôt que dire
+
+    /// Le tableau attaché à une réplique.
+    ///
+    /// Pleine largeur, contrairement aux bulles : on le parcourt du regard,
+    /// on le montre à un contrôleur, on le photographie. Une bulle de
+    /// conversation ne se prête à aucun des trois.
+    private func reportCard(_ report: AssistantReport) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Text(report.title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 0)
+                if report.alertCount > 0 {
+                    Text("\(report.alertCount) à voir")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Color.orange, in: Capsule())
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            if report.rows.isEmpty {
+                Text("Rien à afficher.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 12)
+            } else {
+                ForEach(report.rows) { row in
+                    if row.id != report.rows.first?.id {
+                        Divider().padding(.leading, 14)
+                    }
+                    reportRow(row)
+                }
+            }
+
+            if let note = report.note {
+                Divider()
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(14)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            Color(.secondarySystemGroupedBackground),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+    }
+
+    private func reportRow(_ row: AssistantReport.Row) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.label)
+                    .font(.callout)
+                Text(row.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(row.value)
+                .font(.callout.weight(.semibold))
+                .monospacedDigit()
+                .foregroundStyle(row.isAlert ? Color.orange : Color.primary)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
     }
 
     private func messageArea(systemImage: String, title: String, detail: String) -> some View {

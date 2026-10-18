@@ -34,6 +34,12 @@ struct AssistantPanel: View {
     /// Le prénom saisi dans les réglages, s'il y en a un.
     var operatorName: String = ""
 
+    /// Dessine son propre fond coloré.
+    ///
+    /// Faux quand la page entière est déjà bleue : un cadre dans un fond de
+    /// même couleur ne délimiterait rien et ferait une tache.
+    var drawsBackground: Bool = true
+
     /// Lance l'assistant. Chaîne vide pour la voix, sinon la demande déjà
     /// écrite — l'assistant la traitera comme si elle avait été dite.
     var onStart: (String) -> Void
@@ -48,11 +54,14 @@ struct AssistantPanel: View {
             field
             suggestions
         }
-        .padding(.vertical, 24)
+        .padding(.vertical, drawsBackground ? 24 : 8)
         .padding(.horizontal, 18)
         .frame(maxWidth: .infinity)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .background {
+            if drawsBackground {
+                background.clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            }
+        }
     }
 
     // MARK: - Les morceaux
