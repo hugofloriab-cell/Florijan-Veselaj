@@ -47,6 +47,12 @@ struct AssistantView: View {
     /// dernier : `AssistantView(equipment: …) { action in … }`.
     var equipment: [EquipmentBrief] = []
 
+    /// Une demande déjà formulée à l'ouverture de l'écran.
+    ///
+    /// L'accueil permet de taper ou de toucher une suggestion ; la demande
+    /// arrive alors ici et part aussitôt, sans qu'on ait à la répéter.
+    var initialRequest: String = ""
+
     /// Ce que l'écran rend quand l'accord est donné : à l'appelant d'ouvrir
     /// l'écran correspondant, ou d'écrire au registre. L'assistant ne
     /// navigue pas et n'enregistre pas lui-même : il propose.
@@ -62,6 +68,16 @@ struct AssistantView: View {
 
     /// L'échange mains libres est ouvert : le micro se rouvrira seul.
     @State private var isConversing = false
+
+    /// Le micro se rouvre tout seul entre deux répliques.
+    ///
+    /// Vrai par défaut, c'est le but de l'écran. Faux dès qu'on écrit :
+    /// quelqu'un qui tape le fait parce que la voix ne passe pas, et lui
+    /// ouvrir le micro ne ferait que capter la hotte.
+    @State private var handsFree = true
+
+    @State private var typed = ""
+    @FocusState private var isTyping: Bool
 
     /// Le diagnostic est replié tant que tout va bien. Il n'a d'intérêt que
     /// le jour où quelque chose manque.
@@ -79,6 +95,17 @@ struct AssistantView: View {
             ZStack {
                 Color(.systemGroupedBackground).ignoresSafeArea()
 
+                // Un halo coloré en haut d'écran. Le reste de
+                // l'application est gris parce que c'est un registre ;
+                // ici on parle, et l'endroit doit se reconnaître d'un
+                // coup d'œil.
+                LinearGradient(
+                    colors: [Color.brand.opacity(0.18), .clear],
+                    startPoint: .top,
+                    endPoint: .center
+                )
+                .ignoresSafeArea()
+
                 VStack(spacing: 0) {
                     diagnostic
                         .padding(.horizontal, 20)
@@ -89,6 +116,10 @@ struct AssistantView: View {
                     confirmationCard
                         .padding(.horizontal, 20)
                         .padding(.bottom, 16)
+
+                    typeField
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 10)
 
                     microphone
                         .padding(.bottom, 24)
@@ -121,6 +152,14 @@ struct AssistantView: View {
                 // du modèle le contiennent, et il ne peut donc pas inventer
                 // une enceinte qui n'existe pas.
                 conversation.load(equipment: equipment)
+
+                // La demande venue de l'accueil part immédiatement. Elle a
+                // déjà coûté un geste : la faire répéter serait absurde.
+                let request = initialRequest.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !request.isEmpty {
+                    isConversing = true
+                    await advance(with: request)
+                }
                 // Le modèle de voix pèse soixante mégaoctets : on le charge
                 // à l'ouverture de l'écran, pas au premier mot prononcé.
                 await narrator.prepare()
@@ -193,7 +232,7 @@ struct AssistantView: View {
 
     /// Rouvre le micro, une fois la phrase terminée.
     private func listenAgain() async {
-        guard isConversing else { return }
+        guard isConversing, handsFree else { return }
 
         // Un court silence laisse retomber le haut-parleur. Sans lui, le
         // micro rattrape la fin de la phrase et l'assistant se répond.
@@ -205,6 +244,7 @@ struct AssistantView: View {
     }
 
     private func beginConversing() {
+        handsFree = true
         isConversing = true
         dictation.clear()
         Task { await dictation.start() }
@@ -212,6 +252,7 @@ struct AssistantView: View {
 
     private func restart() {
         isConversing = false
+        typed = ""
         dictation.stop()
         dictation.clear()
         narrator.stop()
@@ -488,6 +529,52 @@ struct AssistantView: View {
         case .idle, .thinking, .awaitingDetail:
             EmptyView()
         }
+    }
+
+    // MARK: - Écrire plutôt que parler
+
+    /// Une demande tapée suit exactement le même chemin qu'une demande dite.
+    ///
+    /// Le champ est désactivé pendant l'écoute : taper et dicter en même
+    /// temps n'a pas de sens, et les deux textes se disputeraient le tour
+    /// de parole.
+    private var typeField: some View {
+        HStack(spacing: 10) {
+            TextField(
+                "",
+                text: $typed,
+                prompt: Text(dictation.isListening ? "Je vous écoute…" : "Ou écrivez votre demande")
+            )
+            .textFieldStyle(.plain)
+            .submitLabel(.send)
+            .focused($isTyping)
+            .onSubmit(sendTyped)
+
+            if !typed.isEmpty {
+                Button(action: sendTyped) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.brand)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Envoyer la demande")
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(Color(.secondarySystemGroupedBackground), in: Capsule())
+        .disabled(dictation.isListening)
+        .opacity(dictation.isListening ? 0.5 : 1)
+    }
+
+    private func sendTyped() {
+        let request = typed.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !request.isEmpty else { return }
+        typed = ""
+        isTyping = false
+        handsFree = false
+        isConversing = true
+        Task { await advance(with: request) }
     }
 
     // MARK: - Le bouton

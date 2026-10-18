@@ -17,6 +17,7 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(SubscriptionManager.self) private var subscription
     @Environment(AppRouter.self) private var router
+    @Environment(UserPreferences.self) private var preferences
 
     @Query(sort: \Equipment.sortIndex) private var equipments: [Equipment]
     @Query private var products: [TrackedProduct]
@@ -58,6 +59,10 @@ struct DashboardView: View {
     /// on attend donc la fermeture pour agir, au lieu de chaîner les deux.
     @State private var pendingAssistantAction: AssistantAction?
 
+    /// La demande déjà formulée au moment d'ouvrir l'assistant : tapée dans
+    /// le champ de l'accueil, ou venue d'une suggestion.
+    @State private var assistantRequest = ""
+
     /// Fiche produit pré-remplie par l'assistant.
     @State private var assistantPrefill: ProductPrefill?
     /// Les anomalies s'ouvrent d'elles-mêmes : les replier est un choix de
@@ -79,7 +84,10 @@ struct DashboardView: View {
                     // l'utilisateur doit le voir au premier lancement.
                     StoreStatusBanner()
 
-                    assistantButton
+                    AssistantPanel(operatorName: preferences.operatorName) { request in
+                        assistantRequest = request
+                        showsAssistant = true
+                    }
 
                     if !subscription.isSubscribed {
                         subscriptionCard
@@ -117,8 +125,14 @@ struct DashboardView: View {
                 }
             }
             .sheet(isPresented: $showsSettings) { SettingsView(showsDoneButton: true) }
-            .sheet(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
-                AssistantView(equipment: equipmentBriefs) { action in
+            // Plein écran, et non une feuille : l'assistant est un endroit
+            // où l'on reste le temps d'un échange, pas une fenêtre qu'on
+            // fait glisser par mégarde en plein milieu d'une phrase.
+            .fullScreenCover(isPresented: $showsAssistant, onDismiss: performPendingAssistantAction) {
+                AssistantView(
+                    equipment: equipmentBriefs,
+                    initialRequest: assistantRequest
+                ) { action in
                     pendingAssistantAction = action
                     showsAssistant = false
                 }
@@ -152,54 +166,6 @@ struct DashboardView: View {
                 }
             }
         }
-    }
-
-    // MARK: - L'entrée principale
-
-    /// Le gros bouton : on parle, et l'application s'occupe du reste.
-    ///
-    /// Il est placé haut et il est large parce que c'est devenu le chemin
-    /// normal, pas un raccourci pour initiés. Les tuiles en dessous restent
-    /// là pour qui préfère toucher, ou pour les jours où le bruit de la
-    /// cuisine rend la dictée pénible.
-    ///
-    /// L'icône du micro reste aussi dans la barre du haut : une fois la
-    /// page défilée, le bouton n'est plus visible, et il ne faut pas avoir
-    /// à remonter pour parler.
-    private var assistantButton: some View {
-        Button {
-            showsAssistant = true
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.18))
-                        .frame(width: 56, height: 56)
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 26, weight: .medium))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Demandez à l'assistant")
-                        .font(.headline)
-                        .foregroundStyle(.white)
-                    Text("Produit entamé, températures, nettoyage : dites-le, il ouvre ce qu'il faut.")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.85))
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer(minLength: 0)
-            }
-            .padding(18)
-            .frame(maxWidth: .infinity)
-            .background(Color.brand, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Demandez à l'assistant")
-        .accessibilityHint("Ouvre l'assistant vocal.")
     }
 
     // MARK: - Ce que l'assistant a demandé
