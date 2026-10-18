@@ -260,6 +260,21 @@ final class AssistantConversation {
         case productName
         case equipment
         case temperature
+        /// On attend un oui ou un non sur une proposition.
+        case confirmation
+        /// On ne sait même pas de quoi il s'agit.
+        case intent
+
+        /// Les questions dont la réponse se lit dans le texte, sans modèle.
+        ///
+        /// Les deux autres en ont besoin : juger qu'une phrase corrige une
+        /// proposition, ou reconnaître une demande, demande de classer.
+        var isAnsweredByCode: Bool {
+            switch self {
+            case .productName, .equipment, .temperature: return true
+            case .confirmation, .intent: return false
+            }
+        }
     }
 
     private var pending: PendingQuestion?
@@ -338,6 +353,12 @@ final class AssistantConversation {
         append(.cook, said)
         lastUtterance = said
 
+        // L'état d'avant, pour savoir ensuite si cette phrase a appris
+        // quelque chose. C'est ce qui distingue une correction d'un bruit.
+        let previousQuantity = quantity
+        let previousTemperature = temperature
+        let previousEquipment = matchedEquipment
+
         // Lue avant tout le reste, et sur la phrase brute. Une quantité
         // trouvée remplace la précédente ; une phrase qui n'en contient pas
         // laisse la dernière en place.
@@ -397,6 +418,24 @@ final class AssistantConversation {
                 phase = .thinking
 
             case .unclear:
+                // Ni oui ni non. Deux cas, et il faut les séparer.
+                //
+                // Ou bien la phrase corrige quelque chose — « deux kilos »,
+                // « le congélateur » — et il faut la traiter. Ou bien c'est
+                // un bruit de cuisine mal transcrit, et la renvoyer au
+                // modèle lui ferait reclasser la même intention : on
+                // reproposerait mot pour mot la même phrase, indéfiniment.
+                //
+                // C'est exactement ce qui se produisait.
+                let corrected = quantity != previousQuantity
+                    || temperature != previousTemperature
+                    || matchedEquipment != previousEquipment
+                    || correctsProductName(in: said, for: action)
+
+                guard corrected else { return askToConfirm(action) }
+
+                pending = nil
+                attempts = 0
                 phase = .thinking
             }
         }
@@ -406,7 +445,7 @@ final class AssistantConversation {
         // On ne repasse pas par le modèle. Il classerait « du sucre » comme
         // une demande incompréhensible, alors que le code sait parfaitement
         // qu'il vient de demander un nom de produit.
-        if let pending {
+        if let pending, pending.isAnsweredByCode {
             return answer(pending)
         }
 
@@ -547,6 +586,12 @@ final class AssistantConversation {
 
         case .equipment, .temperature:
             return proposeTemperatureReading()
+
+        case .confirmation, .intent:
+            // Jamais atteint : `isAnsweredByCode` les exclut du raccourci.
+            // Le cas existe pour que l'ajout d'une question future ne passe
+            // pas silencieusement par ici.
+            return offerTheMenu()
         }
     }
 
@@ -589,11 +634,11 @@ final class AssistantConversation {
     private func attempt(_ question: PendingQuestion) -> Int {
         attempts = (pending == question) ? attempts + 1 : 1
         pending = question
-        phase = .awaitingDetail
         return attempts
     }
 
     private func askForProductName() -> Reaction {
+        phase = .awaitingDetail
         switch attempt(.productName) {
         case 1:
             return finish(.speak("Quel produit ?"))
@@ -609,6 +654,7 @@ final class AssistantConversation {
     }
 
     private func askForEquipment() -> Reaction {
+        phase = .awaitingDetail
         switch attempt(.equipment) {
         case 1:
             return finish(.speak("Quelle enceinte ?"))
@@ -625,6 +671,7 @@ final class AssistantConversation {
     }
 
     private func askForTemperature() -> Reaction {
+        phase = .awaitingDetail
         switch attempt(.temperature) {
         case 1:
             return finish(.speak("Quelle température ?"))
@@ -637,15 +684,63 @@ final class AssistantConversation {
         }
     }
 
+    /// Relance l'accord sans jamais répéter la proposition.
+    ///
+    /// Le récapitulatif reste affiché à l'écran et le bouton aussi : il n'y
+    /// a aucune raison de le redire. On demande seulement la décision, puis
+    /// on se tait. Un assistant qui répète est pire qu'un assistant muet.
+    private func askToConfirm(_ action: AssistantAction) -> Reaction {
+        let count = attempt(.confirmation)
+        // La carte de confirmation doit rester visible : on ne repasse pas
+        // en « question en cours », qui la ferait disparaître.
+        phase = .awaitingConfirmation(action)
+
+        switch count {
+        case 1:
+            return finish(.speak("C'est oui ou non ?"))
+        case 2:
+            return finish(.speak("Dites oui pour confirmer, ou touchez le bouton à l'écran."))
+        default:
+            // On cesse de relancer. La proposition reste à l'écran, le
+            // doigt fera le reste.
+            pending = nil
+            attempts = 0
+            return finish(.stop("Je vous laisse décider."))
+        }
+    }
+
+    /// La phrase propose-t-elle un autre produit que celui annoncé ?
+    ///
+    /// Sert à reconnaître une correction dite sans « non » : « du beurre »
+    /// lancé par-dessus une proposition sur le sucre.
+    private func correctsProductName(in said: String, for action: AssistantAction) -> Bool {
+        guard case .openedProduct(let name, _) = action else { return false }
+        let found = SpokenProduct.name(in: said)
+        guard !found.isEmpty else { return false }
+        return found.compare(name, options: [.caseInsensitive, .diacriticInsensitive]) != .orderedSame
+    }
+
     /// Quand la demande ne correspond à rien de connu.
     private func offerTheMenu() -> Reaction {
-        pending = nil
-        attempts = 0
         phase = .awaitingDetail
-        return finish(.speak(
-            "Je sais noter un produit entamé, une température, un nettoyage, "
-            + "un plat témoin ou une réception. Lequel ?"
-        ))
+
+        switch attempt(.intent) {
+        case 1:
+            return finish(.speak(
+                "Je sais noter un produit entamé, une température, un nettoyage, "
+                + "un plat témoin ou une réception. Lequel ?"
+            ))
+        default:
+            // Deux échecs de suite : insister ne donnera rien de plus, et
+            // réciter le même menu est précisément ce qui exaspère.
+            pending = nil
+            attempts = 0
+            phase = .idle
+            return finish(.stop(
+                "Je n'y arrive pas. Touchez le micro et reformulez, "
+                + "ou passez par les écrans en dessous."
+            ))
+        }
     }
 
     // MARK: - Les mots qu'on reconnaît sans modèle
