@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-finder": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/agent-finder/SKILL.md",
+      "computedHash": "4af7d4ace4cb7c44ee3cda634a53f30e16c29c61aaf10f05828ecb7dd69f21e4"
+    },
+    "comparative-market-analysis": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/comparative-market-analysis/SKILL.md",
+      "computedHash": "71ab43c105aaedb668cd7ff48f05c7f382f9713080a6ef34562f16f17f76caa5"
+    },
+    "investment-deal-finder": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/investment-deal-finder/SKILL.md",
+      "computedHash": "9092d94f5a6d680d01388f98e034e74be01f873d0e37a173f9add619639e4247"
+    },
+    "listing-search": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/listing-search/SKILL.md",
+      "computedHash": "5065231992fa2abdecfc3e8666eede92384f6cbf7c6a2712c5e4404e746e84f1"
+    },
+    "property-research": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/property-research/SKILL.md",
+      "computedHash": "66964119b0df8a4ee1ca76ee90002f6067550f752d46afaae7b5d00287b5b9d8"
+    },
+    "realtyapi-api": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/realtyapi-api/SKILL.md",
+      "computedHash": "833149d6975532063401067973d49ee968d8ba9022fdafb4b7d8f2967b798129"
+    },
+    "rental-market-research": {
+      "source": "realtyapi/realtyapi-skills",
+      "sourceType": "github",
+      "skillPath": "skills/rental-market-research/SKILL.md",
+      "computedHash": "da90232af3b55407af9b6d601b0262af2fcd2550c2957db83e8980dba154e5c3"
+    }
+  }
+}
