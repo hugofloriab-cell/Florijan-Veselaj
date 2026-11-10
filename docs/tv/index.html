@@ -136,6 +136,8 @@ dialog .pied { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-e
 "use strict";
 const CLE_PLAYLIST = "tvk.playlist";   // texte M3U importé
 const CLE_DERNIERE = "tvk.derniere";   // adresse de la dernière chaîne regardée
+// Ouverte depuis l'appli Android TV « TV Kosova » (voir android/) ?
+const DANS_APPLI = /TVKosovaApp/.test(navigator.userAgent);
 
 const $ = (id) => document.getElementById(id);
 const video = $("video"), liste = $("liste"), message = $("message");
@@ -197,7 +199,9 @@ function chargerTexte(texte) {
   const derniere = stock.lire(CLE_DERNIERE);
   const i = chaines.findIndex((c) => c.url === derniere);
   if (i >= 0) jouer(i, false);
-  else if (!chaines.length) afficherMessage("La playlist ne contient aucune chaîne avec une adresse de flux.", true);
+  // Focus sur une chaîne dès l'ouverture : la télécommande marche tout de suite.
+  (liste.querySelector('[aria-current="true"]') || liste.querySelector("button"))?.focus();
+  if (!chaines.length) afficherMessage("La playlist ne contient aucune chaîne avec une adresse de flux.", true);
 }
 
 function afficherListe() {
@@ -226,7 +230,8 @@ function afficherListe() {
     txt.textContent = c.nom;
     if (c.groupe) { const gr = document.createElement("div"); gr.className = "groupe"; gr.textContent = c.groupe; txt.append(gr); }
     b.append(txt);
-    b.addEventListener("click", () => jouer(idx));
+    // OK sur la chaîne en cours : on la regarde en grand (liste masquée).
+    b.addEventListener("click", () => (idx === courante ? basculerListe(true) : jouer(idx)));
     li.append(b);
     liste.append(li);
   }
@@ -244,7 +249,9 @@ function jouer(idx, focus = true) {
   stock.ecrire(CLE_DERNIERE, c.url);
   $("titre").textContent = `${c.num}. ${c.nom}`;
   document.title = `${c.nom} · TV Kosova`;
-  for (const b of liste.querySelectorAll("button")) b.toggleAttribute("aria-current", +b.dataset.idx === idx);
+  for (const b of liste.querySelectorAll("button")) {
+    if (+b.dataset.idx === idx) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+  }
   if (focus) liste.querySelector(`button[data-idx="${idx}"]`)?.focus();
   afficherMessage("Chargement…");
   montrerBandeau();
@@ -252,7 +259,7 @@ function jouer(idx, focus = true) {
   if (hls) { hls.destroy(); hls = null; }
   video.removeAttribute("src");
 
-  if (location.protocol === "https:" && c.url.startsWith("http:")) {
+  if (!DANS_APPLI && location.protocol === "https:" && c.url.startsWith("http:")) {
     afficherMessage("Ce flux est en « http » : il ne peut pas être lu depuis une page sécurisée (https). " +
       "Cherchez une adresse en « https » pour cette chaîne.", true);
     return;
@@ -319,6 +326,7 @@ function basculerListe(force) {
   if (!cache) (liste.querySelector('[aria-current="true"]') || liste.querySelector("button"))?.focus();
 }
 function pleinEcran() {
+  if (DANS_APPLI) { basculerListe(); return; } // l'appli est déjà en plein écran
   if (document.fullscreenElement) document.exitFullscreen();
   else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
   else if (video.webkitEnterFullscreen) video.webkitEnterFullscreen();
@@ -333,14 +341,23 @@ $("groupe").addEventListener("change", afficherListe);
 document.addEventListener("keydown", (e) => {
   if ($("dialogue").open) return;
   const dansChamp = e.target.matches("input, select, textarea");
-  const boutons = [...liste.querySelectorAll("button")];
-  const pos = boutons.indexOf(document.activeElement);
+  const listeCachee = $("app").classList.contains("cache-liste");
   switch (e.key) {
-    case "ArrowDown": case "ArrowUp":
-      if (dansChamp && e.target.tagName === "SELECT") return;
-      if ($("app").classList.contains("cache-liste")) { zapper(e.key === "ArrowDown" ? 1 : -1); break; }
-      boutons[Math.max(0, Math.min(boutons.length - 1, pos + (e.key === "ArrowDown" ? 1 : -1)))]?.focus();
+    case "ArrowDown": case "ArrowUp": {
+      if (listeCachee) { zapper(e.key === "ArrowDown" ? 1 : -1); break; }
+      // Parcours vertical : recherche, catégorie, chaînes, boutons du bas.
+      const ordre = [$("recherche"), $("groupe"), ...liste.querySelectorAll("button"),
+        $("btn-importer"), $("btn-defaut")].filter((el) => !el.hidden);
+      const pos = ordre.indexOf(document.activeElement);
+      const cible = pos < 0 ? (liste.querySelector('[aria-current="true"]') || ordre[2])
+        : ordre[Math.max(0, Math.min(ordre.length - 1, pos + (e.key === "ArrowDown" ? 1 : -1)))];
+      cible?.focus();
+      cible?.scrollIntoView({ block: "nearest" });
       break;
+    }
+    case "Enter":
+      if (!listeCachee) return; // OK natif sur l'élément sélectionné
+      basculerListe(false); break;
     case "ChannelUp": case "PageUp": zapper(-1); break;
     case "ChannelDown": case "PageDown": zapper(1); break;
     case "MediaPlayPause": video.paused ? video.play() : video.pause(); break;
@@ -412,6 +429,17 @@ async function demarrer() {
     afficherMessage("Aucune playlist trouvée. Cliquez sur « Charger une playlist ».", true);
   }
 }
+/* Touche Retour dans l'appli Android : renvoie true si la page l'a utilisée,
+   false pour laisser l'appli se fermer. */
+window.tvRetour = function () {
+  if ($("dialogue").open) { $("dialogue").close(); return true; }
+  if (document.activeElement && document.activeElement.matches("input, select, textarea")) {
+    document.activeElement.blur(); basculerListe(false); return true;
+  }
+  if ($("app").classList.contains("cache-liste")) { basculerListe(false); return true; }
+  return false;
+};
+
 demarrer();
 </script>
 </body>
