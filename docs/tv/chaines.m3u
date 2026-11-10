@@ -1,0 +1,39 @@
+#EXTM3U
+# ================================================================
+#  Playlist des chaînes — à compléter
+# ================================================================
+#  Chaque chaîne tient sur deux lignes :
+#
+#    #EXTINF:-1 tvg-logo="ADRESSE_DU_LOGO" group-title="CATÉGORIE",NOM DE LA CHAÎNE
+#    ADRESSE_DU_FLUX (se termine en général par .m3u8)
+#
+#  Où trouver l'adresse du flux : sur le site officiel de la chaîne,
+#  page « Live / Drejtpërdrejt ». Dans Chrome : clic droit > Inspecter >
+#  onglet Réseau (Network), tapez « m3u8 » dans le filtre, lancez le
+#  direct et copiez l'adresse qui apparaît.
+#
+#  Les lignes qui commencent par « # » seules (sans EXTINF) sont ignorées :
+#  enlevez le « # » devant une adresse pour activer la chaîne.
+# ================================================================
+
+# --- Flux de test (Apple) : sert seulement à vérifier que le lecteur marche ---
+#EXTINF:-1 group-title="Test",Flux de test
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+
+# --- Kosovo : remplacez ADRESSE_DU_FLUX par l'adresse officielle ---
+#EXTINF:-1 group-title="Kosovë",RTK 1
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",RTK 2
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",RTK 3
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",Klan Kosova
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",RTV21
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",KTV
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",T7
+# ADRESSE_DU_FLUX
+#EXTINF:-1 group-title="Kosovë",RTV Dukagjini
+# ADRESSE_DU_FLUX

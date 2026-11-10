@@ -1,0 +1,35 @@
+# TV Kosova — lecteur de playlist M3U
+
+Application web qui lit une playlist M3U (chaînes en direct HLS `.m3u8`) sur un
+ordinateur, un téléphone ou une Smart TV. Publiée avec le reste de `docs/` sur
+GitHub Pages, à l'adresse `…/tv/`.
+
+| Fichier | Rôle |
+| --- | --- |
+| `index.html` | L'application (liste des chaînes + lecteur). |
+| `chaines.m3u` | Playlist chargée par défaut. **C'est elle qu'on complète.** |
+| `hls.min.js` | Lecteur HLS (hls.js 1.5.13, licence Apache-2.0), inclus pour ne dépendre d'aucun CDN. |
+| `manifest.webmanifest`, `icone.svg` | Installation sur l'écran d'accueil. |
+
+## Ajouter une chaîne
+
+Dans `chaines.m3u`, deux lignes par chaîne :
+
+    #EXTINF:-1 tvg-logo="https://…/logo.png" group-title="Kosovë",RTK 1
+    https://…/live.m3u8
+
+On peut aussi charger une autre playlist depuis l'application (fichier, adresse
+web ou copier-coller) : elle reste enregistrée sur l'appareil.
+
+## Télécommande / clavier
+
+Flèches haut/bas : parcourir la liste (ou zapper quand la liste est masquée) ·
+OK/Entrée : regarder · CH+/CH− ou Page préc./suiv. : zapper · chiffres : aller à
+la chaîne n° · L : liste · F : plein écran · Retour/Échap : afficher/masquer la liste.
+
+## Limites à connaître
+
+- Page en `https` : les flux en `http` ne peuvent pas être lus.
+- Un flux qui n'autorise pas la lecture depuis un autre site (CORS) échouera
+  dans Chrome ; Safari et beaucoup de télés le liront quand même.
+- N'utilisez que des flux diffusés officiellement par les chaînes.
