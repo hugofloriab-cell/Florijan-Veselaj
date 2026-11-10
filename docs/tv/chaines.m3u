@@ -1,39 +1,77 @@
 #EXTM3U
 # ================================================================
-#  Playlist des chaînes — à compléter
+#  Playlist des chaînes
 # ================================================================
 #  Chaque chaîne tient sur deux lignes :
 #
 #    #EXTINF:-1 tvg-logo="ADRESSE_DU_LOGO" group-title="CATÉGORIE",NOM DE LA CHAÎNE
 #    ADRESSE_DU_FLUX (se termine en général par .m3u8)
 #
-#  Où trouver l'adresse du flux : sur le site officiel de la chaîne,
-#  page « Live / Drejtpërdrejt ». Dans Chrome : clic droit > Inspecter >
-#  onglet Réseau (Network), tapez « m3u8 » dans le filtre, lancez le
-#  direct et copiez l'adresse qui apparaît.
+#  Sources : liste publique iptv-org (github.com/iptv-org/iptv, fichiers
+#  streams/xk.m3u et streams/al.m3u). Seuls les flux qui semblent venir
+#  des chaînes elles-mêmes ou de leur hébergeur ont été gardés.
 #
-#  Les lignes qui commencent par « # » seules (sans EXTINF) sont ignorées :
-#  enlevez le « # » devant une adresse pour activer la chaîne.
+#  Les adresses en « http:// » ne se lisent pas depuis la version en ligne
+#  (https) ; elles marchent dans VLC ou en ouvrant index.html en local.
+#  Les lignes qui commencent par « # » seules sont ignorées.
 # ================================================================
 
-# --- Flux de test (Apple) : sert seulement à vérifier que le lecteur marche ---
-#EXTINF:-1 group-title="Test",Flux de test
-https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
+# --- Kosovë ---
+#EXTINF:-1 group-title="Kosovë",RTK 3
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk3/index.m3u8
+#EXTINF:-1 group-title="Kosovë",RTV21
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/2cz-npl-jfn-9he/tracks-v2a1/mono.m3u8
+#EXTINF:-1 group-title="Kosovë",Kohavision (KTV)
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/lj9-pxm-o53-rp0/tracks-v4a1/mono.m3u8
+#EXTINF:-1 group-title="Kosovë",T7
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream-specific/1z8-byc-4ee-lc9/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Syri
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/xej-xnb-ba0-kup/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arta
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/mps-vgx-u9p-qv1/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria 3 Fëmijë
+https://ssh101.bozztv.com/ssh101/rtvarberia3/playlist.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria 4 Muzikë
+https://ssh101.bozztv.com/ssh101/rtvarberia4/playlist.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria Retro Hits
+https://ssh101.bozztv.com/ssh101/rtvarberiaretro/playlist.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Dielli (pas 24h/24)
+http://stream.tvdielli.com:8081/dielli/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Opoja (pas 24h/24)
+http://ip.opoja.tv:1935/tvopoja/tvopoja/playlist.m3u8
 
-# --- Kosovo : remplacez ADRESSE_DU_FLUX par l'adresse officielle ---
+# --- À compléter quand vous trouvez l'adresse officielle ---
 #EXTINF:-1 group-title="Kosovë",RTK 1
 # ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",RTK 2
 # ADRESSE_DU_FLUX
-#EXTINF:-1 group-title="Kosovë",RTK 3
-# ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",Klan Kosova
-# ADRESSE_DU_FLUX
-#EXTINF:-1 group-title="Kosovë",RTV21
-# ADRESSE_DU_FLUX
-#EXTINF:-1 group-title="Kosovë",KTV
-# ADRESSE_DU_FLUX
-#EXTINF:-1 group-title="Kosovë",T7
 # ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",RTV Dukagjini
 # ADRESSE_DU_FLUX
+
+# --- Shqipëri ---
+#EXTINF:-1 group-title="Shqipëri",A2 CNN
+https://tv.a2news.com/live/smil:a2cnnweb.stream.smil/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",CNA
+https://live1.mediadesk.al/cnatvlive.m3u8
+#EXTINF:-1 group-title="Shqipëri",Ora News
+https://live1.mediadesk.al/oranews.m3u8
+#EXTINF:-1 group-title="Shqipëri",Syri
+https://stream.syritv.al/live/syritv/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",News 24
+https://tv.balkanweb.com/news24/livestream/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",TV 7 Albania
+https://vs.sednastream.com:1936/tv7/tv7/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",Alpo TV
+https://vs.sednastream.com:1936/alportv/alportv/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",Tropoja TV
+https://live.prostream.al/al/smil:tropojatv.smil/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",Zjarr TV
+https://zjarr.future.al/hls/playlist.m3u8
+#EXTINF:-1 group-title="Shqipëri",AlbKanale Music TV
+https://albportal.net/albkanalemusic.m3u8
+
+# --- Test (Apple) : sert seulement à vérifier que le lecteur marche ---
+#EXTINF:-1 group-title="Test",Flux de test
+https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8
