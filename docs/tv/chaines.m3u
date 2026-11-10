@@ -17,16 +17,10 @@
 # ================================================================
 
 # --- Kosovë ---
-# RTK 1 SAT : version satellite de RTK 1 pour la diaspora, sur l'hébergeur
-# officiel Gjirafa. Les « lien 2 » sont des adresses de secours plus anciennes.
+# Hébergeurs officiels : Gjirafa (plateforme vidéo kosovare) et ssh101
+# (diffuseur des chaînes Arbëria).
 #EXTINF:-1 tvg-logo="https://i.imgur.com/KTcWcO6.png" group-title="Kosovë",RTK 1 SAT
 https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk-sat/manifest.m3u8
-#EXTINF:-1 tvg-logo="https://i.imgur.com/KTcWcO6.png" group-title="Kosovë",RTK 1 (lien 2)
-https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxzq.m3u8
-#EXTINF:-1 tvg-logo="https://i.imgur.com/g6k6xyO.png" group-title="Kosovë",RTK 2
-https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk2/index.m3u8
-#EXTINF:-1 tvg-logo="https://i.imgur.com/g6k6xyO.png" group-title="Kosovë",RTK 2 (lien 2)
-https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxz0.m3u8
 #EXTINF:-1 tvg-logo="https://i.imgur.com/Ut9VcT3.png" group-title="Kosovë",RTK 3
 https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk3/index.m3u8
 #EXTINF:-1 group-title="Kosovë",RTV21
@@ -39,10 +33,18 @@ https://gjirafa-video-live.gjirafa.net/gjvideo-livestream-specific/1z8-byc-4ee-l
 https://gjirafa-video-live.gjirafa.net/gjvideo-live/xej-xnb-ba0-kup/index.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Arta
 https://gjirafa-video-live.gjirafa.net/gjvideo-live/mps-vgx-u9p-qv1/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Prizreni
+https://gjirafa-video-live.gjirafa.net/gjvideo-live/5m0-cok-g5z-1xi/index.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria 1
+https://yayin30.haber100.com/live/rtvarberia/playlist.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria 2
+https://ssh101.bozztv.com/ssh101/rtvarberia2/playlist.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Arbëria 3 Fëmijë
 https://ssh101.bozztv.com/ssh101/rtvarberia3/playlist.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Arbëria 4 Muzikë
 https://ssh101.bozztv.com/ssh101/rtvarberia4/playlist.m3u8
+#EXTINF:-1 group-title="Kosovë",TV Arbëria 5
+https://ssh101.bozztv.com/ssh101/rtvarberia5/playlist.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Arbëria Retro Hits
 https://ssh101.bozztv.com/ssh101/rtvarberiaretro/playlist.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Dielli (pas 24h/24)
@@ -50,7 +52,25 @@ http://stream.tvdielli.com:8081/dielli/index.m3u8
 #EXTINF:-1 group-title="Kosovë",TV Opoja (pas 24h/24)
 http://ip.opoja.tv:1935/tvopoja/tvopoja/playlist.m3u8
 
-# --- À compléter quand vous trouvez l'adresse officielle ---
+# --- Kosovë, anciennes adresses officielles (Gjirafa) : peut-être hors service ---
+#EXTINF:-1 tvg-logo="https://i.imgur.com/KTcWcO6.png" group-title="Kosovë · à tester",RTK 1 (lien 2)
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxzq.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/g6k6xyO.png" group-title="Kosovë · à tester",RTK 2
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxz0.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/Urm4XDR.png" group-title="Kosovë · à tester",RTK 4
+https://ub1doy938d.gjirafa.net/live/Gfsqdsr7FewrYClU3ACEGZvCHktt2wse/zykxgt.m3u8
+#EXTINF:-1 group-title="Kosovë · à tester",Kanal 10
+https://ub1doy938d.gjirafa.net/live/oEZi1otQqIHglY0tzZidyCPWhxrS5WgO/yky0y1.m3u8
+#EXTINF:-1 group-title="Kosovë · à tester",ATV
+https://ub1doy938d.gjirafa.net/live/V5VHPPcRRtIuWFdnDuwjefzSqTKyBrW3/zyq001.m3u8
+#EXTINF:-1 group-title="Kosovë · à tester",Zëri TV
+https://ub1doy938d.gjirafa.net/live/dCynrjRK8sEsrYu0zDtDg8l4KaXbFpXl/zyqy1y.m3u8
+#EXTINF:-1 group-title="Kosovë · à tester",RTV Besa
+https://ub1doy938d.gjirafa.net/live/oEZi1otQqIHglY0tzZidyCPWhxrS5WgO/zztyzt.m3u8
+#EXTINF:-1 group-title="Kosovë · à tester",Syri Vision
+https://ub1doy938d.gjirafa.net/live/DpTlD159VIIRWtzFOvUI70nftnyosgUE/y10z1k.m3u8
+
+# --- Pas de flux officiel gratuit trouvé (seulement des rediffusions pirates) ---
 #EXTINF:-1 group-title="Kosovë",Klan Kosova
 # ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",RTV Dukagjini
