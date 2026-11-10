@@ -17,7 +17,13 @@
 # ================================================================
 
 # --- Kosovë ---
-#EXTINF:-1 group-title="Kosovë",RTK 3
+# RTK 1 et RTK 2 : même hébergeur officiel (Gjirafa) et même forme d'adresse
+# que RTK 3. Non vérifiées : si elles affichent une erreur, voir LISEZMOI.md.
+#EXTINF:-1 tvg-logo="https://i.imgur.com/KTcWcO6.png" group-title="Kosovë",RTK 1
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk1/index.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/g6k6xyO.png" group-title="Kosovë",RTK 2
+https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk2/index.m3u8
+#EXTINF:-1 tvg-logo="https://i.imgur.com/Ut9VcT3.png" group-title="Kosovë",RTK 3
 https://gjirafa-video-live.gjirafa.net/gjvideo-livestream/rtk3/index.m3u8
 #EXTINF:-1 group-title="Kosovë",RTV21
 https://gjirafa-video-live.gjirafa.net/gjvideo-live/2cz-npl-jfn-9he/tracks-v2a1/mono.m3u8
@@ -41,10 +47,6 @@ http://stream.tvdielli.com:8081/dielli/index.m3u8
 http://ip.opoja.tv:1935/tvopoja/tvopoja/playlist.m3u8
 
 # --- À compléter quand vous trouvez l'adresse officielle ---
-#EXTINF:-1 group-title="Kosovë",RTK 1
-# ADRESSE_DU_FLUX
-#EXTINF:-1 group-title="Kosovë",RTK 2
-# ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",Klan Kosova
 # ADRESSE_DU_FLUX
 #EXTINF:-1 group-title="Kosovë",RTV Dukagjini

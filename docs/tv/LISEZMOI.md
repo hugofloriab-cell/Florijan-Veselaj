@@ -33,3 +33,12 @@ la chaîne n° · L : liste · F : plein écran · Retour/Échap : afficher/masq
 - Un flux qui n'autorise pas la lecture depuis un autre site (CORS) échouera
   dans Chrome ; Safari et beaucoup de télés le liront quand même.
 - N'utilisez que des flux diffusés officiellement par les chaînes.
+
+## Si une chaîne affiche une erreur (ex. RTK 1)
+
+Les adresses changent. Pour retrouver la bonne, sur un ordinateur avec Chrome :
+
+1. Ouvrez la page du direct sur le site officiel (pour RTK : rtklive.com, rubrique « Live »).
+2. Clic droit > Inspecter > onglet **Réseau** (Network), tapez `m3u8` dans le filtre.
+3. Lancez la vidéo : copiez l'adresse qui apparaît (clic droit > Copy > Copy URL).
+4. Remplacez l'ancienne adresse dans `chaines.m3u`.
