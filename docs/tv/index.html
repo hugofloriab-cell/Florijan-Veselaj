@@ -12,82 +12,119 @@
 <title>TV Kosova</title>
 <style>
 :root {
-  --fond: #0b1220; --panneau: #131c2e; --ligne: #24314a;
-  --texte: #e8edf6; --doux: #93a1b8; --accent: #e3a008; --rouge: #e5484d;
+  --fond: #070b14; --panneau: rgba(10, 16, 30, .94); --ligne: rgba(255,255,255,.08);
+  --texte: #eef2f8; --doux: #95a3ba; --accent: #f0b429; --rouge: #ef4444;
+  --largeur-liste: min(440px, 36vw);
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: var(--fond); color: var(--texte);
-  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  font: 17px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
 button, input, select { font: inherit; color: inherit; }
-.app { display: grid; grid-template-columns: 340px 1fr; height: 100vh; height: 100dvh; }
-.app.cache-liste { grid-template-columns: 0 1fr; }
-.app.cache-liste aside { display: none; }
 
-aside { background: var(--panneau); border-right: 1px solid var(--ligne);
-  display: flex; flex-direction: column; min-height: 0; }
-.entete { padding: 14px 16px 10px; display: flex; align-items: center; gap: 10px; }
-.entete h1 { font-size: 18px; margin: 0; flex: 1; }
+/* ----- écran de télé : vidéo plein écran, liste par-dessus ----- */
+.app { position: relative; height: 100vh; height: 100dvh; }
+main { position: absolute; inset: 0; background: #000; }
+video { width: 100%; height: 100%; display: block; background: #000; object-fit: contain; }
+
+aside { position: absolute; z-index: 2; top: 0; bottom: 0; left: 0; width: var(--largeur-liste);
+  display: flex; flex-direction: column; min-height: 0; overflow-y: auto; scrollbar-width: none;
+  background: linear-gradient(90deg, rgba(7,11,20,.97) 60%, rgba(7,11,20,.88));
+  box-shadow: 12px 0 40px rgba(0,0,0,.45);
+  transition: transform .25s ease, visibility 0s; }
+.app.cache-liste aside { transform: translateX(-105%); visibility: hidden;
+  transition: transform .25s ease, visibility 0s .25s; }
+
+aside::-webkit-scrollbar { display: none; }
+.entete { padding: 20px 22px 12px; }
+.entete h1 { font-size: 26px; margin: 0; letter-spacing: .3px; white-space: nowrap; }
 .entete h1 span { color: var(--accent); }
-.filtres { padding: 0 16px 10px; display: grid; gap: 8px; }
-.filtres input, .filtres select { width: 100%; padding: 9px 10px; border-radius: 8px;
-  border: 1px solid var(--ligne); background: var(--fond); }
-ul { list-style: none; margin: 0; padding: 4px 8px 12px; overflow-y: auto; flex: 1; }
-li button { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
-  padding: 10px; border: 2px solid transparent; border-radius: 10px; background: none; cursor: pointer; }
-li button:hover { background: #1b2740; }
-li button:focus-visible { outline: none; border-color: var(--accent); background: #1b2740; }
-li button[aria-current="true"] { background: #22314f; }
-li button[aria-current="true"] .nom::after { content: " ●"; color: var(--rouge); font-size: 12px; }
-.num { color: var(--doux); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
-.logo { width: 44px; height: 32px; border-radius: 6px; background: #0e1626 center/contain no-repeat;
-  display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--doux); flex: none; }
-.nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.groupe { color: var(--doux); font-size: 12px; }
+.entete .aide { display: block; color: var(--doux); font-size: 13px; margin-top: 2px; }
+.filtres { padding: 0 22px 12px; display: grid; gap: 8px; }
+.filtres input, .filtres select { width: 100%; padding: 10px 12px; border-radius: 10px;
+  border: 2px solid transparent; background: rgba(255,255,255,.07); }
+.filtres input:focus, .filtres select:focus { outline: none; border-color: var(--accent); }
+ul { list-style: none; margin: 0; padding: 4px 12px 16px; flex: 1 0 auto; }
+li button { width: 100%; display: flex; align-items: center; gap: 14px; text-align: left;
+  padding: 10px 12px; border: 0; border-radius: 12px; background: none; cursor: pointer;
+  transition: background .12s, transform .12s; }
+li button:hover { background: rgba(255,255,255,.06); }
+li button:focus-visible, li button:focus { outline: none; background: var(--accent); color: #111; transform: scale(1.02); }
+li button:focus .num, li button:focus .groupe { color: #3b2a00; }
+li button[aria-current="true"] .nom::before { content: "▶ "; color: var(--rouge); font-size: .8em; }
+li button:focus[aria-current="true"] .nom::before { color: #7a1010; }
+.num { color: var(--doux); font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; font-size: 15px; }
+.logo { width: 56px; height: 38px; border-radius: 8px; background: rgba(255,255,255,.92) center/80% no-repeat;
+  display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #1c2740; flex: none; }
+.nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 18px; font-weight: 600; }
+.groupe { color: var(--doux); font-size: 13px; font-weight: 400; }
 .vide { color: var(--doux); padding: 16px; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--ligne); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 22px 18px; border-top: 1px solid var(--ligne); }
 
-.bouton { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--ligne);
-  background: #1b2740; cursor: pointer; }
-.bouton:hover, .bouton:focus-visible { border-color: var(--accent); outline: none; }
-.bouton.principal { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
+.bouton { padding: 8px 14px; border-radius: 10px; border: 2px solid transparent;
+  background: rgba(255,255,255,.1); cursor: pointer; font-size: 15px; }
+.bouton:hover, .bouton:focus-visible, .bouton:focus { border-color: var(--accent); outline: none; }
+.bouton.principal { background: var(--accent); color: #111; font-weight: 700; }
 
-main { position: relative; background: #000; min-width: 0; min-height: 0; }
-video { width: 100%; height: 100%; display: block; background: #000; }
-.bandeau { position: absolute; top: 0; left: 0; right: 0; padding: 14px 18px;
-  display: flex; align-items: center; gap: 10px;
-  background: linear-gradient(#000c, #0000); transition: opacity .4s; }
+/* Bandeau d'information en bas, façon télé */
+.bandeau { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0;
+  padding: 60px 40px 30px; display: flex; align-items: center; gap: 18px;
+  background: linear-gradient(transparent, rgba(0,0,0,.85)); transition: opacity .4s, left .25s; }
+.app:not(.cache-liste) .bandeau { left: var(--largeur-liste); }
 .bandeau.discret { opacity: 0; pointer-events: none; }
-.bandeau .titre { flex: 1; font-size: 20px; font-weight: 600; }
+.bandeau .logo { width: 84px; height: 56px; border-radius: 10px; font-size: 16px; }
+.bandeau .infos { flex: 1; min-width: 0; }
+.bandeau .titre { font-size: 30px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bandeau .sous-titre { color: var(--doux); font-size: 16px; display: flex; gap: 10px; align-items: center; }
+.qualite { background: rgba(255,255,255,.15); color: var(--texte); border-radius: 6px; padding: 1px 8px;
+  font-size: 13px; font-weight: 700; letter-spacing: .5px; }
+.qualite:empty { display: none; }
+.boutons-web { display: flex; gap: 8px; }
+html.appli .boutons-web { display: none; }
+html.appli #recherche { display: none; } /* taper au clavier de la télécommande : non */
+html:not(.appli) .entete .aide { display: none; }
+
 .message { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-  padding: 24px; color: var(--texte); pointer-events: none; background: #000; }
-.message.chargement { background: none; }
-.message.erreur { color: #ffb4b6; }
+  padding: 24px 15%; color: var(--texte); font-size: 22px; pointer-events: none; background: #000; transition: left .25s; }
+.app:not(.cache-liste) .message { left: var(--largeur-liste); }
+.message.chargement { background: none; text-shadow: 0 2px 8px #000; }
+.message.erreur { color: #ffc2c2; }
 .message[hidden] { display: none; }
 
-dialog { background: var(--panneau); color: var(--texte); border: 1px solid var(--ligne);
+/* Lecteur natif de l'appli Android : la vidéo est dessinée sous la page. */
+html.natif, html.natif body, html.natif main { background: transparent; }
+html.natif video { display: none; }
+
+dialog { background: #131c2e; color: var(--texte); border: 1px solid var(--ligne);
   border-radius: 14px; padding: 20px; width: min(520px, calc(100vw - 32px)); }
 dialog::backdrop { background: #000a; }
 dialog h2 { margin: 0 0 12px; font-size: 18px; }
 dialog p { color: var(--doux); margin: 6px 0 14px; font-size: 14px; }
 dialog label { display: block; margin: 14px 0 6px; font-weight: 600; }
 dialog input[type=url], dialog textarea { width: 100%; padding: 9px 10px; border-radius: 8px;
-  border: 1px solid var(--ligne); background: var(--fond); }
+  border: 1px solid #24314a; background: #0b1220; }
 dialog textarea { min-height: 120px; font-family: ui-monospace, monospace; font-size: 13px; }
 dialog .pied { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 18px; }
 
+/* ----- téléphone : vidéo en haut, liste en dessous ----- */
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .app.cache-liste { grid-template-rows: 1fr 0; }
-  main { order: -1; aspect-ratio: 16 / 9; }
-  .app.cache-liste main { aspect-ratio: auto; }
-  aside { border-right: 0; border-top: 1px solid var(--ligne); }
+  .app { display: flex; flex-direction: column; }
+  main { position: relative; inset: auto; height: calc(100vw * 9 / 16); flex: none; order: -1; }
+  .app.cache-liste main { height: auto; }
+  aside { position: static; width: auto; flex: 1; min-height: 0; transform: none; box-shadow: none; background: #0b1220; }
+  .app.cache-liste aside { display: none; }
+  .app.cache-liste main { flex: 1; aspect-ratio: auto; }
+  .app:not(.cache-liste) .bandeau, .app:not(.cache-liste) .message { left: 0; }
+  .bandeau { padding: 30px 14px 12px; }
+  .bandeau .titre { font-size: 18px; }
+  .bandeau .logo { display: none; }
+  .message { font-size: 16px; padding: 16px; }
 }
 </style>
 </head>
 <body>
 <div class="app" id="app">
   <aside>
-    <div class="entete"><h1>TV <span>Kosova</span></h1></div>
+    <div class="entete"><h1>TV <span>Kosova</span></h1><span class="aide" id="aide">OK : regarder · Retour : masquer</span></div>
     <div class="filtres">
       <input id="recherche" type="search" placeholder="Rechercher une chaîne…" aria-label="Rechercher une chaîne">
       <select id="groupe" aria-label="Catégorie"></select>
@@ -102,9 +139,15 @@ dialog .pied { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-e
   <main>
     <video id="video" controls playsinline autoplay poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
     <div class="bandeau" id="bandeau">
-      <div class="titre" id="titre">Choisissez une chaîne</div>
-      <button class="bouton" id="btn-liste" title="Afficher / masquer la liste (touche L)">Liste</button>
-      <button class="bouton" id="btn-plein" title="Plein écran (touche F)">Plein écran</button>
+      <span class="logo" id="bandeau-logo"></span>
+      <div class="infos">
+        <div class="titre" id="titre">Choisissez une chaîne</div>
+        <div class="sous-titre"><span id="bandeau-groupe"></span><span class="qualite" id="qualite"></span></div>
+      </div>
+      <div class="boutons-web">
+        <button class="bouton" id="btn-liste" title="Afficher / masquer la liste (touche L)">Liste</button>
+        <button class="bouton" id="btn-plein" title="Plein écran (touche F)">Plein écran</button>
+      </div>
     </div>
     <div class="message" id="message">Choisissez une chaîne dans la liste.</div>
   </main>
@@ -138,6 +181,12 @@ const CLE_PLAYLIST = "tvk.playlist";   // texte M3U importé
 const CLE_DERNIERE = "tvk.derniere";   // adresse de la dernière chaîne regardée
 // Ouverte depuis l'appli Android TV « TV Kosova » (voir android/) ?
 const DANS_APPLI = /TVKosovaApp/.test(navigator.userAgent);
+// Dans l'appli, la vidéo est lue par le lecteur natif d'Android (ExoPlayer),
+// qui décode bien mieux les flux de télé que le lecteur web.
+const NATIF = DANS_APPLI && !!window.TVKosova;
+if (DANS_APPLI) document.documentElement.classList.add("appli");
+if (NATIF) document.documentElement.classList.add("natif");
+let enLecture = false;
 
 const $ = (id) => document.getElementById(id);
 const video = $("video"), liste = $("liste"), message = $("message");
@@ -221,8 +270,7 @@ function afficherListe() {
     if (idx === courante) b.setAttribute("aria-current", "true");
     const logo = document.createElement("span");
     logo.className = "logo";
-    if (c.logo) logo.style.backgroundImage = `url("${c.logo.replace(/"/g, "%22")}")`;
-    else logo.textContent = c.nom.slice(0, 3).toUpperCase();
+    remplirLogo(logo, c);
     b.innerHTML = `<span class="num">${c.num}</span>`;
     b.append(logo);
     const txt = document.createElement("span");
@@ -237,6 +285,11 @@ function afficherListe() {
   }
 }
 
+function remplirLogo(el, c) {
+  el.style.backgroundImage = c.logo ? `url("${c.logo.replace(/"/g, "%22")}")` : "";
+  el.textContent = c.logo ? "" : c.nom.replace(/^(R?TV|TV)\s+/i, "").slice(0, 3).toUpperCase();
+}
+
 function echapper(s) {
   return s.replace(/[&<>"]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]));
 }
@@ -247,7 +300,11 @@ function jouer(idx, focus = true) {
   if (!c) return;
   courante = idx;
   stock.ecrire(CLE_DERNIERE, c.url);
-  $("titre").textContent = `${c.num}. ${c.nom}`;
+  $("titre").textContent = `${c.num}  ${c.nom}`;
+  $("bandeau-groupe").textContent = c.groupe;
+  $("qualite").textContent = "";
+  remplirLogo($("bandeau-logo"), c);
+  enLecture = false;
   document.title = `${c.nom} · TV Kosova`;
   for (const b of liste.querySelectorAll("button")) {
     if (+b.dataset.idx === idx) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
@@ -259,6 +316,8 @@ function jouer(idx, focus = true) {
   if (hls) { hls.destroy(); hls = null; }
   video.removeAttribute("src");
 
+  if (NATIF) { window.TVKosova.jouer(c.url); return; }
+
   if (!DANS_APPLI && location.protocol === "https:" && c.url.startsWith("http:")) {
     afficherMessage("Ce flux est en « http » : il ne peut pas être lu depuis une page sécurisée (https). " +
       "Cherchez une adresse en « https » pour cette chaîne.", true);
@@ -267,7 +326,10 @@ function jouer(idx, focus = true) {
 
   const estHls = /\.m3u8(\?|$)/i.test(c.url) || !/\.(mp4|webm|ogg|mp3)(\?|$)/i.test(c.url);
   if (estHls && window.Hls && Hls.isSupported()) {
-    hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+    hls = new Hls({ enableWorker: true, lowLatencyMode: true, capLevelToPlayerSize: false });
+    // Meilleure qualité disponible dès le départ (les niveaux vont du plus
+    // faible au plus fort) ; hls.js redescend seul si la connexion ne suit pas.
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { hls.startLevel = hls.levels.length - 1; });
     hls.on(Hls.Events.ERROR, (_, d) => {
       if (!d.fatal) return;
       if (d.type === Hls.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); return; }
@@ -298,11 +360,31 @@ function afficherMessage(txt, erreur = false) {
   message.classList.toggle("chargement", txt === "Chargement…");
   message.hidden = !txt;
 }
-video.addEventListener("playing", () => afficherMessage(""));
+video.addEventListener("playing", () => { enLecture = true; afficherMessage(""); montrerBandeau(); });
+video.addEventListener("resize", () => afficherQualite(video.videoHeight));
 video.addEventListener("waiting", () => afficherMessage("Chargement…"));
 video.addEventListener("error", () => {
   if (!hls && courante >= 0) afficherMessage("Le flux ne peut pas être lu sur cet appareil ou n'est pas disponible.", true);
 });
+
+function afficherQualite(h) {
+  $("qualite").textContent = !h ? "" : h >= 2000 ? "4K" : h >= 1000 ? "HD 1080p" : h >= 700 ? "HD 720p" : h + "p";
+}
+
+/* Événements du lecteur natif de l'appli Android. */
+window.tvEvenement = function (type, a, b) {
+  if (type === "lecture") { enLecture = true; afficherMessage(""); montrerBandeau(); }
+  else if (type === "attente") afficherMessage("Chargement…");
+  else if (type === "qualite") afficherQualite(a);
+  else if (type === "erreur") {
+    enLecture = false;
+    afficherMessage(b === 404 ? "Adresse introuvable (erreur 404). Le lien du flux a sans doute changé."
+      : b === 403 || b === 401 ? "Accès refusé par la chaîne (erreur " + b + "). Le flux est peut-être réservé au Kosovo."
+      : b ? "La chaîne ne répond pas (erreur " + b + ")."
+      : a === "decodage" ? "Cet appareil ne sait pas décoder la vidéo de cette chaîne."
+      : "La chaîne ne répond pas : elle est peut-être hors ligne pour le moment.", true);
+  }
+};
 
 function zapper(pas) {
   if (!chaines.length) return;
@@ -313,11 +395,17 @@ function zapper(pas) {
 }
 
 /* ---------- bandeau, liste, plein écran ---------- */
-let minuterie;
+let minuterie, minuterieListe;
 function montrerBandeau() {
   $("bandeau").classList.remove("discret");
   clearTimeout(minuterie);
-  minuterie = setTimeout(() => { if (!video.paused) $("bandeau").classList.add("discret"); }, 4000);
+  minuterie = setTimeout(() => { if (enLecture) $("bandeau").classList.add("discret"); }, 5000);
+  // Écran large : la liste se range seule quand on regarde sans toucher à rien.
+  clearTimeout(minuterieListe);
+  minuterieListe = setTimeout(() => {
+    if (enLecture && innerWidth > 760 && !$("dialogue").open &&
+        !document.activeElement.matches("input, select, textarea")) basculerListe(true);
+  }, 12000);
 }
 document.querySelector("main").addEventListener("pointermove", montrerBandeau);
 
@@ -347,7 +435,7 @@ document.addEventListener("keydown", (e) => {
       if (listeCachee) { zapper(e.key === "ArrowDown" ? 1 : -1); break; }
       // Parcours vertical : recherche, catégorie, chaînes, boutons du bas.
       const ordre = [$("recherche"), $("groupe"), ...liste.querySelectorAll("button"),
-        $("btn-importer"), $("btn-defaut")].filter((el) => !el.hidden);
+        $("btn-importer"), $("btn-defaut")].filter((el) => !el.hidden && el.offsetParent !== null);
       const pos = ordre.indexOf(document.activeElement);
       const cible = pos < 0 ? (liste.querySelector('[aria-current="true"]') || ordre[2])
         : ordre[Math.max(0, Math.min(ordre.length - 1, pos + (e.key === "ArrowDown" ? 1 : -1)))];
@@ -360,7 +448,9 @@ document.addEventListener("keydown", (e) => {
       basculerListe(false); break;
     case "ChannelUp": case "PageUp": zapper(-1); break;
     case "ChannelDown": case "PageDown": zapper(1); break;
-    case "MediaPlayPause": video.paused ? video.play() : video.pause(); break;
+    case "MediaPlayPause":
+      if (NATIF) window.TVKosova.basculerPause(); else video.paused ? video.play() : video.pause();
+      break;
     case "Escape": case "GoBack": case "BrowserBack":
       if (dansChamp) { e.target.blur(); break; }
       basculerListe(); break;
