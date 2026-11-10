@@ -1,0 +1,8 @@
+# Appli Android : fichiers de construction
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+# L'APK est construit par le workflow Pages, pas versionné
+docs/tv/tv-kosova.apk
+android/*.jks
