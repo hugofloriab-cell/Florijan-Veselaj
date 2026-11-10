@@ -59,7 +59,8 @@ video { width: 100%; height: 100%; display: block; background: #000; }
 .bandeau.discret { opacity: 0; pointer-events: none; }
 .bandeau .titre { flex: 1; font-size: 20px; font-weight: 600; }
 .message { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-  padding: 24px; color: var(--doux); pointer-events: none; }
+  padding: 24px; color: var(--texte); pointer-events: none; background: #000; }
+.message.chargement { background: none; }
 .message.erreur { color: #ffb4b6; }
 .message[hidden] { display: none; }
 
@@ -99,7 +100,7 @@ dialog .pied { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-e
   </aside>
 
   <main>
-    <video id="video" controls playsinline autoplay></video>
+    <video id="video" controls playsinline autoplay poster="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></video>
     <div class="bandeau" id="bandeau">
       <div class="titre" id="titre">Choisissez une chaîne</div>
       <button class="bouton" id="btn-liste" title="Afficher / masquer la liste (touche L)">Liste</button>
@@ -287,6 +288,7 @@ function explicationErreur(d) {
 function afficherMessage(txt, erreur = false) {
   message.textContent = txt;
   message.classList.toggle("erreur", erreur);
+  message.classList.toggle("chargement", txt === "Chargement…");
   message.hidden = !txt;
 }
 video.addEventListener("playing", () => afficherMessage(""));
