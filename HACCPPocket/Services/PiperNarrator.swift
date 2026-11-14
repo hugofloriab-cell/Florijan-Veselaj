@@ -122,6 +122,22 @@ final class PiperNarrator {
         #endif
     }
 
+    /// Produit le fichier audio sans le jouer.
+    ///
+    /// Sert au narrateur de secours : quand une voix en ligne est préférée,
+    /// c'est elle qui tient le haut-parleur, et la voix embarquée n'a plus
+    /// qu'à fournir le son quand le réseau manque.
+    func audioFile(for text: String) async -> URL? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, isAvailable else { return nil }
+
+        #if canImport(SherpaOnnx) || canImport(SherpaOnnxC)
+        return await engine.synthesize(trimmed)
+        #else
+        return nil
+        #endif
+    }
+
     func stop() {
         player?.stop()
         player = nil

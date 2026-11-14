@@ -69,7 +69,7 @@ struct AssistantPanel: View {
 
     @State private var dictation = VoiceDictation()
     @State private var conversation = AssistantConversation()
-    @State private var narrator = PiperNarrator()
+    @State private var narrator = AssistantVoice()
     @State private var intelligence = IntelligenceAvailability.needsNewerSystem
 
     @State private var isConversing = false
@@ -762,6 +762,11 @@ struct AssistantPanel: View {
         }
         if let reason = narrator.unavailableReason {
             problems.append(reason)
+        }
+        // Un échec en ligne ne fait pas taire l'assistant — la voix
+        // embarquée prend le relais — mais il doit se voir.
+        if let online = narrator.lastOnlineFailure {
+            problems.append(online)
         }
         return problems
     }

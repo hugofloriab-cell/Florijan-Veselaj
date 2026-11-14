@@ -29,6 +29,16 @@ struct SettingsView: View {
     var showsDoneButton: Bool = false
 
     @Environment(UserPreferences.self) private var preferences
+
+    @AppStorage(AssistantVoice.Key.online) private var usesOnlineVoice = true
+    @AppStorage(AssistantVoice.Key.voiceID) private var onlineVoiceID = ElevenLabsVoice.defaultVoiceID
+    @AppStorage(AssistantVoice.Key.quality) private var onlineVoiceQuality = ElevenLabsVoice.Quality.natural.rawValue
+
+    @State private var voice = AssistantVoice()
+    @State private var voiceKeyEntry = ""
+    @State private var hasVoiceKey = VoiceKeychain.hasKey
+    @State private var voiceTestResult: String?
+    @State private var voiceCacheSummary = "Aucune"
     @Environment(NotificationService.self) private var notificationService
     @Environment(SubscriptionManager.self) private var subscription
     @Environment(InspectorAccess.self) private var inspector
@@ -115,6 +125,7 @@ struct SettingsView: View {
                 contactSection
                 logoSection
                 operatorSection
+                voiceSection
                 teamSection
                 remindersSection
                 dataSection
@@ -334,6 +345,108 @@ struct SettingsView: View {
         } footer: {
             Text("Ces valeurs pré-remplissent les formulaires. La règle des 3 jours après ouverture est la pratique la plus répandue.")
         }
+    }
+
+    // MARK: - Voix de l'assistant
+
+    /// Le choix de la voix, et la clé qui la débloque.
+    ///
+    /// La voix en ligne est facturée au caractère : la section dit donc ce
+    /// que le cache a déjà épargné, et laisse le choix de s'en passer. Un
+    /// réglage qui coûte de l'argent doit montrer ce qu'il coûte.
+    private var voiceSection: some View {
+        Section {
+            Toggle("Voix en ligne", isOn: $usesOnlineVoice)
+                .disabled(!hasVoiceKey)
+
+            if hasVoiceKey {
+                Picker("Voix", selection: $onlineVoiceID) {
+                    ForEach(ElevenLabsVoice.voices) { voice in
+                        Text("\(voice.name) — \(voice.note)").tag(voice.id)
+                    }
+                }
+
+                Picker("Rendu", selection: $onlineVoiceQuality) {
+                    ForEach(ElevenLabsVoice.Quality.allCases) { quality in
+                        Text(quality.label).tag(quality.rawValue)
+                    }
+                }
+
+                Button("Écouter un exemple") {
+                    Task {
+                        voiceTestResult = "Un instant…"
+                        voiceTestResult = await voice.test()
+                    }
+                }
+
+                if let result = voiceTestResult {
+                    Text(result)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            LabeledContent("Clé ElevenLabs") {
+                Text(VoiceKeychain.redacted ?? "Aucune")
+                    .foregroundStyle(.secondary)
+            }
+
+            SecureField("Coller une nouvelle clé", text: $voiceKeyEntry)
+                .textContentType(.password)
+                .autocorrectionDisabled()
+                .onSubmit(saveVoiceKey)
+
+            if !voiceKeyEntry.isEmpty {
+                Button("Enregistrer la clé", action: saveVoiceKey)
+            }
+
+            if hasVoiceKey {
+                Button("Retirer la clé", role: .destructive) {
+                    VoiceKeychain.store("")
+                    hasVoiceKey = false
+                    usesOnlineVoice = false
+                    voiceTestResult = nil
+                }
+            }
+
+            LabeledContent("Phrases déjà en mémoire") {
+                Text(voiceCacheSummary)
+                    .foregroundStyle(.secondary)
+            }
+
+            if VoiceCache.summary.count > 0 {
+                Button("Vider la mémoire des phrases", role: .destructive) {
+                    VoiceCache.empty()
+                    voiceCacheSummary = Self.describeCache()
+                }
+            }
+        } header: {
+            Text("Voix de l'assistant")
+        } footer: {
+            Text("La voix en ligne est plus naturelle mais facturée au caractère, et demande du réseau. "
+                 + "Chaque phrase n'est payée qu'une fois : elle est ensuite gardée sur l'iPhone, et dite "
+                 + "sans attendre. Sans réseau, sans clé ou quota épuisé, la voix embarquée prend le relais — "
+                 + "l'assistant ne se tait jamais.")
+        }
+        .onAppear {
+            hasVoiceKey = VoiceKeychain.hasKey
+            voiceCacheSummary = Self.describeCache()
+        }
+    }
+
+    private func saveVoiceKey() {
+        VoiceKeychain.store(voiceKeyEntry)
+        voiceKeyEntry = ""
+        hasVoiceKey = VoiceKeychain.hasKey
+        if hasVoiceKey { usesOnlineVoice = true }
+        voiceTestResult = nil
+    }
+
+    private static func describeCache() -> String {
+        let summary = VoiceCache.summary
+        guard summary.count > 0 else { return "Aucune" }
+        let ko = max(1, summary.bytes / 1024)
+        return "\(summary.count) phrases · \(ko) Ko"
     }
 
     // MARK: - Équipe
