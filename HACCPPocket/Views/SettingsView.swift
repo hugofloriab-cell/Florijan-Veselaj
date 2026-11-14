@@ -125,6 +125,7 @@ struct SettingsView: View {
                 contactSection
                 logoSection
                 operatorSection
+                voicePackSection
                 voiceSection
                 teamSection
                 remindersSection
@@ -352,6 +353,65 @@ struct SettingsView: View {
     /// Le choix de la voix, et la clé qui la débloque.
     ///
     /// La voix en ligne est facturée au caractère : la section dit donc ce
+    // MARK: - Paquet de voix
+
+    /// Les phrases fixes, enregistrées une fois et publiées avec le code.
+    ///
+    /// Cette section existe parce qu'un paquet incomplet s'entend : une
+    /// phrase sur deux dite par une voix différente laisse croire à un
+    /// défaut. Montrer combien sont descendues, et permettre de relancer,
+    /// explique ce qu'on entend.
+    private var voicePackSection: some View {
+        Section {
+            LabeledContent("Phrases enregistrées") {
+                Text("\(voice.pack.storedCount) sur \(voice.pack.phraseCount)")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            if let name = voice.pack.voiceName {
+                LabeledContent("Voix du paquet") {
+                    Text(name).foregroundStyle(.secondary)
+                }
+            }
+
+            LabeledContent("Place occupée") {
+                Text(voice.pack.storedSize).foregroundStyle(.secondary)
+            }
+
+            if voice.pack.isPrefetching {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Téléchargement en cours…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if voice.pack.storedCount < voice.pack.phraseCount {
+                Button("Télécharger les phrases manquantes") {
+                    Task {
+                        await voice.pack.refresh()
+                        await voice.pack.prefetchAll()
+                    }
+                }
+            }
+
+            if voice.pack.storedCount > 0 {
+                Button("Effacer le paquet", role: .destructive) {
+                    voice.pack.removeStored()
+                }
+            }
+        } header: {
+            Text("Paquet de voix")
+        } footer: {
+            Text("Les phrases que l'assistant répète tous les jours sont enregistrées d'avance. "
+                 + "Une fois descendues, elles sont dites instantanément, sans réseau et sans rien coûter. "
+                 + "Les phrases qui changent — un nom de produit, une température — passent par les voix ci-dessous.")
+        }
+        .task {
+            await voice.pack.prepare()
+        }
+    }
+
     /// que le cache a déjà épargné, et laisse le choix de s'en passer. Un
     /// réglage qui coûte de l'argent doit montrer ce qu'il coûte.
     private var voiceSection: some View {

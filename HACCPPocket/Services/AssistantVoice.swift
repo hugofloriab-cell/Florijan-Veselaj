@@ -60,7 +60,22 @@ final class AssistantVoice {
     /// Vrai quand la dernière phrase est venue du réseau.
     private(set) var lastSpokenWasOnline = false
 
+    /// D'où venait la dernière phrase. Utile dans les réglages : entendre
+    /// une voix sans savoir laquelle des trois a parlé ne permet pas de
+    /// comprendre pourquoi elle sonne autrement d'une fois sur l'autre.
+    enum Source: String {
+        case pack = "Paquet de voix"
+        case online = "Voix en ligne"
+        case embedded = "Voix embarquée"
+    }
+
+    private(set) var lastSpokenSource: Source?
+
     var isAvailable: Bool { unavailableReason == nil }
+
+    /// Le paquet de phrases enregistrées. Observable : les réglages
+    /// affichent son état, d'où l'absence de `@ObservationIgnored`.
+    let pack = VoicePack()
 
     @ObservationIgnored private let local = PiperNarrator()
     @ObservationIgnored private var player: AVAudioPlayer?
@@ -70,12 +85,17 @@ final class AssistantVoice {
 
     func prepare() async {
         await local.prepare()
+        await pack.prepare()
         refreshAvailability()
+
+        // Les phrases manquantes descendent en arrière-plan : on ne fait
+        // pas attendre le premier écran pour quelques mégaoctets.
+        Task { await pack.prefetchAll() }
     }
 
     private func refreshAvailability() {
-        // Une seule des deux suffit à parler.
-        if usesOnline || local.isAvailable {
+        // Une seule des trois suffit à parler.
+        if pack.isReady || usesOnline || local.isAvailable {
             unavailableReason = nil
         } else {
             unavailableReason = local.unavailableReason
@@ -112,8 +132,21 @@ final class AssistantVoice {
 
         stop()
 
+        // Le paquet d'abord : gratuit, instantané, et c'est la plus belle
+        // des trois voix. Il ne couvre que les phrases fixes, donc l'échec
+        // est la règle et doit rester silencieux.
+        if let file = await pack.audioFile(for: trimmed) {
+            lastSpokenWasOnline = false
+            lastSpokenSource = .pack
+            isSpeaking = true
+            defer { isSpeaking = false }
+            await play(file)
+            return
+        }
+
         if let file = await onlineAudio(for: trimmed) {
             lastSpokenWasOnline = true
+            lastSpokenSource = .online
             isSpeaking = true
             defer { isSpeaking = false }
             await play(file)
@@ -126,6 +159,7 @@ final class AssistantVoice {
         }
 
         lastSpokenWasOnline = false
+        lastSpokenSource = .embedded
         isSpeaking = true
         defer { isSpeaking = false }
         await play(file)
@@ -180,12 +214,19 @@ final class AssistantVoice {
         let phrase = "Frigo cuisine, trois degrés. C'est dans la plage. J'enregistre ?"
         await speak(phrase)
 
-        if let failure = lastOnlineFailure {
-            return "\(failure) La voix embarquée a pris le relais."
+        switch lastSpokenSource {
+        case .pack:
+            return "Paquet de voix. Cette phrase est sur l'appareil, elle ne coûte rien."
+        case .online:
+            return "Voix en ligne. Cette phrase est maintenant gardée sur l'appareil."
+        case .embedded:
+            if let failure = lastOnlineFailure {
+                return "\(failure) La voix embarquée a pris le relais."
+            }
+            return "Voix embarquée."
+        case .none:
+            return lastOnlineFailure ?? "Aucune voix n'a pu parler."
         }
-        return lastSpokenWasOnline
-            ? "Voix en ligne. Cette phrase est maintenant gardée sur l'appareil."
-            : "Voix embarquée."
     }
 
     // MARK: - Lecture
