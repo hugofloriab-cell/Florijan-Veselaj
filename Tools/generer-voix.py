@@ -3,8 +3,16 @@
 
 À lancer sur le Mac, Voicebox ouvert, depuis ~/Developer/HACCPPocket/ :
 
-    python3 Tools/generer-voix.py "My Voice"          # tout le paquet
-    python3 Tools/generer-voix.py "My Voice" --une    # une seule phrase, pour essayer
+    python3 generer-voix.py "My Voice"                 # tout le paquet
+    python3 generer-voix.py "My Voice" --une           # une phrase, pour écouter
+    python3 generer-voix.py "My Voice" --moteur qwen   # un autre moteur
+    python3 generer-voix.py "My Voice" --graine 42     # une autre voix, même moteur
+    python3 generer-voix.py "My Voice" --essai         # une phrase par moteur, pour comparer
+
+LA GRAINE COMPTE PLUS QUE TOUT. Sans elle, le serveur en tire une au
+hasard à chaque phrase, et sur une voix clonée la graine change le timbre
+et le débit : les soixante-et-onze phrases ne sonnent alors pas comme la
+même personne. Une graine fixe, et l'assistant a une seule voix.
 
 Tout passe par l'API locale de Voicebox (127.0.0.1:17493) et par
 `afconvert`, livré avec macOS. Rien n'est installé.
@@ -24,6 +32,15 @@ import urllib.request
 API = "http://127.0.0.1:17493"
 SOURCE = "HACCPPocket/Services/AssistantConversation.swift"
 OUT = "VoicePack"
+
+# Modifiés par les options de la ligne de commande.
+GRAINE = 7
+MOTEUR = None
+
+# Les moteurs proposés par --essai, du plus naturel au plus rapide.
+MOTEURS = ["qwen_custom_voice", "qwen", "chatterbox", "chatterbox_turbo", "luxtts"]
+
+PHRASE_ESSAI = "Frigo cuisine, trois degrés. C'est dans la plage. J'enregistre ?"
 
 
 def appel(chemin, charge=None, methode="GET", brut=False):
@@ -58,6 +75,15 @@ def phrases_du_code(fichier):
     """
     code = open(fichier, encoding="utf-8").read()
     code = re.sub(r'"""[\s\S]*?"""', " ", code)
+
+    # Les descriptions passées au modèle — `@Guide(description: "…")` —
+    # sont du français, mais du français qui n'est jamais dit à voix
+    # haute. Elles décrivent un champ, elles ne s'adressent à personne.
+    code = re.sub(r'@Guide\([^)]*\)', " ", code)
+    code = "\n".join(
+        l for l in code.splitlines()
+        if "description:" not in l and "systemImage" not in l
+    )
 
     interdits = set('{}()[]<>=;_@\\/|&*+#$')
     trouvees = []
@@ -107,11 +133,22 @@ def profil():
 
 def genere(texte, voix):
     """Rend les octets WAV de la phrase."""
-    demande = {"text": texte, "profile_id": voix["id"], "language": "fr"}
+    demande = {
+        "text": texte,
+        "profile_id": voix["id"],
+        "language": "fr",
+        # La même graine pour toutes les phrases : c'est elle qui fait
+        # qu'on entend une seule et même voix d'un bout à l'autre.
+        "seed": GRAINE,
+        # Dit explicitement plutôt que laissé au serveur : le gros modèle
+        # s'entend, et un défaut peut changer d'une version à l'autre.
+        "model_size": "1.7B",
+        "normalize": True,
+    }
 
     # Le moteur est repris du profil plutôt que laissé au serveur : c'est
     # ce désaccord qui faisait échouer toutes les demandes en 400.
-    moteur = voix.get("default_engine") or voix.get("preset_engine")
+    moteur = MOTEUR or voix.get("default_engine") or voix.get("preset_engine")
     if moteur:
         demande["engine"] = moteur
 
@@ -134,15 +171,66 @@ def genere(texte, voix):
     raise RuntimeError("délai dépassé")
 
 
+def essai(voix):
+    """Une même phrase par moteur, pour choisir à l'oreille.
+
+    Soixante-et-onze phrases prennent deux heures : se tromper de moteur
+    coûte une soirée. Cinq essais en coûtent dix minutes.
+    """
+    global MOTEUR
+
+    shutil.rmtree(OUT, ignore_errors=True)
+    os.makedirs(OUT)
+
+    print("Phrase :", PHRASE_ESSAI)
+    print("Graine :", GRAINE)
+    print()
+
+    for nom in MOTEURS:
+        MOTEUR = nom
+        print("  %-20s" % nom, end=" ", flush=True)
+        try:
+            wav = genere(PHRASE_ESSAI, voix)
+        except Exception as erreur:                       # noqa: BLE001
+            print("non disponible —", str(erreur)[:70])
+            continue
+
+        cible = os.path.join(OUT, "essai-" + nom + ".wav")
+        with open(cible, "wb") as f:
+            f.write(wav)
+        print("→", cible)
+
+    print()
+    print("Écoutez-les dans l'ordre :")
+    print("  for f in VoicePack/essai-*.wav; do echo $f; afplay $f; done")
+    print()
+    print("Puis lancez le paquet avec celui que vous préférez :")
+    print('  python3 generer-voix.py "%s" --moteur LE_NOM' % voix.get("name"))
+
+
 # ───────────────────────────── le paquet ─────────────────────────────
 
 def main():
     if not os.path.exists(SOURCE):
         sys.exit("Lancez ce script depuis ~/Developer/HACCPPocket/ (%s introuvable)." % SOURCE)
 
+    global GRAINE, MOTEUR
+
+    if "--graine" in sys.argv:
+        GRAINE = int(sys.argv[sys.argv.index("--graine") + 1])
+    if "--moteur" in sys.argv:
+        MOTEUR = sys.argv[sys.argv.index("--moteur") + 1]
+
     voix = profil()
+
+    if "--essai" in sys.argv:
+        essai(voix)
+        return
+
     print("Voix   :", voix.get("name"), "·", voix.get("id"))
-    print("Moteur :", voix.get("default_engine") or voix.get("preset_engine") or "(défaut du serveur)")
+    print("Moteur :", MOTEUR or voix.get("default_engine") or voix.get("preset_engine")
+          or "(défaut du serveur)")
+    print("Graine :", GRAINE)
 
     textes = phrases_du_code(SOURCE)
     if "--une" in sys.argv:
@@ -152,7 +240,13 @@ def main():
 
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
-    manifeste = {"version": int(time.time()), "voix": voix.get("name"), "phrases": []}
+    manifeste = {
+        "version": int(time.time()),
+        "voix": voix.get("name"),
+        "moteur": MOTEUR or voix.get("default_engine") or voix.get("preset_engine"),
+        "graine": GRAINE,
+        "phrases": [],
+    }
     echecs = 0
 
     for index, texte in enumerate(textes, 1):
@@ -172,7 +266,7 @@ def main():
         with open(brut, "wb") as f:
             f.write(wav)
         subprocess.run(
-            ["afconvert", "-f", "m4af", "-d", "aac", "-b", "64000", brut, cible],
+            ["afconvert", "-f", "m4af", "-d", "aac", "-b", "96000", brut, cible],
             check=True, capture_output=True,
         )
         os.remove(brut)
